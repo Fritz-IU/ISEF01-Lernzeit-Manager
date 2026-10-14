@@ -1,74 +1,28 @@
-# Entwicklungs- und QS-Ablauf
+# Arbeitsablauf
 
-Dieses Dokument beschreibt, wie eine Story oder Aufgabe vom Backlog bis „Done“ gelangt.
-Grundlage: MS 3, Kapitel 1.6 (Vorgehensmodell) und Kapitel 3.2 (Abbildung 1 „Ablauf je User Story“).
+Ein Issue ist erst fertig, wenn die QS es getestet und geschlossen hat.
 
-**Grundregel:** Ein Issue gilt erst als erledigt, wenn die QS es getestet hat. Deshalb schließt **nur die QS** Issues, nie der Merge eines Pull Requests.
+## 1. Sprint-Planning (Mittwoch, Team)
+1. Issues für den Sprint aus **Product Backlog** nach **Sprint Backlog (To Do)** ziehen.
+2. Am Issue setzen: **Sprint**, **MoSCoW**, **Bereich**, **Aufwand geplant (h)**.
 
----
-
-## 1. Board-Spalten
-
-| Spalte | Bedeutung | Wer verschiebt |
-|---|---|---|
-| Product Backlog | im Jour Fixe akzeptiert, noch keinem Sprint zugeordnet | automatisch beim Anlegen |
-| Sprint Backlog (To Do) | im Sprint-Planning für den aktuellen Sprint gewählt | Projektleitung im Sprint-Planning |
-| In Progress | wird gerade umgesetzt | Entwickler*in |
-| In Review / QA | Pull Request im Review oder wartet auf den Akzeptanztest | Entwickler*in beim Öffnen des Pull Requests |
-| Done | Akzeptanztest bestanden | automatisch, wenn die QS das Issue schließt |
-
-## 2. Ablauf
-
-### Entwickler*in
-1. Issue auf **In Progress** ziehen und sich selbst zuweisen (**Assignees**).
-2. Eigenen Branch von `main` anlegen und dort arbeiten. Kein direkter Commit auf `main`.
-3. Pull Request öffnen. Die Vorlage wird automatisch eingefügt, siehe [Abschnitt 3](#3-pull-request-ausfüllen).
-4. Rechts unter **Reviewers** eine zweite Person anfordern.
-5. **Issue-Karte von Hand auf „In Review / QA“ verschieben.** Das passiert nicht automatisch.
-
-### Reviewer*in
-6. Code lesen und die Häkchen der Definition of Done auf Plausibilität prüfen.
-7. **Approve** oder **Request changes**. Bei Änderungswünschen passt die Entwickler*in den Code auf demselben Branch an.
-8. Nach der Freigabe: **Merge**. Das Issue bleibt dabei offen.
-
-### QS (Paul Grund, Vertretung Fritz Weiß)
-9. Aktuellen Stand von `main` holen und die Testfälle der Story ausführen (lokal in XAMPP, ab Sprint 4 auf Alwaysdata).
-10. **Bestanden:** Testergebnis als Kommentar ins Issue schreiben (Vorlage siehe [Abschnitt 4](#4-testergebnis-dokumentieren)) und das Issue **schließen**. Die Karte wandert automatisch auf **Done**.
-11. **Nicht bestanden:** Über die Vorlage **Bug** ein neues Issue anlegen, mit Verweis auf die Story. Die Story-Karte zurück auf **In Progress** ziehen. Die Korrektur läuft über einen neuen Pull Request, danach beginnt der Ablauf ab Schritt 3 erneut.
-
-```
-In Progress ──PR öffnen──▶ In Review / QA ──Review + Merge──▶ (Issue bleibt offen)
-     ▲                                                              │
-     │                                                       QS testet
-     │                                                              │
-     └──────────── nicht bestanden (Bug-Issue) ◀────────────────────┤
-                                                                    │
-                                          bestanden → Issue schließen → Done
-```
+## 2. Umsetzen (Entwickler*in)
+1. Issue auf **In Progress** ziehen und sich unter **Assignees** eintragen.
+2. Branch von `main` anlegen und dort arbeiten. Nie direkt auf `main` committen.
+3. Pull Request öffnen (siehe [Abschnitt 3](#3-pull-request-ausfüllen)).
+4. Unter **Reviewers** eine zweite Person anfordern.
+5. Issue-Karte auf **In Review / QA** ziehen und **Aufwand Ist (h)** eintragen.
 
 ## 3. Pull Request ausfüllen
+1. **Was wurde geändert?** – kurz beschreiben.
+2. **Zugehörige Story / Aufgabe** – `Refs #<Nummer>` eintragen.
+   - Nie `Closes #`, `Fixes #` oder `Resolves #` verwenden.
+   - Das Issue nicht über die Seitenleiste **Development** verknüpfen.
+3. **Definition of Done** – jeden Punkt prüfen und abhaken. Nicht zutreffende Punkte abhaken und mit „entfällt“ markieren:
+   `- [x] entfällt – Doku angepasst`
+4. **Hinweise für Review und QS** – was besonders zu prüfen ist, betroffene Testfälle, Testaccount.
 
-### Verweis auf das Issue: `Refs #` statt `Closes #`
-
-Im Abschnitt „Zugehörige Story / Aufgabe“ immer **`Refs #<Nummer>`** schreiben. Nach `#` öffnet GitHub eine Auswahlliste der Issues.
-
-| | `Closes #12` (auch `Fixes`, `Resolves`) | `Refs #12` |
-|---|---|---|
-| Verknüpfung | Pull Request erscheint im Issue | Pull Request erscheint im Verlauf des Issues |
-| Beim Merge | **Issue wird automatisch geschlossen** | **Issue bleibt offen** |
-| Board | Karte springt ungetestet auf **Done** | Karte bleibt in **In Review / QA** |
-
-> ⚠️ Das Issue **nicht** über die Seitenleiste **„Development“** im Pull Request verknüpfen. Das wirkt wie `Closes` und schließt das Issue beim Merge.
-
-### Definition of Done
-- Alle Punkte der Checkliste prüfen und abhaken.
-- Nicht zutreffende Punkte ebenfalls abhaken und mit **„entfällt“** markieren, z. B. `- [x] entfällt – Doku angepasst`.
-- Die Häkchen lassen sich auch nach dem Erstellen des Pull Requests per Klick setzen.
-
-### Hinweise für Review und QS
-Beschreiben, was besonders zu prüfen ist, welche Testfälle betroffen sind und welcher Testaccount verwendet werden kann.
-
-### Beispiel
+Beispiel:
 
 ```markdown
 ## Was wurde geändert?
@@ -89,34 +43,32 @@ Bitte besonders TC-12-03 testen (Neuladen bei laufender Stoppuhr).
 Testaccount: test1@test.local
 ```
 
-## 4. Testergebnis dokumentieren
+## 4. Review (Reviewer*in)
+1. Code lesen, Häkchen der Definition of Done prüfen.
+2. **Approve** oder **Request changes**.
+3. Nach Freigabe **Merge**. Das Issue bleibt offen.
+4. Review-Zeit zu **Aufwand Ist (h)** des Issues addieren.
 
-Kommentar im Issue, bevor es geschlossen wird:
+## 5. Testen (QS)
+1. Aktuellen Stand von `main` holen und die Testfälle der Story ausführen.
+2. **Bestanden:** Ergebnis als Kommentar ins Issue schreiben und Issue **schließen**.
+   ```
+   Akzeptanztest bestanden ✅
+   TC-12-01 ✅  TC-12-02 ✅
+   Umgebung: XAMPP, Chrome – 23.10.2026
+   ```
+3. **Nicht bestanden:** Bug über die Vorlage **Bug** anlegen, Story verlinken, Story-Karte zurück auf **In Progress**.
+4. Testlauf im Testprotokoll (Teams) eintragen.
+5. Testzeit zu **Aufwand Ist (h)** des Issues addieren.
 
-```
-Akzeptanztest bestanden ✅
-TC-12-01 ✅  TC-12-02 ✅
-Umgebung: XAMPP, Chrome – 23.10.2026
-```
+## 6. Aufwand eintragen
+- In halben Stunden, mit Punkt: `0.5`, `1.5`, `3`.
+- Jede Person addiert ihre Zeit (Umsetzung, Review, Test) zum **Aufwand Ist (h)** des Issues, an dem sie gearbeitet hat (z. B. 2 → 3.5).
+- **Aufwand geplant (h)** nach dem Sprint-Planning nicht mehr ändern.
+- Arbeit ohne Story als Aufgabe anlegen und dort eintragen.
+- Vergessen? Nachträglich schätzen und eintragen, nicht leer lassen.
 
-Zusätzlich wird jeder Testlauf im Testprotokoll (Teams) festgehalten.
-
-## 5. Sonderfälle
-
-| Situation | Vorgehen |
-|---|---|
-| Versehentlich `Closes #` verwendet, Issue ist nach dem Merge zu | Issue wieder öffnen (**Reopen**). Die Karte springt automatisch zurück auf **In Review / QA**. |
-| Karte nach dem Merge noch auf „In Progress“ | Wer es bemerkt, verschiebt sie auf **In Review / QA**. Die QS prüft zusätzlich regelmäßig die zuletzt gemergten Pull Requests. |
-| QS abwesend | Vertretung durch Fritz Weiß (MS 3, Tabelle 2) |
-
-## 6. Einstellungen im GitHub Project
-
-Unter **⋯ → Workflows**:
-
-| Workflow | Einstellung |
-|---|---|
-| Item added to project | Status → Product Backlog |
-| Item closed | Status → Done |
-| Item reopened | Status → In Review / QA |
-| Pull request merged | ausgeschaltet |
-| Auto-add to project | Filter `is:issue` |
+## 7. Wenn etwas schiefgeht
+- **Issue nach dem Merge geschlossen oder Karte versehentlich auf Done:** Issue wieder öffnen (**Reopen**).
+- **Karte nach dem Merge noch auf In Progress:** auf **In Review / QA** ziehen.
+- **QS abwesend:** Fritz Weiß testet.
