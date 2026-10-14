@@ -1,0 +1,81 @@
+name: User Story
+description: Neue Anforderung als User Story mit Akzeptanzkriterien
+title: "[Story] "
+labels: ["story"]
+# Owner/Nummer des GitHub Projects – Nummer steht in der Project-URL (.../projects/1)
+projects: ["Fritz-IU/1"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Bitte jede Story so formulieren, dass sie im Jour Fixe auf **Vollständigkeit, Eindeutigkeit und Testbarkeit** geprüft werden kann.
+
+  - type: textarea
+    id: story
+    attributes:
+      label: User Story
+      description: "Schema: Als [Rolle] möchte ich [Funktion], um [Nutzen] zu erreichen."
+      value: "Als Studierende*r möchte ich …, um … zu erreichen."
+    validations:
+      required: true
+
+  - type: textarea
+    id: akzeptanzkriterien
+    attributes:
+      label: Akzeptanzkriterien
+      description: "Messbar formulieren, Schema Gegeben/Wenn/Dann. Daraus werden die Testfälle abgeleitet."
+      value: |
+        1. **Gegeben** … **Wenn** … **Dann** …
+        2. **Gegeben** … **Wenn** … **Dann** …
+    validations:
+      required: true
+
+  - type: dropdown
+    id: moscow
+    attributes:
+      label: Priorität (MoSCoW)
+      options:
+        - Must-have
+        - Should-have
+        - Could-have
+        - Won't-have
+    validations:
+      required: true
+
+  - type: dropdown
+    id: bereich
+    attributes:
+      label: Betroffene Bereiche
+      multiple: true
+      options:
+        - Frontend
+        - Backend
+        - Datenbank
+        - Infrastruktur
+    validations:
+      required: true
+
+  - type: textarea
+    id: hinweise
+    attributes:
+      label: Hinweise / Abhängigkeiten
+      description: "Optional: Geschäftsregeln, Abhängigkeiten zu anderen Stories, offene Fragen"
+
+  - type: checkboxes
+    id: jour-fixe
+    attributes:
+      label: Prüfung im Jour Fixe
+      description: "Wird im Jour Fixe abgehakt. Erst danach darf die Story in einen Sprint."
+      options:
+        - label: vollständig
+        - label: eindeutig
+        - label: testbar
+
+  - type: textarea
+    id: testfaelle
+    attributes:
+      label: Testfälle
+      description: "Wird von der QS vor der Umsetzung ergänzt"
+      value: |
+        - TC-…-01 (positiv)
+        - TC-…-02 (negativ)

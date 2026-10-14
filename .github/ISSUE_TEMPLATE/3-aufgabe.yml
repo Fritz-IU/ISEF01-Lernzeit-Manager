@@ -1,0 +1,44 @@
+name: Aufgabe
+description: Technische oder organisatorische Aufgabe ohne eigene User Story
+title: "[Aufgabe] "
+labels: ["aufgabe"]
+# Owner/Nummer des GitHub Projects – Nummer steht in der Project-URL (.../projects/1)
+projects: ["Fritz-IU/1"]
+body:
+  - type: textarea
+    id: beschreibung
+    attributes:
+      label: Was ist zu tun?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: bereich
+    attributes:
+      label: Bereich
+      options:
+        - Frontend
+        - Backend
+        - Datenbank
+        - Infrastruktur
+        - Qualitätssicherung
+        - Dokumentation
+        - Organisation
+    validations:
+      required: true
+
+  - type: textarea
+    id: erledigt-wenn
+    attributes:
+      label: Erledigt, wenn …
+      description: "Woran erkennt man, dass die Aufgabe abgeschlossen ist?"
+      value: |
+        - [ ]
+    validations:
+      required: true
+
+  - type: input
+    id: bezug
+    attributes:
+      label: Bezug zu Story / Meilenstein
+      placeholder: "#12 oder MS 4"

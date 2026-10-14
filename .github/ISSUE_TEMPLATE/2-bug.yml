@@ -1,0 +1,92 @@
+name: Bug
+description: Abweichung zwischen Soll- und Ist-Verhalten melden
+title: "[Bug] "
+labels: ["bug"]
+# Owner/Nummer des GitHub Projects – Nummer steht in der Project-URL (.../projects/1)
+projects: ["Fritz-IU/1"]
+body:
+  - type: dropdown
+    id: prioritaet
+    attributes:
+      label: Priorität
+      description: "hoch = Kernfunktion unbenutzbar, Datenverlust oder Sicherheitslücke (vor Abgabe zwingend beheben)"
+      options:
+        - hoch
+        - mittel
+        - niedrig
+    validations:
+      required: true
+
+  - type: dropdown
+    id: umgebung
+    attributes:
+      label: Umgebung
+      options:
+        - lokal (XAMPP)
+        - live (Alwaysdata)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      multiple: true
+      options:
+        - Chrome
+        - Firefox
+        - Edge
+        - Smartphone-Browser
+    validations:
+      required: true
+
+  - type: input
+    id: testaccount
+    attributes:
+      label: Verwendeter Testaccount
+      placeholder: "test1@test.local"
+
+  - type: textarea
+    id: schritte
+    attributes:
+      label: Schritte zum Nachstellen
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: soll
+    attributes:
+      label: Soll-Ergebnis
+    validations:
+      required: true
+
+  - type: textarea
+    id: ist
+    attributes:
+      label: Ist-Ergebnis
+      description: "Screenshot, Fehlermeldung aus Browser-Konsole oder Netzwerk-Tab hier einfügen"
+    validations:
+      required: true
+
+  - type: input
+    id: testfall
+    attributes:
+      label: Betroffener Testfall
+      placeholder: "TC-…"
+
+  - type: input
+    id: story
+    attributes:
+      label: Betroffene User Story
+      placeholder: "#12"
+
+  - type: textarea
+    id: retest
+    attributes:
+      label: Retest
+      description: "Wird von der QS ausgefüllt. Bug erst nach erfolgreichem Retest schließen."
+      value: "Retest am TT.MM.JJJJ durch … – Ergebnis: bestanden / nicht bestanden"
