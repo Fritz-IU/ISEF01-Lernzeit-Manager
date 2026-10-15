@@ -2,7 +2,6 @@ name: User Story
 description: Neue Anforderung als User Story mit Akzeptanzkriterien
 title: "[Story] "
 labels: ["story"]
-# Owner/Nummer des GitHub Projects – Nummer steht in der Project-URL (.../projects/1)
 projects: ["Fritz-IU/1"]
 body:
   - type: markdown

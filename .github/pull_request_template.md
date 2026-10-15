@@ -3,10 +3,8 @@
 
 ## Zugehörige Story / Aufgabe
 Refs #
-<!-- Bitte "Refs #" verwenden, NICHT "Closes #". Das Issue schließt die QS nach bestandenem Akzeptanztest. -->
 
 ## Definition of Done
-<!-- Nicht zutreffende Punkte abhaken und mit "entfällt" markieren. -->
 
 ### Allgemein
 - [ ] Review durch eine zweite Person angefordert (nicht Autor*in)
@@ -32,4 +30,3 @@ Refs #
 - [ ] Akzeptanzkriterien lokal (XAMPP) selbst geprüft
 
 ## Hinweise für Review und QS
-<!-- Was soll der Reviewer besonders prüfen? Wie kann die QS es testen? Welcher Testaccount? -->

@@ -2,7 +2,6 @@ name: Bug
 description: Abweichung zwischen Soll- und Ist-Verhalten melden
 title: "[Bug] "
 labels: ["bug"]
-# Owner/Nummer des GitHub Projects – Nummer steht in der Project-URL (.../projects/1)
 projects: ["Fritz-IU/1"]
 body:
   - type: dropdown
