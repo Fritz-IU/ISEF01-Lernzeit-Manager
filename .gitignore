@@ -1,0 +1,29 @@
+# Zugangsdaten und lokale Konfiguration
+.env
+.env.*
+!.env.example
+**/config.local.php
+
+# Abhängigkeiten
+vendor/
+node_modules/
+
+# Betriebssysteme
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editoren – gemeinsame VS-Code-Einstellungen bleiben im Repo
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+
+# Persönliche Claude-Code-Einstellungen
+.claude/settings.local.json
+
+# Logs und Caches
+*.log
+.phpunit.result.cache
+.phpunit.cache/

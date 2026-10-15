@@ -9,6 +9,7 @@ Ein Issue ist erst fertig, wenn die QS es getestet und geschlossen hat.
 ## 2. Umsetzen (Entwickler*in)
 1. Issue auf **In Progress** ziehen und sich unter **Assignees** eintragen.
 2. Branch von `main` anlegen und dort arbeiten. Nie direkt auf `main` committen.
+   - In Commit-Nachrichten auf das Issue mit `Refs #<Nummer>` verweisen, nie mit `Closes #`, `Fixes #` oder `Resolves #`.
 3. Pull Request öffnen (siehe [Abschnitt 3](#3-pull-request-ausfüllen)).
 4. Unter **Reviewers** eine zweite Person anfordern.
 5. Issue-Karte auf **In Review / QA** ziehen und **Aufwand Ist (h)** eintragen.

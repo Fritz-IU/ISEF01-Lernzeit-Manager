@@ -1,0 +1,17 @@
+{
+  "version": "0.2",
+  "language": "en,de",
+  "ignorePaths": [".git/", "vendor/", "node_modules/", "**/*.min.js", "**/*.min.css", "*.sql"],
+  "words": [
+    "Lernzeit",
+    "Lernzeiten",
+    "Lernziel",
+    "Lernziele",
+    "Zwischenziel",
+    "Zwischenziele",
+    "Nachbuchung",
+    "Stoppuhr",
+    "Testaccount",
+    "Testaccounts"
+  ]
+}
