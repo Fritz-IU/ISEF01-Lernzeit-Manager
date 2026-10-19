@@ -1,0 +1,61 @@
+# Qualitätssicherung Datenbank: spielt schema.sql und seed.sql in eine frische MariaDB ein.
+# Schlägt ein Skript fehl, wird der Pull Request rot und kann nicht gemergt werden.
+name: Datenbank
+
+on:
+  pull_request:
+    paths:
+      - "sql/**"
+      - "config/**"
+      - ".env.example"
+      - ".github/workflows/database.yml"
+  push:
+    branches: [main]
+    paths:
+      - "sql/**"
+      - "config/**"
+      - ".env.example"
+      - ".github/workflows/database.yml"
+
+jobs:
+  reset:
+    name: Schema und Testdaten einspielen
+    runs-on: ubuntu-latest
+
+    services:
+      mariadb:
+        # Gleiche Hauptversion wie in XAMPP (MariaDB 10.4)
+        image: mariadb:10.4
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "yes"
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: pdo_mysql
+          coverage: none
+
+      - name: .env aus Vorlage anlegen
+        run: cp .env.example .env
+
+      - name: Datenbank zurücksetzen
+        run: php sql/reset.php
+
+      - name: Testdaten prüfen
+        run: |
+          php -r '
+            require "config/database.php";
+            $users = (int) getDatabaseConnection()->query("SELECT COUNT(*) FROM users")->fetchColumn();
+            echo "users: $users\n";
+            exit($users > 0 ? 0 : 1);
+          '

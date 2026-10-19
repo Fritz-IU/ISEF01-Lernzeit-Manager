@@ -2,6 +2,13 @@
 
 Repo für das Modul Projekt: Software Engineering (ISEF01). Entwicklung eines Lernzeit-Managers.
 
+## Datenbank einrichten
+
+1. `cp .env.example .env`
+2. In XAMPP MySQL starten und `/Applications/XAMPP/xamppfiles/bin/php sql/reset.php` ausführen (Windows: `C:\xampp\php\php.exe sql\reset.php`)
+
+Nach jedem `git pull` mit Änderungen in `sql/` den Reset erneut ausführen. Details und Teamregeln: [docs/datenbank.md](docs/datenbank.md)
+
 ## Ordnerstruktur & Entwicklungsrichtlinien – Lernzeit-Manager
 
 Diese Dokumentation beschreibt die festgelegte Verzeichnisstruktur des Repositories für den **Lernzeit-Manager** (Projekt Software Engineering). Sie dient allen Teammitgliedern als verbindliche Orientierung für das Ablegen von Quellcode, Skripten, Layout-Elementen und Dokumenten im Rahmen von Meilenstein MS 4.
