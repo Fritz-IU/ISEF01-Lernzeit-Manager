@@ -1,0 +1,10 @@
+# Datenbank – Schema, Testdaten, Reset-Skript und Datenbankzugriff
+/sql/                             @P-Grund
+/src/Database/                    @P-Grund
+/config/database.php              @P-Grund
+/.env.example                     @P-Grund
+/docs/datenbank.md                @P-Grund
+
+# Qualitätssicherung – CI-Prüfung der Datenbank und Zuständigkeiten
+/.github/workflows/database.yml   @P-Grund
+/.github/CODEOWNERS               @P-Grund
