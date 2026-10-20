@@ -21,7 +21,7 @@ Das Modul zur Registrierung und Anmeldung folgt dem Prinzip der **Schichtentrenn
 
 Das folgende Mermaid-Diagramm visualisiert den Ablauf eines Anmeldeversuchs durch die einzelnen Schichten des Systems:
 
-```mermaid
+````mermaid
 sequenceDiagram
     autonumber
     actor User as Benutzer / Browser
@@ -48,7 +48,8 @@ sequenceDiagram
         Auth->>Auth: User-ID in $_SESSION speichern
         Auth-->>View: Redirect zu dashboard.php
         View-->>User: Dashboard anzeigen
-    end
+    end```
+
 3. Sicherheitsmaßnahmen und wissenschaftliche Fundierung
 
 Bei der Implementierung des Authentifizierungsmoduls wurden die aktuellen Standards und Empfehlungen des National Institute of Standards and Technology (NIST SP 800-63B-4) sowie die OWASP Top 10:2025 berücksichtigt.
@@ -81,4 +82,4 @@ Bei der Implementierung des Authentifizierungsmoduls wurden die aktuellen Standa
     National Institute of Standards and Technology. (2025). Digital Identity Guidelines: Authentication and Authenticator Management (NIST Special Publication 800-63B-4). U.S. Department of Commerce. https://pages.nist.gov/800-63-4/sp800-63b.html
 
     OWASP Foundation. (2025). OWASP Top 10:2025 – The Ten Most Critical Web Application Security Risks. https://top10.owasp.org/2025/
-```
+````
