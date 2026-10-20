@@ -48,7 +48,8 @@ sequenceDiagram
         Auth->>Auth: User-ID in $_SESSION speichern
         Auth-->>View: Redirect zu dashboard.php
         View-->>User: Dashboard anzeigen
-    end```
+    end
+    ```
 
 3. Sicherheitsmaßnahmen und wissenschaftliche Fundierung
 
