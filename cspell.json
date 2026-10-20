@@ -1,25 +1,33 @@
 {
   "version": "0.2",
   "language": "en,de",
-  "ignorePaths": [".git/", "vendor/", "node_modules/", "**/*.min.js", "**/*.min.css", "*.sql"],
+  "ignorePaths": [
+    ".git/",
+    "vendor/",
+    "node_modules/",
+    "**/*.min.js",
+    "**/*.min.css",
+    "*.sql"
+  ],
   "words": [
+    "Alwaysdata",
+    "committen",
+    "DSGVO",
+    "htdocs",
     "Lernzeit",
     "Lernzeiten",
     "Lernziel",
     "Lernziele",
-    "Zwischenziel",
-    "Zwischenziele",
     "Nachbuchung",
+    "phpunit",
     "Stoppuhr",
     "Testaccount",
     "Testaccounts",
-    "DSGVO",
-    "phpunit",
-    "htdocs",
     "webp",
     "xampp",
     "XAMPP",
     "xamppfiles",
-    "Alwaysdata"
+    "Zwischenziel",
+    "Zwischenziele"
   ]
 }
