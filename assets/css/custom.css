@@ -1,0 +1,7 @@
+/*
+ * Lernzeit-Manager – eigenes Styling
+ *
+ * Ergänzt Bootstrap 5 (per CDN eingebunden). Wird nach Bootstrap geladen,
+ * Regeln hier überschreiben also bei gleicher Spezifität die Bootstrap-Standards.
+ * Nur ergänzen, was sich mit Bootstrap-Klassen nicht lösen lässt.
+ */
