@@ -1,0 +1,162 @@
+<?php
+// login.php
+
+// Zentrale Session- und Datenbank-Konfiguration laden
+require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/src/Classes/User.php';
+
+use Classes\User;
+
+// Session starten, falls noch nicht aktiv
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Falls der Nutzer bereits eingeloggt ist, direkt zum Dashboard weiterleiten
+if (User::isLoggedIn()) {
+    header("Location: index.php");
+    exit;
+}
+
+$errorMessage = '';
+$successMessage = '';
+$activeTab = 'login'; // Welches Tab (Login oder Registrierung) angezeigt werden soll
+
+// Formularverarbeitung bei POST-Anfrage
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    try {
+        $db = getDatabaseConnection(); // Nutzt eure Funktion aus config/database.php
+        $userModel = new User($db);
+
+        // Aktion 1: Registrierung
+        if (isset($_POST['action']) && $_POST['action'] === 'register') {
+            $activeTab = 'register';
+            $email = $_POST['email'] ?? '';
+            $password = $_POST['password'] ?? '';
+            $passwordRepeat = $_POST['password_repeat'] ?? '';
+
+            if ($password !== $passwordRepeat) {
+                throw new Exception("Die eingegebenen Passwörter stimmen nicht überein.");
+            }
+
+            if ($userModel->register($email, $password)) {
+                $successMessage = "Registrierung erfolgreich! Du kannst dich jetzt einloggen.";
+                $activeTab = 'login'; // Nach Erfolg zum Login wechseln
+            }
+        }
+        // Aktion 2: Login
+        elseif (isset($_POST['action']) && $_POST['action'] === 'login') {
+            $activeTab = 'login';
+            $email = $_POST['email'] ?? '';
+            $password = $_POST['password'] ?? '';
+
+            if ($userModel->login($email, $password)) {
+                header("Location: index.php");
+                exit;
+            }
+        }
+    } catch (Exception $e) {
+        $errorMessage = $e->getMessage();
+    }
+}
+?>
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lernzeit-Manager – Login & Registrierung</title>
+    <!-- Ui mit Bootstrap 5 CSS via CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/custom.css">
+</head>
+
+<body class="bg-light d-flex align-items-center min-vh-100">
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-5">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-4">
+                        <h3 class="card-title text-center mb-4 text-primary">Lernzeit-Manager</h3>
+
+                        <!-- Rückmeldungen / Fehlermeldungen anzeigen -->
+                        <?php if (!empty($errorMessage)): ?>
+                            <div class="alert alert-danger" role="alert">
+                                <?= htmlspecialchars($errorMessage) ?>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (!empty($successMessage)): ?>
+                            <div class="alert alert-success" role="alert">
+                                <?= htmlspecialchars($successMessage) ?>
+                            </div>
+                        <?php endif; ?>
+
+                        <!-- Tab-Navigation zur Umschaltung zwischen Login & Registrierung -->
+                        <ul class="nav nav-pills nav-justified mb-3" id="pills-tab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link <?= $activeTab === 'login' ? 'active' : '' ?>" id="pills-login-tab" data-bs-toggle="pill" data-bs-target="#pills-login" type="button" role="tab">Login</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link <?= $activeTab === 'register' ? 'active' : '' ?>" id="pills-register-tab" data-bs-toggle="pill" data-bs-target="#pills-register" type="button" role="tab">Registrieren</button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content" id="pills-tabContent">
+                            <!-- LOGIN FORMULAR -->
+                            <div class="tab-pane fade <?= $activeTab === 'login' ? 'show active' : '' ?>" id="pills-login" role="tabpanel">
+                                <form action="login.php" method="POST">
+                                    <input type="hidden" name="action" value="login">
+
+                                    <div class="mb-3">
+                                        <label for="login-email" class="form-label">E-Mail-Adresse</label>
+                                        <input type="email" name="email" id="login-email" class="form-control" required placeholder="vorname.nachname@iu-study.org">
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="login-password" class="form-label">Passwort</label>
+                                        <input type="password" name="password" id="login-password" class="form-control" required>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-primary w-100">Anmelden</button>
+                                </form>
+                            </div>
+
+                            <!-- REGISTRIERUNGS FORMULAR -->
+                            <div class="tab-pane fade <?= $activeTab === 'register' ? 'show active' : '' ?>" id="pills-register" role="tabpanel">
+                                <form action="login.php" method="POST">
+                                    <input type="hidden" name="action" value="register">
+
+                                    <div class="mb-3">
+                                        <label for="register-email" class="form-label">E-Mail-Adresse</label>
+                                        <input type="email" name="email" id="register-email" class="form-control" required placeholder="vorname.nachname@iu-study.org">
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="register-password" class="form-label">Passwort (min. 8 Zeichen)</label>
+                                        <input type="password" name="password" id="register-password" class="form-control" required minlength="8">
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="register-password-repeat" class="form-label">Passwort wiederholen</label>
+                                        <input type="password" name="password_repeat" id="register-password-repeat" class="form-control" required minlength="8">
+                                    </div>
+
+                                    <button type="submit" class="btn btn-success w-100">Konto erstellen</button>
+                                </form>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS für Tab-Wechsel -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
