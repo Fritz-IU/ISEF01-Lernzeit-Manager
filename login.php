@@ -8,6 +8,7 @@ require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/src/Classes/User.php';
 
 use Classes\User;
+use Classes\ValidationException;
 
 // Session starten, falls noch nicht aktiv
 if (session_status() === PHP_SESSION_NONE) {
@@ -36,12 +37,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $email = $_POST['email'] ?? '';
             $password = $_POST['password'] ?? '';
             $passwordRepeat = $_POST['password_repeat'] ?? '';
+            $displayName = $_POST['display_name'] ?? '';
 
             if ($password !== $passwordRepeat) {
-                throw new Exception("Die eingegebenen Passwörter stimmen nicht überein.");
+                throw new ValidationException("Die eingegebenen Passwörter stimmen nicht überein.");
             }
 
-            if ($userModel->register($email, $password)) {
+            if ($userModel->register($email, $password, $displayName)) {
                 $successMessage = "Registrierung erfolgreich! Du kannst dich jetzt einloggen.";
                 $activeTab = 'login'; // Nach Erfolg zum Login wechseln
             }
@@ -57,8 +59,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
         }
-    } catch (Exception $e) {
+    } catch (ValidationException $e) {
         $errorMessage = $e->getMessage();
+    } catch (Throwable $e) {
+        // Technische Details nur ins Server-Log, nie an den Nutzer
+        error_log((string) $e);
+        $errorMessage = 'Es ist ein technischer Fehler aufgetreten. Bitte versuche es später erneut.';
     }
 }
 ?>
@@ -130,6 +136,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <div class="tab-pane fade <?= $activeTab === 'register' ? 'show active' : '' ?>" id="pills-register" role="tabpanel">
                                 <form action="login.php" method="POST">
                                     <input type="hidden" name="action" value="register">
+
+                                    <div class="mb-3">
+                                        <label for="register-display-name" class="form-label">Anzeigename (optional)</label>
+                                        <input type="text" name="display_name" id="register-display-name" class="form-control" maxlength="<?= User::MAX_DISPLAY_NAME_LENGTH ?>" autocomplete="nickname">
+                                    </div>
 
                                     <div class="mb-3">
                                         <label for="register-email" class="form-label">E-Mail-Adresse</label>

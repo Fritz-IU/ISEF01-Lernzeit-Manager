@@ -6,7 +6,9 @@ declare(strict_types=1);
 namespace Classes;
 
 use PDO;
-use Exception;
+use PDOException;
+
+require_once __DIR__ . '/ValidationException.php';
 
 /**
  * Klasse User
@@ -18,6 +20,16 @@ class User
      * Mindestlänge für Passwörter in Zeichen (NIST SP 800-63B-4, Single-Factor).
      */
     public const MIN_PASSWORD_LENGTH = 15;
+
+    /**
+     * Maximale Länge des Anzeigenamens in Zeichen (Spalte users.display_name VARCHAR(100)).
+     */
+    public const MAX_DISPLAY_NAME_LENGTH = 100;
+
+    /**
+     * MariaDB-Fehlercode für einen verletzten Unique-Key (Duplicate entry).
+     */
+    private const ERROR_DUPLICATE_ENTRY = 1062;
 
     private PDO $db;
 
@@ -35,28 +47,28 @@ class User
      *
      * @param string $email E-Mail-Adresse des Nutzers
      * @param string $password Klartext-Passwort
+     * @param string $displayName Optionaler Anzeigename ('' = nicht gesetzt)
      * @return bool True bei Erfolg, sonst Exception
-     * @throws Exception Wenn E-Mail ungültig, bereits vergeben oder Passwort zu kurz ist.
+     * @throws ValidationException Wenn E-Mail ungültig oder bereits vergeben, Passwort zu kurz oder Anzeigename zu lang ist.
      */
-    public function register(string $email, string $password): bool
+    public function register(string $email, #[\SensitiveParameter] string $password, string $displayName = ''): bool
     {
         // 1. Eingabevalidierung: E-Mail-Format prüfen
         $email = trim(filter_var($email, FILTER_SANITIZE_EMAIL));
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            throw new Exception("Bitte eine gültige E-Mail-Adresse eingeben.");
+            throw new ValidationException("Bitte eine gültige E-Mail-Adresse eingeben.");
         }
 
         // 2. Eingabevalidierung: Mindestlänge für Passwörter durchsetzen
         // mb_strlen zählt Zeichen statt Bytes (Umlaute belegen in UTF-8 mehrere Bytes).
         if (mb_strlen($password, 'UTF-8') < self::MIN_PASSWORD_LENGTH) {
-            throw new Exception("Das Passwort muss mindestens " . self::MIN_PASSWORD_LENGTH . " Zeichen lang sein.");
+            throw new ValidationException("Das Passwort muss mindestens " . self::MIN_PASSWORD_LENGTH . " Zeichen lang sein.");
         }
 
-        // 3. Prüfen, ob die E-Mail bereits existiert
-        $stmt = $this->db->prepare("SELECT id FROM users WHERE email = :email");
-        $stmt->execute([':email' => $email]);
-        if ($stmt->fetch()) {
-            throw new Exception("Diese E-Mail-Adresse ist bereits registriert.");
+        // 3. Eingabevalidierung: Anzeigename ist optional, darf aber nicht zu lang sein
+        $displayName = trim($displayName);
+        if (mb_strlen($displayName, 'UTF-8') > self::MAX_DISPLAY_NAME_LENGTH) {
+            throw new ValidationException("Der Anzeigename darf höchstens " . self::MAX_DISPLAY_NAME_LENGTH . " Zeichen lang sein.");
         }
 
         // 4. Passwort sicher hashen
@@ -64,13 +76,23 @@ class User
         $passwordHash = password_hash($password, PASSWORD_DEFAULT);
 
         // 5. In die MariaDB-Datenbank einfügen
-        $sql = "INSERT INTO users (email, password_hash, created_at) VALUES (:email, :password_hash, NOW())";
+        $sql = "INSERT INTO users (email, password_hash, display_name, created_at)
+                VALUES (:email, :password_hash, :display_name, NOW())";
         $stmt = $this->db->prepare($sql);
 
-        return $stmt->execute([
-            ':email' => $email,
-            ':password_hash' => $passwordHash
-        ]);
+        // Doppelte E-Mail-Adressen erkennt der Unique-Key uq_users_email – auch bei gleichzeitigen Anfragen.
+        try {
+            return $stmt->execute([
+                ':email' => $email,
+                ':password_hash' => $passwordHash,
+                ':display_name' => $displayName
+            ]);
+        } catch (PDOException $e) {
+            if (($e->errorInfo[1] ?? null) === self::ERROR_DUPLICATE_ENTRY) {
+                throw new ValidationException("Diese E-Mail-Adresse ist bereits registriert.");
+            }
+            throw $e;
+        }
     }
 
     /**
@@ -79,9 +101,9 @@ class User
      * @param string $email
      * @param string $password
      * @return bool True bei erfolgreichem Login
-     * @throws Exception Wenn Anmeldedaten ungültig sind.
+     * @throws ValidationException Wenn Anmeldedaten ungültig sind.
      */
-    public function login(string $email, string $password): bool
+    public function login(string $email, #[\SensitiveParameter] string $password): bool
     {
         $email = trim($email);
 
@@ -92,7 +114,7 @@ class User
 
         // 2. Existenz und Passwort-Hash prüfen
         if (!$user || !password_verify($password, $user['password_hash'])) {
-            throw new Exception("E-Mail-Adresse oder Passwort ist falsch.");
+            throw new ValidationException("E-Mail-Adresse oder Passwort ist falsch.");
         }
 
         // 3. Session-Fixation-Angriffe verhindern
