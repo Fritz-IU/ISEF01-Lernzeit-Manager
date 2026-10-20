@@ -1,1 +1,8 @@
+# Keine Verzeichnislisten anzeigen (z. B. assets/, src/, docs/)
+Options -Indexes
+
+# Startseite des Projekts
+DirectoryIndex index.php
+
+# Versteckte Dateien wie .env oder .git sperren
 RedirectMatch 403 /\.
