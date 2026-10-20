@@ -21,23 +21,39 @@ if (User::isLoggedIn()) {
     exit;
 }
 
+/**
+ * Liest ein Formularfeld als String. Fehlende oder manipulierte Felder (z. B. email[]=x) ergeben ''.
+ */
+function postString(string $key): string
+{
+    $value = $_POST[$key] ?? '';
+    return is_string($value) ? $value : '';
+}
+
 $errorMessage = '';
 $successMessage = '';
 $activeTab = 'login'; // Welches Tab (Login oder Registrierung) angezeigt werden soll
 
+// Eingaben, die nach dem Absenden wieder ins Formular eingetragen werden (Passwörter nie)
+$loginEmail = '';
+$registerEmail = '';
+$registerDisplayName = '';
+
 // Formularverarbeitung bei POST-Anfrage
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        $db = getDatabaseConnection(); // Nutzt eure Funktion aus config/database.php
+        $db = getDatabaseConnection(); // Verbindung aus config/database.php
         $userModel = new User($db);
 
         // Aktion 1: Registrierung
-        if (isset($_POST['action']) && $_POST['action'] === 'register') {
+        if (postString('action') === 'register') {
             $activeTab = 'register';
-            $email = $_POST['email'] ?? '';
-            $password = $_POST['password'] ?? '';
-            $passwordRepeat = $_POST['password_repeat'] ?? '';
-            $displayName = $_POST['display_name'] ?? '';
+            $email = postString('email');
+            $password = postString('password');
+            $passwordRepeat = postString('password_repeat');
+            $displayName = postString('display_name');
+            $registerEmail = $email;
+            $registerDisplayName = $displayName;
 
             if ($password !== $passwordRepeat) {
                 throw new ValidationException("Die eingegebenen Passwörter stimmen nicht überein.");
@@ -46,13 +62,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($userModel->register($email, $password, $displayName)) {
                 $successMessage = "Registrierung erfolgreich! Du kannst dich jetzt einloggen.";
                 $activeTab = 'login'; // Nach Erfolg zum Login wechseln
+                $loginEmail = trim($email);
+                $registerEmail = '';
+                $registerDisplayName = '';
             }
         }
         // Aktion 2: Login
-        elseif (isset($_POST['action']) && $_POST['action'] === 'login') {
+        elseif (postString('action') === 'login') {
             $activeTab = 'login';
-            $email = $_POST['email'] ?? '';
-            $password = $_POST['password'] ?? '';
+            $email = postString('email');
+            $password = postString('password');
+            $loginEmail = $email;
 
             if ($userModel->login($email, $password)) {
                 header("Location: index.php");
@@ -120,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                                     <div class="mb-3">
                                         <label for="login-email" class="form-label">E-Mail-Adresse</label>
-                                        <input type="email" name="email" id="login-email" class="form-control" required placeholder="vorname.nachname@iu-study.org">
+                                        <input type="email" name="email" id="login-email" class="form-control" required placeholder="vorname.nachname@iu-study.org" value="<?= htmlspecialchars($loginEmail) ?>" autocomplete="email">
                                     </div>
 
                                     <div class="mb-3">
@@ -139,12 +159,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                                     <div class="mb-3">
                                         <label for="register-display-name" class="form-label">Anzeigename (optional)</label>
-                                        <input type="text" name="display_name" id="register-display-name" class="form-control" maxlength="<?= User::MAX_DISPLAY_NAME_LENGTH ?>" autocomplete="nickname">
+                                        <input type="text" name="display_name" id="register-display-name" class="form-control" maxlength="<?= User::MAX_DISPLAY_NAME_LENGTH ?>" autocomplete="nickname" value="<?= htmlspecialchars($registerDisplayName) ?>">
                                     </div>
 
                                     <div class="mb-3">
                                         <label for="register-email" class="form-label">E-Mail-Adresse</label>
-                                        <input type="email" name="email" id="register-email" class="form-control" required placeholder="vorname.nachname@iu-study.org">
+                                        <input type="email" name="email" id="register-email" class="form-control" required placeholder="vorname.nachname@iu-study.org" value="<?= htmlspecialchars($registerEmail) ?>" autocomplete="email">
                                     </div>
 
                                     <div class="mb-3">

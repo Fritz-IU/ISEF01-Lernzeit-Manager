@@ -54,7 +54,8 @@ class User
     public function register(string $email, #[\SensitiveParameter] string $password, string $displayName = ''): bool
     {
         // 1. Eingabevalidierung: E-Mail-Format prüfen
-        $email = trim(filter_var($email, FILTER_SANITIZE_EMAIL));
+        // Nur trimmen wie in login(), ungültige Adressen ablehnen statt sie still umzuschreiben.
+        $email = trim($email);
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             throw new ValidationException("Bitte eine gültige E-Mail-Adresse eingeben.");
         }

@@ -32,8 +32,10 @@ lernzeit-manager/
 │   ├── Classes/             # Business-Klassen & Datenmodelle
 │   └── Database/            # Datenbank-Hilfsklassen / PDO-Wrapper
 ├── .gitignore               # Ausschluss von lokalen Temp- und Systemdateien aus Git
-├── index.php                # Hauptseite / Dashboard (zentraler Einstiegspunkt)
+├── .htaccess                # Apache: Startseite, keine Verzeichnislisten, versteckte Dateien gesperrt
+├── index.php                # Zentraler Einstiegspunkt (leitet zum Login, später Dashboard)
 ├── login.php                # Login- & Registrierungsseite
+├── logout.php               # Abmelden (nur per POST)
 └── README.md                # Projektbeschreibung & Schnellstartanleitung
 ```
 
@@ -84,7 +86,7 @@ Verzeichnis für das Datenbankschema und Testdatensätze.
 
 Der Kern der objektorientierten PHP 8 Backend-Entwicklung (OOP).
 
-- `src/Classes/`: Enthält die fachlichen Klassen (`User`, `Goal`, `TimeTracker`).
+- `src/Classes/`: Enthält die fachlichen Klassen (`User`, `Goal`, `TimeTracker`) sowie `ValidationException` für Fehlermeldungen, die Nutzern angezeigt werden dürfen.
 - `src/Database/`: Hilfsklassen für Datenbank-Aktionen und Query-Building.
 
 ---
