@@ -1,6 +1,8 @@
 <?php
 // login.php
 
+declare(strict_types=1);
+
 // Zentrale Session- und Datenbank-Konfiguration laden
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/src/Classes/User.php';
@@ -68,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lernzeit-Manager – Login & Registrierung</title>
     <!-- Ui mit Bootstrap 5 CSS via CDN -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <link rel="stylesheet" href="assets/css/custom.css">
 </head>
 
@@ -135,13 +137,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     </div>
 
                                     <div class="mb-3">
-                                        <label for="register-password" class="form-label">Passwort (min. 8 Zeichen)</label>
-                                        <input type="password" name="password" id="register-password" class="form-control" required minlength="8">
+                                        <label for="register-password" class="form-label">Passwort (min. <?= User::MIN_PASSWORD_LENGTH ?> Zeichen)</label>
+                                        <input type="password" name="password" id="register-password" class="form-control" required minlength="<?= User::MIN_PASSWORD_LENGTH ?>">
                                     </div>
 
                                     <div class="mb-3">
                                         <label for="register-password-repeat" class="form-label">Passwort wiederholen</label>
-                                        <input type="password" name="password_repeat" id="register-password-repeat" class="form-control" required minlength="8">
+                                        <input type="password" name="password_repeat" id="register-password-repeat" class="form-control" required minlength="<?= User::MIN_PASSWORD_LENGTH ?>">
                                     </div>
 
                                     <button type="submit" class="btn btn-success w-100">Konto erstellen</button>
@@ -156,7 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <!-- Bootstrap 5 JS für Tab-Wechsel -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
 </body>
 
 </html>

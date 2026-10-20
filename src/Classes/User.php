@@ -1,6 +1,8 @@
 <?php
 // src/Classes/User.php
 
+declare(strict_types=1);
+
 namespace Classes;
 
 use PDO;
@@ -12,6 +14,11 @@ use Exception;
  */
 class User
 {
+    /**
+     * Mindestlänge für Passwörter in Zeichen (NIST SP 800-63B-4, Single-Factor).
+     */
+    public const MIN_PASSWORD_LENGTH = 15;
+
     private PDO $db;
 
     /**
@@ -40,8 +47,9 @@ class User
         }
 
         // 2. Eingabevalidierung: Mindestlänge für Passwörter durchsetzen
-        if (strlen($password) < 8) {
-            throw new Exception("Das Passwort muss mindestens 8 Zeichen lang sein.");
+        // mb_strlen zählt Zeichen statt Bytes (Umlaute belegen in UTF-8 mehrere Bytes).
+        if (mb_strlen($password, 'UTF-8') < self::MIN_PASSWORD_LENGTH) {
+            throw new Exception("Das Passwort muss mindestens " . self::MIN_PASSWORD_LENGTH . " Zeichen lang sein.");
         }
 
         // 3. Prüfen, ob die E-Mail bereits existiert
