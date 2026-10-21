@@ -89,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" class="page-login">
 
 <head>
     <meta charset="UTF-8">
@@ -103,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 
 <!-- custom.css setzt body auf flex-direction: column, daher zentriert justify-content vertikal -->
-<body class="bg-light d-flex justify-content-center min-vh-100">
+<body class="bg-light d-flex justify-content-center">
 
     <div class="container">
         <div class="row justify-content-center">

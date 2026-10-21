@@ -20,3 +20,18 @@ body {
 main {
   flex: 1 0 auto;
 }
+
+/*
+ * Login-Seite: genau so hoch wie der sichtbare Bereich (dvh statt vh, sonst ist sie auf
+ * Mobilgeräten wegen der Adressleiste scrollbar) und ohne Überscrollen / Pull-to-Refresh.
+ */
+.page-login,
+.page-login body {
+  overscroll-behavior: none;
+}
+
+.page-login body {
+  height: auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
