@@ -16,6 +16,8 @@ CREATE TABLE users (
     email         VARCHAR(255) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     display_name  VARCHAR(100) NOT NULL DEFAULT '',
+    study_program VARCHAR(150) NULL     DEFAULT NULL,
+    semester      TINYINT UNSIGNED NULL DEFAULT NULL,
     created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     UNIQUE KEY uq_users_email (email)

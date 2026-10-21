@@ -27,6 +27,17 @@ class User
     public const MAX_DISPLAY_NAME_LENGTH = 100;
 
     /**
+     * Maximale Länge des Studiengangs in Zeichen (Spalte users.study_program VARCHAR(150)).
+     */
+    public const MAX_STUDY_PROGRAM_LENGTH = 150;
+
+    /**
+     * Minimales und maximales Fachsemester für die Validierung.
+     */
+    public const MIN_SEMESTER = 1;
+    public const MAX_SEMESTER = 30;
+
+    /**
      * MariaDB-Fehlercode für einen verletzten Unique-Key (Duplicate entry).
      */
     private const ERROR_DUPLICATE_ENTRY = 1062;
@@ -123,11 +134,132 @@ class User
         session_regenerate_id(true);
 
         // 4. Benutzerdaten in der Session speichern
-        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['user_id'] = (int) $user['id'];
         $_SESSION['user_email'] = $user['email'];
         $_SESSION['user_display_name'] = $user['display_name'];
 
         return true;
+    }
+
+    /**
+     * Lädt die Profildaten eines Benutzers anhand seiner ID.
+     *
+     * @param int $userId Die Benutzer-ID
+     * @return array<string, mixed>|null Assoziatives Array mit den Benutzerdaten oder null
+     */
+    public function findById(int $userId): ?array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT id, email, display_name, study_program, semester, created_at
+             FROM users
+             WHERE id = :id"
+        );
+        $stmt->execute([':id' => $userId]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $user ?: null;
+    }
+
+    /**
+     * Liest die Profilfelder aus Formular- oder JSON-Eingaben und normalisiert ihre Typen.
+     * Fehlende oder manipulierte Textfelder (z. B. display_name[]=x) ergeben ''.
+     * Die Längen- und Bereichsprüfung übernimmt anschließend updateProfile().
+     *
+     * @param array<mixed> $input $_POST oder dekodierter JSON-Body
+     * @return array{display_name: string, study_program: ?string, semester: ?int}
+     * @throws ValidationException Wenn das Semester keine ganze Zahl ist
+     */
+    public static function parseProfileInput(array $input): array
+    {
+        $displayName = is_string($input['display_name'] ?? null) ? trim($input['display_name']) : '';
+        $studyProgram = is_string($input['study_program'] ?? null) ? trim($input['study_program']) : '';
+
+        // Semester kommt aus Formularen als String, aus JSON ggf. als Zahl; leer = nicht gesetzt
+        $semesterRaw = $input['semester'] ?? null;
+        if (is_string($semesterRaw)) {
+            $semesterRaw = trim($semesterRaw);
+        }
+
+        if ($semesterRaw === null || $semesterRaw === '') {
+            $semester = null;
+        } elseif (is_int($semesterRaw)) {
+            $semester = $semesterRaw;
+        } else {
+            // Nur Strings prüfen: filter_var würde sonst z. B. 3.0 oder true als Ganzzahl durchlassen
+            $semester = is_string($semesterRaw) ? filter_var($semesterRaw, FILTER_VALIDATE_INT) : false;
+            if ($semester === false) {
+                throw new ValidationException("Das Semester muss eine ganze Zahl zwischen " . self::MIN_SEMESTER . " und " . self::MAX_SEMESTER . " sein.");
+            }
+        }
+
+        return [
+            'display_name'  => $displayName,
+            'study_program' => $studyProgram === '' ? null : $studyProgram,
+            'semester'      => $semester,
+        ];
+    }
+
+    /**
+     * Aktualisiert die Profildaten (Anzeigename, Studiengang, Semester) eines Benutzers.
+     *
+     * @param int $userId ID des Nutzers
+     * @param string $displayName Optionaler Anzeigename
+     * @param string|null $studyProgram Optionaler Studiengang
+     * @param int|null $semester Optionales Fachsemester (1..30)
+     * @return bool True bei Erfolg
+     * @throws ValidationException Wenn Validierungsregeln verletzt werden
+     */
+    public function updateProfile(
+        int $userId,
+        string $displayName,
+        ?string $studyProgram = null,
+        ?int $semester = null
+    ): bool {
+        // 1. Validierung: Anzeigename
+        $displayName = trim($displayName);
+        if (mb_strlen($displayName, 'UTF-8') > self::MAX_DISPLAY_NAME_LENGTH) {
+            throw new ValidationException("Der Anzeigename darf höchstens " . self::MAX_DISPLAY_NAME_LENGTH . " Zeichen lang sein.");
+        }
+
+        // 2. Validierung: Studiengang
+        if ($studyProgram !== null) {
+            $studyProgram = trim($studyProgram);
+            if ($studyProgram === '') {
+                $studyProgram = null;
+            } elseif (mb_strlen($studyProgram, 'UTF-8') > self::MAX_STUDY_PROGRAM_LENGTH) {
+                throw new ValidationException("Der Studiengang darf höchstens " . self::MAX_STUDY_PROGRAM_LENGTH . " Zeichen lang sein.");
+            }
+        }
+
+        // 3. Validierung: Semester
+        if ($semester !== null) {
+            if ($semester < self::MIN_SEMESTER || $semester > self::MAX_SEMESTER) {
+                throw new ValidationException("Das Semester muss zwischen " . self::MIN_SEMESTER . " und " . self::MAX_SEMESTER . " liegen.");
+            }
+        }
+
+        // 4. Datenbank-Update mit Prepared Statement
+        $sql = "UPDATE users
+                SET display_name = :display_name,
+                    study_program = :study_program,
+                    semester = :semester
+                WHERE id = :id";
+        $stmt = $this->db->prepare($sql);
+        $success = $stmt->execute([
+            ':display_name'  => $displayName,
+            ':study_program' => $studyProgram,
+            ':semester'      => $semester,
+            ':id'            => $userId,
+        ]);
+
+        if ($success) {
+            // Anzeigenamen in der Session aktualisieren, falls der angemeldete Nutzer sein eigenes Profil ändert (Navbar)
+            if (isset($_SESSION['user_id']) && (int) $_SESSION['user_id'] === $userId) {
+                $_SESSION['user_display_name'] = $displayName;
+            }
+        }
+
+        return $success;
     }
 
     /**
@@ -136,6 +268,16 @@ class User
     public static function isLoggedIn(): bool
     {
         return isset($_SESSION['user_id']);
+    }
+
+    /**
+     * Name des angemeldeten Nutzers für die Navigationsleiste.
+     * Anzeigename ist optional – ohne Namen wird die E-Mail-Adresse gezeigt.
+     */
+    public static function currentNavName(): string
+    {
+        $displayName = (string) ($_SESSION['user_display_name'] ?? '');
+        return $displayName !== '' ? $displayName : (string) ($_SESSION['user_email'] ?? '');
     }
 
     /**

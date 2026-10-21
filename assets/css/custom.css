@@ -5,3 +5,33 @@
  * Regeln hier überschreiben also bei gleicher Spezifität die Bootstrap-Standards.
  * Nur ergänzen, was sich mit Bootstrap-Klassen nicht lösen lässt.
  */
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1 0 auto;
+}
+
+/*
+ * Login-Seite: genau so hoch wie der sichtbare Bereich (dvh statt vh, sonst ist sie auf
+ * Mobilgeräten wegen der Adressleiste scrollbar) und ohne Überscrollen / Pull-to-Refresh.
+ */
+.page-login,
+.page-login body {
+  overscroll-behavior: none;
+}
+
+.page-login body {
+  height: auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
