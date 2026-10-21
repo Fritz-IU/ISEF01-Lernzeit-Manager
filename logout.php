@@ -18,4 +18,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 header("Location: login.php");
+?>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Abmelden – Lernzeit-Manager</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="assets/img/favicon.png">
+</head>
+<body>
+    <p>Weiterleitung zu <a href="login.php">login.php</a>…</p>
+</body>
+</html>
+<?php
 exit;

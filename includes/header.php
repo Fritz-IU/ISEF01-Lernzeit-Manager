@@ -30,6 +30,8 @@ if ($isLoggedIn) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($pageTitle) ?></title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="assets/img/favicon.png">
     <!-- Bootstrap 5 CSS via CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <!-- Eigenes Styling -->
@@ -42,8 +44,9 @@ if ($isLoggedIn) {
     <header>
         <nav class="navbar navbar-expand-md navbar-dark bg-primary shadow-sm">
             <div class="container">
-                <a class="navbar-brand fw-bold" href="index.php">
-                    Lernzeit-Manager
+                <a class="navbar-brand fw-bold d-flex align-items-center" href="index.php">
+                    <img src="assets/img/favicon.png" alt="Lernzeit-Manager Logo" width="30" height="30" class="d-inline-block me-2">
+                    <span>Lernzeit-Manager</span>
                 </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain" aria-controls="navbarMain" aria-expanded="false" aria-label="Navigation umschalten">
                     <span class="navbar-toggler-icon"></span>
