@@ -56,7 +56,7 @@ try {
     echo json_encode([
         'success' => true,
         'message' => 'Profildaten erfolgreich gespeichert.',
-        'data' => $profile,
+        'data' => $profile + ['nav_name' => User::currentNavName()],
     ]);
 } catch (ValidationException $e) {
     http_response_code(422);

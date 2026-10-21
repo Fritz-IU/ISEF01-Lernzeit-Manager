@@ -49,7 +49,7 @@ In der Tabelle `users` wurden zwei optionale Spalten ergänzt:
 * **Studiengang (`study_program`):** Optional, maximal 150 Zeichen (`User::MAX_STUDY_PROGRAM_LENGTH`). Leere Eingaben werden als `NULL` gespeichert.
 * **Semester (`semester`):** Optional, muss als Ganzzahl zwischen 1 und 30 liegen (`User::MIN_SEMESTER` bis `User::MAX_SEMESTER`).
 * **E-Mail-Adresse:** Dient als systemweiter Login-Identifier und ist im Profil schreibgeschützt (`disabled`).
-* **Session-Synchronisation:** Bei erfolgreicher Aktualisierung aktualisiert `updateProfile()` unmittelbar die Session-Variablen (`$_SESSION['user_display_name']`, `$_SESSION['user_study_program']`, `$_SESSION['user_semester']`).
+* **Session-Synchronisation:** Bei erfolgreicher Aktualisierung aktualisiert `updateProfile()` unmittelbar `$_SESSION['user_display_name']`, damit die Navigationsleiste den neuen Namen zeigt. Studiengang und Semester liegen nicht in der Session, sondern werden bei Bedarf per `findById()` aus der Datenbank geladen.
 
 ---
 
@@ -60,7 +60,7 @@ In der Tabelle `users` wurden zwei optionale Spalten ergänzt:
 * **Methodenprüfung:** Akzeptiert ausschließlich POST-Anfragen, sonst HTTP 405 Method Not Allowed.
 * **Payload-Verarbeitung:** Unterstützt JSON (`php://input`) sowie Standard-Formulardaten (`$_POST`).
 * **HTTP-Statuscodes:**
-  * `200 OK`: Profil erfolgreich gespeichert, Rückgabe des aktualisierten Datensatzes.
+  * `200 OK`: Profil erfolgreich gespeichert, Rückgabe des aktualisierten Datensatzes sowie `nav_name` (Anzeigename bzw. E-Mail-Adresse, falls kein Name gesetzt ist; siehe `User::currentNavName()`).
   * `422 Unprocessable Entity`: Validierungsfehler (Meldung aus `ValidationException`).
   * `500 Internal Server Error`: Unerwartete technische Fehler (Details wandern nur via `error_log()` ins Server-Log).
 
@@ -68,7 +68,7 @@ In der Tabelle `users` wurden zwei optionale Spalten ergänzt:
 * Fängt das Formular-Submit mit `event.preventDefault()` ab.
 * Schaltet den Submit-Button während des Netzwerk-Requests in einen Ladezustand (`disabled` mit Bootstrap-Spinner).
 * Sendet die Daten asynchron via `fetch('api/profile.php', { method: 'POST', ... })`.
-* Blendet dynamisch Erfolgs- oder Fehlermeldungen in ein Alert-Element ein und aktualisiert den Anzeigenamen in der Navigationsleiste live.
+* Blendet dynamisch Erfolgs- oder Fehlermeldungen in ein Alert-Element ein und aktualisiert den Anzeigenamen in der Navigationsleiste live mit dem vom Server gelieferten `nav_name`.
 
 ---
 

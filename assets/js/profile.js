@@ -65,10 +65,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (response.ok && result.success) {
         showAlert('success', result.message || 'Profildaten erfolgreich gespeichert.');
 
-        // Live-Update des Anzeigenamens in der Navigationsleiste
+        // Live-Update des Anzeigenamens in der Navigationsleiste (Server liefert bei leerem Namen die E-Mail)
         const navUserName = document.getElementById('nav-user-name');
-        if (navUserName) {
-          navUserName.textContent = payload.display_name || navUserName.textContent;
+        if (navUserName && result.data && result.data.nav_name) {
+          navUserName.textContent = result.data.nav_name;
         }
       } else {
         showAlert('danger', result.message || 'Fehler beim Speichern der Profildaten.');

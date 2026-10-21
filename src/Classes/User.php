@@ -120,7 +120,7 @@ class User
         $email = trim($email);
 
         // 1. Benutzer anhand der E-Mail abfragen
-        $stmt = $this->db->prepare("SELECT id, email, password_hash, display_name, study_program, semester FROM users WHERE email = :email");
+        $stmt = $this->db->prepare("SELECT id, email, password_hash, display_name FROM users WHERE email = :email");
         $stmt->execute([':email' => $email]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -137,8 +137,6 @@ class User
         $_SESSION['user_id'] = (int) $user['id'];
         $_SESSION['user_email'] = $user['email'];
         $_SESSION['user_display_name'] = $user['display_name'];
-        $_SESSION['user_study_program'] = $user['study_program'];
-        $_SESSION['user_semester'] = $user['semester'] !== null ? (int) $user['semester'] : null;
 
         return true;
     }
@@ -255,11 +253,9 @@ class User
         ]);
 
         if ($success) {
-            // Aktive Session aktualisieren, falls der angemeldete Nutzer sein eigenes Profil ändert
+            // Anzeigenamen in der Session aktualisieren, falls der angemeldete Nutzer sein eigenes Profil ändert (Navbar)
             if (isset($_SESSION['user_id']) && (int) $_SESSION['user_id'] === $userId) {
                 $_SESSION['user_display_name'] = $displayName;
-                $_SESSION['user_study_program'] = $studyProgram;
-                $_SESSION['user_semester'] = $semester;
             }
         }
 
@@ -272,6 +268,16 @@ class User
     public static function isLoggedIn(): bool
     {
         return isset($_SESSION['user_id']);
+    }
+
+    /**
+     * Name des angemeldeten Nutzers für die Navigationsleiste.
+     * Anzeigename ist optional – ohne Namen wird die E-Mail-Adresse gezeigt.
+     */
+    public static function currentNavName(): string
+    {
+        $displayName = (string) ($_SESSION['user_display_name'] ?? '');
+        return $displayName !== '' ? $displayName : (string) ($_SESSION['user_email'] ?? '');
     }
 
     /**

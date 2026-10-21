@@ -15,13 +15,7 @@ $pageTitle = $pageTitle ?? 'Lernzeit-Manager';
 $activeNav = $activeNav ?? '';
 
 $isLoggedIn = User::isLoggedIn();
-$currentUserName = '';
-if ($isLoggedIn) {
-    $currentUserName = $_SESSION['user_display_name'] ?? '';
-    if ($currentUserName === '') {
-        $currentUserName = $_SESSION['user_email'] ?? '';
-    }
-}
+$currentUserName = $isLoggedIn ? User::currentNavName() : '';
 ?>
 <!DOCTYPE html>
 <html lang="de" class="h-100">
