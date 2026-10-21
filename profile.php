@@ -29,15 +29,9 @@ $successMessage = '';
 
 // Fallback für reguläre POST-Formularübermittlung (ohne JavaScript)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $displayName = is_string($_POST['display_name'] ?? null) ? trim($_POST['display_name']) : '';
-    $studyProgram = is_string($_POST['study_program'] ?? null) ? trim($_POST['study_program']) : '';
-    $semesterRaw = $_POST['semester'] ?? '';
-
-    $studyProgram = $studyProgram === '' ? null : $studyProgram;
-    $semester = ($semesterRaw === '' || $semesterRaw === null) ? null : (int) $semesterRaw;
-
     try {
-        $userModel->updateProfile($userId, $displayName, $studyProgram, $semester);
+        $profile = User::parseProfileInput($_POST);
+        $userModel->updateProfile($userId, $profile['display_name'], $profile['study_program'], $profile['semester']);
         $successMessage = 'Profildaten erfolgreich gespeichert.';
     } catch (ValidationException $e) {
         $errorMessage = $e->getMessage();

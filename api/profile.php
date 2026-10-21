@@ -45,27 +45,18 @@ try {
     }
 
     $userId = (int) $_SESSION['user_id'];
-    $displayName = trim((string) ($input['display_name'] ?? ''));
-    $studyProgram = trim((string) ($input['study_program'] ?? ''));
-    $semesterRaw = $input['semester'] ?? null;
-
-    $studyProgram = $studyProgram === '' ? null : $studyProgram;
-    $semester = ($semesterRaw === '' || $semesterRaw === null) ? null : (int) $semesterRaw;
+    $profile = User::parseProfileInput($input);
 
     $db = getDatabaseConnection();
     $userModel = new User($db);
 
     // 4. Profil über User-Klasse aktualisieren (validiert Eingaben und speichert per PDO)
-    $userModel->updateProfile($userId, $displayName, $studyProgram, $semester);
+    $userModel->updateProfile($userId, $profile['display_name'], $profile['study_program'], $profile['semester']);
 
     echo json_encode([
         'success' => true,
         'message' => 'Profildaten erfolgreich gespeichert.',
-        'data' => [
-            'display_name'  => $displayName,
-            'study_program' => $studyProgram,
-            'semester'      => $semester,
-        ],
+        'data' => $profile,
     ]);
 } catch (ValidationException $e) {
     http_response_code(422);

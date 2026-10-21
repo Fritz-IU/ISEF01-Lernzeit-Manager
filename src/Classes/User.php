@@ -163,6 +163,45 @@ class User
     }
 
     /**
+     * Liest die Profilfelder aus Formular- oder JSON-Eingaben und normalisiert ihre Typen.
+     * Fehlende oder manipulierte Textfelder (z. B. display_name[]=x) ergeben ''.
+     * Die Längen- und Bereichsprüfung übernimmt anschließend updateProfile().
+     *
+     * @param array<mixed> $input $_POST oder dekodierter JSON-Body
+     * @return array{display_name: string, study_program: ?string, semester: ?int}
+     * @throws ValidationException Wenn das Semester keine ganze Zahl ist
+     */
+    public static function parseProfileInput(array $input): array
+    {
+        $displayName = is_string($input['display_name'] ?? null) ? trim($input['display_name']) : '';
+        $studyProgram = is_string($input['study_program'] ?? null) ? trim($input['study_program']) : '';
+
+        // Semester kommt aus Formularen als String, aus JSON ggf. als Zahl; leer = nicht gesetzt
+        $semesterRaw = $input['semester'] ?? null;
+        if (is_string($semesterRaw)) {
+            $semesterRaw = trim($semesterRaw);
+        }
+
+        if ($semesterRaw === null || $semesterRaw === '') {
+            $semester = null;
+        } elseif (is_int($semesterRaw)) {
+            $semester = $semesterRaw;
+        } else {
+            // Nur Strings prüfen: filter_var würde sonst z. B. 3.0 oder true als Ganzzahl durchlassen
+            $semester = is_string($semesterRaw) ? filter_var($semesterRaw, FILTER_VALIDATE_INT) : false;
+            if ($semester === false) {
+                throw new ValidationException("Das Semester muss eine ganze Zahl zwischen " . self::MIN_SEMESTER . " und " . self::MAX_SEMESTER . " sein.");
+            }
+        }
+
+        return [
+            'display_name'  => $displayName,
+            'study_program' => $studyProgram === '' ? null : $studyProgram,
+            'semester'      => $semester,
+        ];
+    }
+
+    /**
      * Aktualisiert die Profildaten (Anzeigename, Studiengang, Semester) eines Benutzers.
      *
      * @param int $userId ID des Nutzers
