@@ -37,14 +37,14 @@ lernzeit-manager/
 
 ## 3. Aufbau der Layout-Templates
 
-### 3.1 Header-Komponente ([includes/header.php](file:///c:/Users/weis_ft/XAMPP/htdocs/ISEF01-Lernzeit-Manager/includes/header.php))
+### 3.1 Header-Komponente ([includes/header.php](../includes/header.php))
 Nimmt optionale Konfigurationsvariablen der jeweiligen Seite entgegen (`$pageTitle`, `$activeNav`) und rendert:
 1. **HTML5-Dokumentenkopf:**
    * UTF-8-Zeichensatz und Viewport-Meta-Tag für mobile Endgeräte (`width=device-width, initial-scale=1.0`).
    * Dynamischer Seitentitel: `<title><?= htmlspecialchars($pageTitle) ?></title>`.
    * Favicon-Einbindung: `<link rel="icon" type="image/png" href="assets/img/favicon.png">`.
    * Bootstrap 5 CSS via CDN mit Subresource Integrity (`integrity="sha384-..."`).
-   * Projekt-Stylesheet [assets/css/custom.css](file:///c:/Users/weis_ft/XAMPP/htdocs/ISEF01-Lernzeit-Manager/assets/css/custom.css).
+   * Projekt-Stylesheet [assets/css/custom.css](../assets/css/custom.css).
 2. **Kopfzeile & Navigation:**
    * Responsive Bootstrap-Navbar mit primärer Markenfarbe (`bg-primary`).
    * Marken-Logo und Projektname als Home-Button zur Startseite (`index.php`).
@@ -53,7 +53,7 @@ Nimmt optionale Konfigurationsvariablen der jeweiligen Seite entgegen (`$pageTit
 3. **Container-Eröffnung:**
    * Öffnet `<main class="py-4"><div class="container">` für den eigentlichen Seiteninhalt.
 
-### 3.2 Footer-Komponente ([includes/footer.php](file:///c:/Users/weis_ft/XAMPP/htdocs/ISEF01-Lernzeit-Manager/includes/footer.php))
+### 3.2 Footer-Komponente ([includes/footer.php](../includes/footer.php))
 1. **Container-Abschluss:** Schließt `</div></main>`.
 2. **Fußzeile (`<footer>`):** Dezent gestalteter Bereich mit Copyright- und Projekthinweis (`© 2026 Lernzeit-Manager – ISEF01 Software Engineering`).
 3. **Skripteinbindung:**
@@ -66,7 +66,7 @@ Nimmt optionale Konfigurationsvariablen der jeweiligen Seite entgegen (`$pageTit
 ## 4. Responsives Verhalten & Navigation
 
 ### 4.1 Responsive Navbar mit Hamburger-Menü
-In [includes/header.php](file:///c:/Users/weis_ft/XAMPP/htdocs/ISEF01-Lernzeit-Manager/includes/header.php#L44-L78) wird die Bootstrap-Klasse `navbar-expand-md` eingesetzt:
+In [includes/header.php](../includes/header.php) wird die Bootstrap-Klasse `navbar-expand-md` eingesetzt:
 * **Desktop- und Tablet-Monitore ($\ge 768\text{ px}$):** Das Menü wird horizontal vollständig ausgefahren dargestellt.
 * **Smartphones ($< 768\text{ px}$):** Das Menü wird automatisch eingeklappt. Ein Klick auf den Hamburger-Button (`.navbar-toggler`) klappt die Navigation über das Bootstrap-Plugin vertikal ein bzw. aus.
 
@@ -96,7 +96,7 @@ Dies verhindert, dass fremde Webseiten einen Benutzer unbemerkt abmelden können
 ### Problemstellung
 Auf Seiten mit wenig Inhalt (wie einfachen Bestätigungen oder leeren Dashboards) würde ein normaler Footer nach oben rutschen und unschön mitten im Bildschirm schweben.
 
-### Lösung über Flexbox ([assets/css/custom.css](file:///c:/Users/weis_ft/XAMPP/htdocs/ISEF01-Lernzeit-Manager/assets/css/custom.css))
+### Lösung über Flexbox ([assets/css/custom.css](../assets/css/custom.css))
 Durch ein einfaches CSS3-Flexbox-Modell wird sichergestellt, dass der Footer immer am unteren Bildschirmrand abschließt, bei längerem Inhalt aber natürlich nach unten wandert:
 
 ```css
