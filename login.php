@@ -102,7 +102,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="assets/css/custom.css">
 </head>
 
-<body class="bg-light d-flex align-items-center min-vh-100">
+<!-- custom.css setzt body auf flex-direction: column, daher zentriert justify-content vertikal -->
+<body class="bg-light d-flex justify-content-center min-vh-100">
 
     <div class="container">
         <div class="row justify-content-center">
