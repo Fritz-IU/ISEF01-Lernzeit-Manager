@@ -5,3 +5,18 @@
  * Regeln hier überschreiben also bei gleicher Spezifität die Bootstrap-Standards.
  * Nur ergänzen, was sich mit Bootstrap-Klassen nicht lösen lässt.
  */
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1 0 auto;
+}
