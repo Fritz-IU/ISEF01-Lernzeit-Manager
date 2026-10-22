@@ -28,13 +28,15 @@ CREATE TABLE learning_goals (
     user_id        INT UNSIGNED NOT NULL,
     title          VARCHAR(150) NOT NULL,
     description    TEXT         NULL,
-    target_minutes INT UNSIGNED NULL,
-    deadline       DATE         NULL,
+    target_hours   DECIMAL(6,2) NOT NULL,
+    start_date     DATE         NOT NULL,
+    end_date       DATE         NOT NULL,
     created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     KEY idx_learning_goals_user (user_id),
     CONSTRAINT fk_learning_goals_user FOREIGN KEY (user_id)
-        REFERENCES users (id) ON DELETE CASCADE
+        REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT chk_learning_goals_dates CHECK (end_date >= start_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE time_entries (
