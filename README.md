@@ -22,20 +22,24 @@ lernzeit-manager/
 ├── api/                     # Asynchrone Endpoints für fetch/AJAX-Anfragen (JSON-Antworten)
 ├── assets/                  # Statische Frontend-Ressourcen
 │   ├── css/                 # Custom CSS-Dateien (z. B. custom.css)
-│   ├── js/                  # JavaScript-Logik (z. B. stopwatch.js, dashboard.js)
-│   └── img/                 # Bilder, Grafiken, Logos und Icons
+│   ├── js/                  # JavaScript-Logik (z. B. stopwatch.js, profile.js, goals.js)
+│   └── img/                 # Bilder, Grafiken, Logos und Icons (Favicons)
 ├── config/                  # Zentrale Konfigurationsdateien
-├── docs/                    # Dokumentation & Anleitungen fürs Team (z. B. XAMPP-Guide)
+├── docs/                    # Dokumentation & Anleitungen fürs Team (z. B. XAMPP-Guide, goals.md)
 ├── includes/                # Wiederverwendbare HTML/PHP-Layout-Bausteine (Header, Footer, Nav)
 ├── sql/                     # Datenbank-Skripte für MariaDB
 ├── src/                     # Objektorientierte PHP-Backend-Logik (OOP)
-│   ├── Classes/             # Business-Klassen & Datenmodelle
+│   ├── Classes/             # Fachliche Klassen & Datenmodelle (z. B. User, ValidationException)
+│   ├── Controllers/         # Controller für Anwendungslogik & Eingabevalidierung (z. B. GoalController)
+│   ├── DAO/                 # Data Access Objects für Datenbankoperationen via PDO (z. B. GoalDAO)
 │   └── Database/            # Datenbank-Hilfsklassen / PDO-Wrapper
 ├── .gitignore               # Ausschluss von lokalen Temp- und Systemdateien aus Git
 ├── .htaccess                # Apache: Startseite, keine Verzeichnislisten, versteckte Dateien gesperrt
-├── index.php                # Zentraler Einstiegspunkt (leitet zum Login, später Dashboard)
+├── goals.php                # 6-Monats-Lernzielplanung (Grobplanung)
+├── index.php                # Zentraler Einstiegspunkt / Dashboard
 ├── login.php                # Login- & Registrierungsseite
 ├── logout.php               # Abmelden (nur per POST)
+├── profile.php              # Profilverwaltung (Studiengang, Semester, Name)
 └── README.md                # Projektbeschreibung & Schnellstartanleitung
 ```
 
@@ -84,9 +88,11 @@ Verzeichnis für das Datenbankschema und Testdatensätze.
 
 #### `src/`
 
-Der Kern der objektorientierten PHP 8 Backend-Entwicklung (OOP).
+Der Kern der objektorientierten PHP 8 Backend-Entwicklung (OOP), aufgeteilt nach dem MVC-/DAO-Muster:
 
-- `src/Classes/`: Enthält die fachlichen Klassen (`User`, `Goal`, `TimeTracker`) sowie `ValidationException` für Fehlermeldungen, die Nutzern angezeigt werden dürfen.
+- `src/Classes/`: Enthält fachliche Basisklassen (`User`) sowie exceptionspezifische Klassen (`ValidationException` für anwenderbezogene Fehlermeldungen).
+- `src/Controllers/`: Controller zur Koordination von Benutzeranfragen, Formularen und Validierungsregeln vor dem Persistieren (z. B. `GoalController`).
+- `src/DAO/`: Data Access Objects zur Kapselung aller Datenbankzugriffe mittels PDO Prepared Statements und Mandantenisolation (z. B. `GoalDAO`).
 - `src/Database/`: Hilfsklassen für Datenbank-Aktionen und Query-Building.
 
 ---
@@ -94,8 +100,8 @@ Der Kern der objektorientierten PHP 8 Backend-Entwicklung (OOP).
 ### ⚙️ Namenskonventionen & Richtlinien
 
 1. **Dateinamen & Pfade:**
-    - Ordner- und Dateinamen für Webseiten und Skripte werden **kleingeschrieben** (z. B. `save_time.php`, `custom.css`).
-    - PHP-Klassen in `src/Classes/` nutzen **PascalCase** entsprechend dem Klassennamen (z. B. `TimeTracker.php`).
+    - Ordner- und Dateinamen für Webseiten und Skripte werden **kleingeschrieben** (z. B. `goals.php`, `custom.css`).
+    - PHP-Klassen in `src/Classes/`, `src/Controllers/` und `src/DAO/` nutzen **PascalCase** entsprechend dem Klassennamen (z. B. `GoalController.php`, `GoalDAO.php`).
 
 2. **Datenbank & SQL:**
     - Tabellennamen und Spalten in MariaDB werden in **snake_case** angelegt (z. B. `learning_goals`, `user_id`, `tracked_seconds`).
