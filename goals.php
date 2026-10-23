@@ -31,24 +31,35 @@ $goalDAO = new GoalDAO($db);
 $goalController = new GoalController($goalDAO);
 
 $errorMessage = '';
-$successMessage = '';
 
-// Formularverarbeitung für Create, Update und Delete
+// Erfolgsmeldung aus der Session übernehmen (gesetzt vor dem Redirect nach POST)
+$successMessage = (string) ($_SESSION['goals_success'] ?? '');
+unset($_SESSION['goals_success']);
+
+// Formularverarbeitung für Create, Update und Delete.
+// Nach erfolgreicher Aktion wird per Redirect auf GET umgeleitet (Post/Redirect/Get),
+// damit ein Neuladen der Seite die Aktion nicht erneut ausführt.
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     try {
         if ($action === 'create') {
             $goalController->createGoal($userId, $_POST);
-            $successMessage = 'Das Lernziel wurde erfolgreich angelegt.';
+            $_SESSION['goals_success'] = 'Das Lernziel wurde erfolgreich angelegt.';
+            header('Location: goals.php');
+            exit;
         } elseif ($action === 'update') {
             $goalId = isset($_POST['goal_id']) ? (int) $_POST['goal_id'] : 0;
             $goalController->updateGoal($goalId, $userId, $_POST);
-            $successMessage = 'Das Lernziel wurde erfolgreich aktualisiert.';
+            $_SESSION['goals_success'] = 'Das Lernziel wurde erfolgreich aktualisiert.';
+            header('Location: goals.php');
+            exit;
         } elseif ($action === 'delete') {
             $goalId = isset($_POST['goal_id']) ? (int) $_POST['goal_id'] : 0;
             $goalController->deleteGoal($goalId, $userId);
-            $successMessage = 'Das Lernziel wurde erfolgreich gelöscht.';
+            $_SESSION['goals_success'] = 'Das Lernziel wurde erfolgreich gelöscht.';
+            header('Location: goals.php');
+            exit;
         } else {
             $errorMessage = 'Ungültige Aktion.';
         }
