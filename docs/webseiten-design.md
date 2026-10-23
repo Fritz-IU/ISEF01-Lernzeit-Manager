@@ -48,8 +48,8 @@ Nimmt optionale Konfigurationsvariablen der jeweiligen Seite entgegen (`$pageTit
 2. **Kopfzeile & Navigation:**
    * Responsive Bootstrap-Navbar mit primärer Markenfarbe (`bg-primary`).
    * Marken-Logo und Projektname als Home-Button zur Startseite (`index.php`).
-   * Navigationslinks (`Dashboard`, `Profil`), die bei aktiver Seite mit der Klasse `.active` und `aria-current="page"` hervorgehoben werden.
-   * Benutzerstatusanzeige („Angemeldet als ...“) und Abmelde-Button.
+   * Navigationslinks (aktuell `Dashboard`), die bei aktiver Seite mit der Klasse `.active` und `aria-current="page"` hervorgehoben werden.
+   * Kompaktes Benutzer-Dropdown-Menü mit gekürzter Anzeige des Namens im Button, vollständigem Namen und E-Mail-Adresse im Kopfbereich des Menüs, direktem Link auf die Profilverwaltung (`profile.php`) sowie Abmelde-Button.
 3. **Container-Eröffnung:**
    * Öffnet `<main class="py-4"><div class="container">` für den eigentlichen Seiteninhalt.
 
@@ -80,11 +80,13 @@ Das Favicon (`assets/img/favicon.png`) ist direkt in die `.navbar-brand` eingebu
 ```
 Dadurch dient das Logo auf jeder Unterseite als intuitiver Schnellzugriff zurück zum Dashboard.
 
-### 4.3 Sichere Abmeldung (POST-Logout)
-Der Logout-Button in der Kopfzeile ist bewusst nicht als gewöhnlicher Link (`<a href="logout.php">`), sondern als **HTML-Formular mit POST-Methode** implementiert:
+### 4.3 Benutzer-Dropdown & Sichere Abmeldung (POST-Logout)
+Um auch bei langen Anzeigenamen (bis zu 100 Zeichen) auf allen Bildschirmgrößen eine einzeilige, schlanke Navigationsleiste zu gewährleisten, sind Benutzerinformationen und Aktionen in einem Bootstrap-Dropdown gebündelt. Im Button der Kopfzeile wird über `User::currentShortNavName()` nur der erste Namensteil (bis zum ersten Leerzeichen oder Bindestrich) angezeigt und zusätzlich per `text-truncate` (`max-width: 160px`) abgesichert. Im aufgeklappten Menü kann der vollständige Name (`User::currentNavName()`) sowie ggf. die E-Mail-Adresse mehrzeilig umbrechen.
+
+Der Logout-Button innerhalb des Dropdown-Menüs ist bewusst nicht als gewöhnlicher Link (`<a href="logout.php">`), sondern als **HTML-Formular mit POST-Methode** implementiert:
 ```html
 <form action="logout.php" method="POST" class="m-0">
-    <button type="submit" class="btn btn-sm btn-outline-light">Abmelden</button>
+    <button type="submit" class="dropdown-item text-danger">Abmelden</button>
 </form>
 ```
 Dies verhindert, dass fremde Webseiten einen Benutzer unbemerkt abmelden können (z. B. durch das Einbetten von `<img src="logout.php">`).

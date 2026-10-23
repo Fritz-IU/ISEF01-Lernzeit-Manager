@@ -35,3 +35,18 @@ main {
   min-height: 100vh;
   min-height: 100dvh;
 }
+
+/*
+ * Benutzer-Dropdown in der Navbar:
+ * Begrenzt sehr lange Anzeigenamen (bis 100 Zeichen) im Button einzeilig mit Auslassungspunkten
+ * und gibt dem ausgeklappten Menü eine feste Mindest- und Maximalbreite für sauberen Zeilenumbruch.
+ */
+.nav-user-truncate {
+  display: inline-block;
+  max-width: 160px;
+}
+
+.nav-user-dropdown {
+  min-width: 15rem;
+  max-width: 20rem;
+}
