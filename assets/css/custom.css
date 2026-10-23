@@ -50,3 +50,22 @@ main {
   min-width: 15rem;
   max-width: 20rem;
 }
+
+/*
+ * Monats-Tab-Leiste auf goals.php:
+ * Gleichmäßige Kacheln für den 6-Monats-Zeitraum, die den aktiv gewählten Monat
+ * optisch hervorheben und bei Überschreitung des Budgets farblich warnen.
+ */
+.month-tab-link {
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.month-tab-link:hover {
+  transform: translateY(-1px);
+}
+
+.month-tab-link.active {
+  border-width: 2px !important;
+}

@@ -1,14 +1,15 @@
-# Dokumentation: 6-Monats-Lernzielplanung (Grobplanung)
+# Dokumentation: 6-Monats-Lernzielplanung & Monatliche Detailplanung
 
-Dieses Dokument beschreibt die Architektur, Datenhaltung und Funktionsweise der langfristigen Lernzielplanung (US-1: 6-Monats-Grobplanung) im **Lernzeit-Manager** (Modul ISEF01 – Software Engineering).
+Dieses Dokument beschreibt die Architektur, Datenhaltung und Funktionsweise der langfristigen Lernzielplanung (Issue #1: 6-Monats-Grobplanung) sowie der monatlichen Detail- und Workload-Planung (Issue #2: Monatliche Grobplanung & Zwischenziele) im **Lernzeit-Manager** (Modul ISEF01 – Software Engineering).
 
 ---
 
 ## 1. Ziel und Zweck (Warum & Wofür)
 
 ### Wofür wurde es implementiert?
-* **Langfristige Semester- und Modulplanung:** Studierende können für einen Zeitraum von 6 Monaten ihre Module und Lernziele mit geplanten Zielstunden (z. B. 150 Stunden für ein 5-ECTS-Modul), Startdatum und Enddatum erfassen, überblicken, anpassen und löschen.
-* **Orientierung & Semesterübersicht:** Die Planung liefert Kennzahlen (Anzahl geplanter Module, geplante Gesamtlernzeit) und dient als Fundament für die spätere Zeiterfassung mit Stoppuhr und Soll-Ist-Vergleichen.
+* **Langfristige Semester- und Modulplanung (6 Monate):** Studierende können für einen Zeitraum von 6 Monaten ihre Module und Lernziele mit geplanten Zielstunden (z. B. 150 Stunden für ein 5-ECTS-Modul), Startdatum und Enddatum erfassen, überblicken, anpassen und löschen.
+* **Monatliche Detailplanung & Zwischenziele (1 Monat):** Die übergeordneten 6-Monats-Lernziele lassen sich in konkrete monatliche Zwischenziele mit eigenem Stundenkontingent herunterbrechen. Zusätzlich kann je Monat ein persönliches Soll-Zeitbudget hinterlegt werden.
+* **Prozentuale Workload-Verteilung & Überplanungs-Warnung:** Das System berechnet sowohl die prozentuale Auslastung des monatlichen Soll-Zeitbudgets als auch den prozentualen Anteil jedes Monats am gesamten Semester-Workload. Wird das 6-Monats-Ziel oder ein Monatsbudget überschritten, bleibt die Planung flexibel möglich, wird aber farblich (Gelb/Warnhinweis) hervorgehoben.
 
 ### Warum wurde es so implementiert? (Entwurfsprinzipien)
 * **Separation of Concerns (SoC) & MVC/DAO-Muster:** Klare Trennung zwischen Benutzeroberfläche ([`goals.php`](../goals.php)), Controller-/Geschäftslogik ([`src/Controllers/GoalController.php`](../src/Controllers/GoalController.php)), Datenzugriffsschicht ([`src/DAO/GoalDAO.php`](../src/DAO/GoalDAO.php)) und MariaDB-Datenbank ([`sql/schema.sql`](../sql/schema.sql)).
@@ -72,6 +73,45 @@ CREATE TABLE learning_goals (
 * `chk_learning_goals_dates`: Stellt auf Datenbankebene sicher, dass das Enddatum nicht vor dem Startdatum liegt.
 * `fk_learning_goals_user`: Löscht bei Entfernung eines Benutzerkontos kaskadierend alle zugeordneten Lernziele (`ON DELETE CASCADE`).
 
+Für die monatliche Detailplanung und die Zuordnung der Lernziele zu einzelnen Monaten ergänzen zwei weitere Tabellen das Schema:
+
+```sql
+CREATE TABLE monthly_budgets (
+    id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id      INT UNSIGNED NOT NULL,
+    plan_month   CHAR(7)      NOT NULL,
+    budget_hours DECIMAL(6,2) NOT NULL,
+    created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_monthly_budgets_user_month (user_id, plan_month),
+    CONSTRAINT fk_monthly_budgets_user FOREIGN KEY (user_id)
+        REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT chk_monthly_budgets_hours CHECK (budget_hours >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE monthly_goals (
+    id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id       INT UNSIGNED NOT NULL,
+    goal_id       INT UNSIGNED NOT NULL,
+    plan_month    CHAR(7)      NOT NULL,
+    title         VARCHAR(150) NOT NULL,
+    description   TEXT         NULL,
+    planned_hours DECIMAL(6,2) NOT NULL,
+    created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_monthly_goals_user_month (user_id, plan_month),
+    KEY idx_monthly_goals_goal (goal_id),
+    CONSTRAINT fk_monthly_goals_user FOREIGN KEY (user_id)
+        REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT fk_monthly_goals_goal FOREIGN KEY (goal_id)
+        REFERENCES learning_goals (id) ON DELETE CASCADE,
+    CONSTRAINT chk_monthly_goals_hours CHECK (planned_hours > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+* `monthly_budgets`: Speichert das persönliche Soll-Zeitbudget (`budget_hours`) je Studierendem und Kalendermonat (`plan_month` im Format `YYYY-MM`).
+* `monthly_goals`: Speichert die heruntergebrochenen monatlichen Zwischenziele (`title`, `planned_hours`, `description`), verknüpft mit dem übergeordneten 6-Monats-Lernziel (`goal_id`). Wird ein 6-Monats-Lernziel gelöscht, werden dessen Zwischenziele per `ON DELETE CASCADE` automatisch mitentfernt.
+
 ### 3.2 Validierungsregeln in [`Controllers\GoalController`](../src/Controllers/GoalController.php)
 
 * **Modul / Lernzielname (`title`):** Pflichtfeld, nicht leer, maximal 150 Zeichen (`GoalController::MAX_TITLE_LENGTH`).
@@ -79,6 +119,9 @@ CREATE TABLE learning_goals (
 * **Startdatum (`start_date`):** Pflichtfeld im ISO-Format `JJJJ-MM-TT` (`Y-m-d`).
 * **Enddatum (`end_date`):** Pflichtfeld im ISO-Format `JJJJ-MM-TT` (`Y-m-d`). Muss zeitlich am oder nach dem Startdatum liegen (`end_date >= start_date`).
 * **Beschreibung (`description`):** Optional, maximal 2000 Zeichen. Leere Zeichenketten werden in der Datenbank als `NULL` abgelegt.
+* **Monat (`year_month`):** Pflichtfeld im Format `JJJJ-MM` (`^\d{4}-(0[1-9]|1[0-2])$`).
+* **Monatliches Soll-Zeitbudget (`budget_hours`):** Numerisch zwischen 0,0 und 744,0 Stunden (`GoalController::MAX_MONTHLY_HOURS`). Bei leerem Wert oder `0` wird das hinterlegte Monatsbudget zurückgesetzt.
+* **Zwischenziel-Stunden (`planned_hours`):** Pflichtfeld, numerisch zwischen 0,5 und 744,0 Stunden. Überschreitet die Summe der Zwischenziele die Zielstunden des 6-Monats-Ziels oder das Monatsbudget, bleibt das Speichern erlaubt und die Oberfläche hebt die Überschreitung farblich hervor.
 
 ---
 
