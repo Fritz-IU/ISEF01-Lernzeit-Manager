@@ -216,15 +216,15 @@ require_once __DIR__ . '/includes/header.php';
 <?php else: ?>
     <div class="card shadow-sm border-0 mb-5">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 table-mobile-cards">
                 <thead class="table-light">
                     <tr>
-                        <th scope="col" style="min-width: 190px;">Lernziel</th>
-                        <th scope="col" class="text-end" style="min-width: 110px;">Zielstunden</th>
-                        <th scope="col" style="min-width: 210px;">Aufgeteilte Stunden</th>
-                        <th scope="col" style="min-width: 180px;">Zeitraum</th>
-                        <th scope="col" style="min-width: 160px;">Notizen</th>
-                        <th scope="col" class="text-end" style="min-width: 220px;">Aktionen</th>
+                        <th scope="col">Lernziel</th>
+                        <th scope="col" class="text-end">Zielstunden</th>
+                        <th scope="col" style="min-width: 190px;">Aufgeteilte Stunden</th>
+                        <th scope="col">Zeitraum</th>
+                        <th scope="col">Notizen</th>
+                        <th scope="col" class="text-end">Aktionen</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -256,16 +256,16 @@ require_once __DIR__ . '/includes/header.php';
                             }
                         ?>
                         <tr class="<?= $isGoalOverAllocated ? 'table-warning' : '' ?>">
-                            <td>
+                            <td class="td-mobile-header" data-label="Lernziel">
                                 <strong class="text-dark d-block"><?= htmlspecialchars((string) $goal['title']) ?></strong>
                                 <span class="text-muted small">Erstellt am <?= date('d.m.Y', strtotime((string) $goal['created_at'])) ?></span>
                             </td>
-                            <td class="text-end">
+                            <td class="text-end" data-label="Zielstunden">
                                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-6 fw-semibold px-2 py-1">
                                     <?= number_format($targetHoursRow, 1, ',', '.') ?> h
                                 </span>
                             </td>
-                            <td>
+                            <td class="td-mobile-block" data-label="Aufgeteilte Stunden">
                                 <div class="d-flex justify-content-between align-items-center small mb-1">
                                     <span class="<?= $allocTextClass ?>">
                                         <?= number_format($allocatedHoursRow, 1, ',', '.') ?> von <?= number_format($targetHoursRow, 1, ',', '.') ?> h
@@ -286,15 +286,17 @@ require_once __DIR__ . '/includes/header.php';
                                     <?php endif; ?>
                                 </div>
                             </td>
-                            <td>
-                                <div class="small fw-semibold text-dark">
-                                    <?= $startFormatted ?> &ndash; <?= $endFormatted ?>
-                                </div>
-                                <div class="text-muted small">
-                                    Dauer: <?= $durationWeeks ?> Wochen
+                            <td data-label="Zeitraum">
+                                <div>
+                                    <div class="small fw-semibold text-dark">
+                                        <?= $startFormatted ?> &ndash; <?= $endFormatted ?>
+                                    </div>
+                                    <div class="text-muted small">
+                                        Dauer: <?= $durationWeeks ?> Wochen
+                                    </div>
                                 </div>
                             </td>
-                            <td>
+                            <td class="<?= !empty($goal['description']) ? 'td-mobile-block' : '' ?>" data-label="Notizen">
                                 <?php if (!empty($goal['description'])): ?>
                                     <span class="text-muted small">
                                         <?= nl2br(htmlspecialchars((string) $goal['description'])) ?>
@@ -303,7 +305,7 @@ require_once __DIR__ . '/includes/header.php';
                                     <span class="text-muted small fst-italic">Keine Notiz</span>
                                 <?php endif; ?>
                             </td>
-                            <td class="text-end">
+                            <td class="text-end td-mobile-actions" data-label="Aktionen">
                                 <div class="btn-group btn-group-sm" role="group" aria-label="Aktionen für Lernziel">
                                     <button
                                         type="button"
@@ -367,16 +369,17 @@ require_once __DIR__ . '/includes/header.php';
 
     <!-- Monats-Tab-Leiste -->
     <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body p-3">
-            <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="card-body p-2 p-sm-3">
+            <div class="d-flex justify-content-between align-items-center mb-2 gap-2">
                 <a
                     href="goals.php?month=<?= urlencode((string) $monthlyPlanning['prev_month']) ?>"
                     data-month-switch="<?= htmlspecialchars((string) $monthlyPlanning['prev_month'], ENT_QUOTES) ?>"
                     class="btn btn-sm btn-outline-secondary"
                 >
-                    &lsaquo; <?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['prev_month'], false)) ?>
+                    <span class="d-sm-none">&lsaquo; <?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['prev_month'], true)) ?></span>
+                    <span class="d-none d-sm-inline">&lsaquo; <?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['prev_month'], false)) ?></span>
                 </a>
-                <span class="text-muted small fw-semibold d-none d-md-inline">
+                <span class="text-muted small fw-semibold text-center">
                     Monatsübersicht
                 </span>
                 <a
@@ -384,7 +387,8 @@ require_once __DIR__ . '/includes/header.php';
                     data-month-switch="<?= htmlspecialchars((string) $monthlyPlanning['next_month'], ENT_QUOTES) ?>"
                     class="btn btn-sm btn-outline-secondary"
                 >
-                    <?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['next_month'], false)) ?> &rsaquo;
+                    <span class="d-sm-none"><?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['next_month'], true)) ?> &rsaquo;</span>
+                    <span class="d-none d-sm-inline"><?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['next_month'], false)) ?> &rsaquo;</span>
                 </a>
             </div>
 
@@ -407,7 +411,7 @@ require_once __DIR__ . '/includes/header.php';
                                 : 'border-light-subtle bg-light text-dark';
                         }
                     ?>
-                    <div class="col-6 col-md-4 col-lg-2">
+                    <div class="col-4 col-lg-2">
                         <a
                             href="goals.php?month=<?= urlencode((string) $ym) ?>"
                             data-month-switch="<?= htmlspecialchars((string) $ym, ENT_QUOTES) ?>"
@@ -416,23 +420,23 @@ require_once __DIR__ . '/includes/header.php';
                             aria-selected="<?= $isTabSelected ? 'true' : 'false' ?>"
                         >
                             <div class="card-body p-2 text-center">
-                                <div class="d-flex justify-content-center align-items-center gap-1 mb-1">
+                                <div class="d-flex flex-wrap justify-content-center align-items-center gap-1 mb-1">
                                     <span class="fw-bold small"><?= htmlspecialchars((string) $mTab['label_short']) ?></span>
                                     <?php if ($mTab['is_current_calendar_month']): ?>
-                                        <span class="badge <?= $isTabSelected && !$isTabOverBudget ? 'bg-light text-primary' : 'bg-primary-subtle text-primary' ?>" style="font-size: 0.65rem;">Aktuell</span>
+                                        <span class="badge <?= $isTabSelected && !$isTabOverBudget ? 'bg-light text-primary' : 'bg-primary-subtle text-primary' ?> d-none d-sm-inline-block" style="font-size: 0.65rem;">Aktuell</span>
                                     <?php endif; ?>
                                 </div>
-                                <div class="small <?= $isTabSelected && !$isTabOverBudget ? 'text-white' : ($isTabOverBudget ? 'text-warning-emphasis fw-bold' : 'text-muted') ?>">
+                                <div class="small <?= $isTabSelected && !$isTabOverBudget ? 'text-white' : ($isTabOverBudget ? 'text-warning-emphasis fw-bold' : 'text-muted') ?>" style="font-size: 0.78rem;">
                                     <?= number_format($tabPlanned, 1, ',', '.') ?>
                                     <?php if ($tabBudget !== null): ?>
-                                        von <?= number_format((float) $tabBudget, 1, ',', '.') ?> h
+                                        / <?= number_format((float) $tabBudget, 1, ',', '.') ?> h
                                     <?php else: ?>
-                                        h geplant
+                                        h
                                     <?php endif; ?>
                                 </div>
                                 <div class="mt-1">
-                                    <span class="badge <?= $isTabOverBudget ? 'text-bg-warning' : ($isTabSelected ? 'bg-white text-primary' : 'bg-secondary-subtle text-secondary') ?>" style="font-size: 0.7rem;">
-                                        <?= number_format($tabWorkloadShare, 0, ',', '.') ?> % vom Workload
+                                    <span class="badge <?= $isTabOverBudget ? 'text-bg-warning' : ($isTabSelected ? 'bg-white text-primary' : 'bg-secondary-subtle text-secondary') ?>" style="font-size: 0.68rem;">
+                                        <?= number_format($tabWorkloadShare, 0, ',', '.') ?> % Workload
                                     </span>
                                 </div>
                             </div>
@@ -610,14 +614,14 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
             <?php else: ?>
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
+                    <table class="table table-hover align-middle mb-0 table-mobile-cards">
                         <thead class="table-light">
                             <tr>
-                                <th scope="col" style="min-width: 200px;">Zwischenziel</th>
-                                <th scope="col" style="min-width: 220px;">Zugehöriges Lernziel</th>
-                                <th scope="col" class="text-end" style="min-width: 150px;">Geplante Lernzeit</th>
-                                <th scope="col" style="min-width: 180px;">Notizen</th>
-                                <th scope="col" class="text-end" style="min-width: 150px;">Aktionen</th>
+                                <th scope="col">Zwischenziel</th>
+                                <th scope="col">Zugehöriges Lernziel</th>
+                                <th scope="col" class="text-end">Geplante Lernzeit</th>
+                                <th scope="col">Notizen</th>
+                                <th scope="col" class="text-end">Aktionen</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -631,11 +635,11 @@ require_once __DIR__ . '/includes/header.php';
                                     $shareOfPlanned = (float) $mGoal['share_of_month_planned_percent'];
                                 ?>
                                 <tr class="<?= $isParentOver ? 'table-warning' : '' ?>">
-                                    <td>
+                                    <td class="td-mobile-header" data-label="Zwischenziel">
                                         <strong class="text-dark d-block"><?= htmlspecialchars((string) $mGoal['title']) ?></strong>
                                         <span class="text-muted small"><?= htmlspecialchars((string) $selectedMonthData['label_long']) ?></span>
                                     </td>
-                                    <td>
+                                    <td class="td-mobile-block" data-label="Zugehöriges Lernziel">
                                         <span class="fw-semibold text-dark d-block"><?= htmlspecialchars((string) $mGoal['parent_goal_title']) ?></span>
                                         <span class="small <?= $isParentOver ? 'text-warning-emphasis fw-semibold' : 'text-muted' ?>">
                                             Insgesamt verplant: <?= number_format($parentAlloc, 1, ',', '.') ?> von <?= number_format($parentTarget, 1, ',', '.') ?> h
@@ -644,19 +648,21 @@ require_once __DIR__ . '/includes/header.php';
                                             <?php endif; ?>
                                         </span>
                                     </td>
-                                    <td class="text-end">
-                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-6 fw-semibold px-2 py-1">
-                                            <?= number_format($mgHours, 1, ',', '.') ?> h
-                                        </span>
-                                        <div class="text-muted small mt-1">
-                                            <?php if ($shareOfBudget !== null): ?>
-                                                <?= number_format((float) $shareOfBudget, 1, ',', '.') ?> % vom Zeitbudget
-                                            <?php else: ?>
-                                                <?= number_format($shareOfPlanned, 1, ',', '.') ?> % der Monatsplanung
-                                            <?php endif; ?>
+                                    <td class="text-end" data-label="Geplante Lernzeit">
+                                        <div>
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-6 fw-semibold px-2 py-1">
+                                                <?= number_format($mgHours, 1, ',', '.') ?> h
+                                            </span>
+                                            <div class="text-muted small mt-1">
+                                                <?php if ($shareOfBudget !== null): ?>
+                                                    <?= number_format((float) $shareOfBudget, 1, ',', '.') ?> % vom Zeitbudget
+                                                <?php else: ?>
+                                                    <?= number_format($shareOfPlanned, 1, ',', '.') ?> % der Monatsplanung
+                                                <?php endif; ?>
+                                            </div>
                                         </div>
                                     </td>
-                                    <td>
+                                    <td class="<?= !empty($mGoal['description']) ? 'td-mobile-block' : '' ?>" data-label="Notizen">
                                         <?php if (!empty($mGoal['description'])): ?>
                                             <span class="text-muted small">
                                                 <?= nl2br(htmlspecialchars((string) $mGoal['description'])) ?>
@@ -665,7 +671,7 @@ require_once __DIR__ . '/includes/header.php';
                                             <span class="text-muted small fst-italic">Keine Notiz</span>
                                         <?php endif; ?>
                                     </td>
-                                    <td class="text-end">
+                                    <td class="text-end td-mobile-actions" data-label="Aktionen">
                                         <div class="btn-group btn-group-sm" role="group" aria-label="Aktionen für Zwischenziel">
                                             <button
                                                 type="button"

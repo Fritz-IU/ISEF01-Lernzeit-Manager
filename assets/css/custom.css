@@ -69,3 +69,95 @@ main {
 .month-tab-link.active {
   border-width: 2px !important;
 }
+
+/*
+ * Responsive Tabellen für Mobilgeräte und Tablets (< 992px):
+ * Wandelt breite Tabellen (Lernziele & Zwischenziele) unterhalb des lg-Breakpoints in vertikal
+ * gestapelte Karten um, sodass kein horizontales Scrollen mehr nötig ist.
+ */
+@media (max-width: 991.98px) {
+  .table-mobile-cards thead {
+    display: none;
+  }
+
+  .table-mobile-cards,
+  .table-mobile-cards tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .table-mobile-cards tbody tr {
+    display: block;
+    padding: 1rem;
+    border-bottom: 0.5rem solid var(--bs-light, #f8f9fa);
+  }
+
+  .table-mobile-cards tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .table-mobile-cards tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    text-align: right !important;
+  }
+
+  .table-mobile-cards tbody td::before {
+    content: attr(data-label);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--bs-secondary-color, #6c757d);
+    text-align: left;
+    flex-shrink: 0;
+  }
+
+  .table-mobile-cards tbody td.td-mobile-header {
+    display: block;
+    text-align: left !important;
+    padding-top: 0;
+    padding-bottom: 0.6rem;
+    margin-bottom: 0.25rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  }
+
+  .table-mobile-cards tbody td.td-mobile-header::before {
+    display: none;
+  }
+
+  .table-mobile-cards tbody td.td-mobile-block {
+    display: block;
+    text-align: left !important;
+    padding: 0.5rem 0;
+  }
+
+  .table-mobile-cards tbody td.td-mobile-block::before {
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+
+  .table-mobile-cards tbody td.td-mobile-actions {
+    display: block;
+    padding-top: 0.75rem;
+    padding-bottom: 0;
+    border-bottom: 0;
+    text-align: stretch !important;
+  }
+
+  .table-mobile-cards tbody td.td-mobile-actions::before {
+    display: none;
+  }
+
+  .table-mobile-cards tbody td.td-mobile-actions .btn-group {
+    display: flex;
+    width: 100%;
+  }
+
+  .table-mobile-cards tbody td.td-mobile-actions .btn-group .btn {
+    flex: 1 1 auto;
+  }
+}
