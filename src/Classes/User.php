@@ -271,13 +271,34 @@ class User
     }
 
     /**
-     * Name des angemeldeten Nutzers für die Navigationsleiste.
+     * Vollständiger Name des angemeldeten Nutzers für die Navigationsleiste (z. B. im Dropdown-Menü).
      * Anzeigename ist optional – ohne Namen wird die E-Mail-Adresse gezeigt.
      */
     public static function currentNavName(): string
     {
         $displayName = (string) ($_SESSION['user_display_name'] ?? '');
         return $displayName !== '' ? $displayName : (string) ($_SESSION['user_email'] ?? '');
+    }
+
+    /**
+     * Gekürzter Name des angemeldeten Nutzers für den Button in der Navigationsleiste.
+     * Bei gesetztem Anzeigenamen wird nur der erste Namensteil (vor dem ersten Leerzeichen
+     * oder Bindestrich) zurückgegeben; ohne Anzeigenamen die E-Mail-Adresse.
+     */
+    public static function currentShortNavName(): string
+    {
+        $displayName = trim((string) ($_SESSION['user_display_name'] ?? ''));
+        if ($displayName === '') {
+            return (string) ($_SESSION['user_email'] ?? '');
+        }
+
+        $cleaned = ltrim($displayName, '-');
+        if ($cleaned === '') {
+            return $displayName;
+        }
+
+        $parts = preg_split('/[\s-]+/u', $cleaned, 2);
+        return ($parts !== false && $parts[0] !== '') ? $parts[0] : $displayName;
     }
 
     /**

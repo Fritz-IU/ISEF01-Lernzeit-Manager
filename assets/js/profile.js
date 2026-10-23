@@ -66,9 +66,22 @@ document.addEventListener('DOMContentLoaded', () => {
         showAlert('success', result.message || 'Profildaten erfolgreich gespeichert.');
 
         // Live-Update des Anzeigenamens in der Navigationsleiste (Server liefert bei leerem Namen die E-Mail)
-        const navUserName = document.getElementById('nav-user-name');
-        if (navUserName && result.data && result.data.nav_name) {
-          navUserName.textContent = result.data.nav_name;
+        if (result.data && result.data.nav_name) {
+          const navUserName = document.getElementById('nav-user-name');
+          if (navUserName) {
+            navUserName.textContent = result.data.nav_short_name || result.data.nav_name;
+          }
+
+          const dropdownUserName = document.getElementById('nav-dropdown-user-name');
+          if (dropdownUserName) {
+            dropdownUserName.textContent = result.data.nav_name;
+          }
+
+          const dropdownUserEmail = document.getElementById('nav-dropdown-user-email');
+          if (dropdownUserEmail) {
+            const hasCustomDisplayName = Boolean(result.data.display_name);
+            dropdownUserEmail.classList.toggle('d-none', !hasCustomDisplayName);
+          }
         }
       } else {
         showAlert('danger', result.message || 'Fehler beim Speichern der Profildaten.');

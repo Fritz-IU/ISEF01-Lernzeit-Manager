@@ -170,6 +170,6 @@ require_once __DIR__ . '/includes/header.php';
 
 <?php
 // Footer einbinden und clientseitiges JavaScript laden
-$extraScripts = '<script src="assets/js/profile.js"></script>';
+$extraScripts = '<script src="assets/js/profile.js?v=' . filemtime(__DIR__ . '/assets/js/profile.js') . '"></script>';
 require_once __DIR__ . '/includes/footer.php';
 ?>

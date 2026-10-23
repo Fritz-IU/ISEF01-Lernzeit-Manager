@@ -60,7 +60,7 @@ In der Tabelle `users` wurden zwei optionale Spalten ergänzt:
 * **Methodenprüfung:** Akzeptiert ausschließlich POST-Anfragen, sonst HTTP 405 Method Not Allowed.
 * **Payload-Verarbeitung:** Unterstützt JSON (`php://input`) sowie Standard-Formulardaten (`$_POST`).
 * **HTTP-Statuscodes:**
-  * `200 OK`: Profil erfolgreich gespeichert, Rückgabe des aktualisierten Datensatzes sowie `nav_name` (Anzeigename bzw. E-Mail-Adresse, falls kein Name gesetzt ist; siehe `User::currentNavName()`).
+  * `200 OK`: Profil erfolgreich gespeichert, Rückgabe des aktualisierten Datensatzes sowie `nav_name` (vollständiger Anzeigename bzw. E-Mail-Adresse für das Dropdown-Menü; siehe `User::currentNavName()`) und `nav_short_name` (erster Namensteil für den Button der Navigationsleiste; siehe `User::currentShortNavName()`).
   * `422 Unprocessable Entity`: Validierungsfehler (Meldung aus `ValidationException`).
   * `500 Internal Server Error`: Unerwartete technische Fehler (Details wandern nur via `error_log()` ins Server-Log).
 
