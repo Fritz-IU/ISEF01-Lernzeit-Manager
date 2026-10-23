@@ -68,8 +68,11 @@ require_once __DIR__ . '/includes/header.php';
                     </div>
                 </div>
 
-                <div>
-                    <a href="profile.php" class="btn btn-outline-primary">
+                <div class="d-flex justify-content-center gap-3 flex-wrap">
+                    <a href="goals.php" class="btn btn-primary px-4">
+                        Planen
+                    </a>
+                    <a href="profile.php" class="btn btn-outline-secondary">
                         Profil anpassen
                     </a>
                 </div>
