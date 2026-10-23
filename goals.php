@@ -358,56 +358,11 @@ require_once __DIR__ . '/includes/header.php';
 <hr class="my-5 text-muted">
 
 <section id="monatsplanung" class="mb-4">
-    <div class="row align-items-center mb-3">
-        <div class="col-lg-7">
-            <h2 class="h4 fw-bold text-primary mb-1">Monatliche Planung und Zwischenziele</h2>
-            <p class="text-muted mb-0">
-                Lege dein Zeitbudget je Monat fest, teile deine Lernziele in Zwischenziele auf und prüfe die prozentuale Verteilung deines Workloads.
-            </p>
-        </div>
-        <div class="col-lg-5 mt-3 mt-lg-0">
-            <div class="d-flex flex-wrap justify-content-lg-end align-items-center gap-2">
-                <!-- Direktauswahl eines beliebigen Monats -->
-                <form action="goals.php#monatsplanung" method="GET" class="d-inline-flex align-items-center gap-1">
-                    <label for="month_picker" class="visually-hidden">Monat auswählen</label>
-                    <input
-                        type="month"
-                        id="month_picker"
-                        name="month"
-                        class="form-control form-control-sm"
-                        style="width: auto;"
-                        value="<?= htmlspecialchars($selectedMonth) ?>"
-                        onchange="this.form.submit()"
-                    >
-                    <noscript>
-                        <button type="submit" class="btn btn-sm btn-outline-secondary">Wechseln</button>
-                    </noscript>
-                </form>
-
-                <button
-                    type="button"
-                    class="btn btn-sm btn-outline-primary"
-                    data-bs-toggle="modal"
-                    data-bs-target="#monthlyBudgetModal"
-                    data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>"
-                    data-month-label="<?= htmlspecialchars((string) $selectedMonthData['label_long'], ENT_QUOTES) ?>"
-                    data-budget="<?= $selectedMonthData['budget_hours'] !== null ? htmlspecialchars((string) $selectedMonthData['budget_hours'], ENT_QUOTES) : '' ?>"
-                >
-                    Zeitbudget anpassen
-                </button>
-
-                <button
-                    type="button"
-                    class="btn btn-sm btn-primary"
-                    data-bs-toggle="modal"
-                    data-bs-target="#createMonthlyGoalModal"
-                    data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>"
-                    <?= empty($goals) ? 'disabled title="Bitte lege zuerst ein Lernziel an"' : '' ?>
-                >
-                    + Zwischenziel planen
-                </button>
-            </div>
-        </div>
+    <div class="mb-3">
+        <h2 class="h4 fw-bold text-primary mb-1">Monatliche Planung und Zwischenziele</h2>
+        <p class="text-muted mb-0">
+            Lege dein Zeitbudget je Monat fest, teile deine Lernziele in Zwischenziele auf und prüfe die prozentuale Verteilung deines Workloads.
+        </p>
     </div>
 
     <!-- Monats-Tab-Leiste -->
@@ -505,27 +460,16 @@ require_once __DIR__ . '/includes/header.php';
                         <?php endif; ?>
                     </h3>
                 </div>
-                <div class="d-flex flex-wrap gap-2">
-                    <button
-                        type="button"
-                        class="btn btn-outline-secondary btn-sm"
-                        data-bs-toggle="modal"
-                        data-bs-target="#monthlyBudgetModal"
-                        data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>"
-                        data-month-label="<?= htmlspecialchars((string) $selectedMonthData['label_long'], ENT_QUOTES) ?>"
-                        data-budget="<?= $selBudget !== null ? htmlspecialchars((string) $selBudget, ENT_QUOTES) : '' ?>"
-                    >
-                        Zeitbudget ändern
-                    </button>
+                <div>
                     <?php if (!empty($goals)): ?>
                         <button
                             type="button"
-                            class="btn btn-primary btn-sm"
+                            class="btn btn-primary"
                             data-bs-toggle="modal"
                             data-bs-target="#createMonthlyGoalModal"
                             data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>"
                         >
-                            + Zwischenziel für <?= htmlspecialchars((string) $selectedMonthData['label_short']) ?>
+                            + Zwischenziel planen
                         </button>
                     <?php endif; ?>
                 </div>
@@ -540,17 +484,19 @@ require_once __DIR__ . '/includes/header.php';
                     <div class="p-3 border rounded h-100 <?= $selIsOverBudget ? 'bg-warning-subtle border-warning' : 'bg-light' ?>">
                         <div class="d-flex justify-content-between align-items-start mb-1">
                             <span class="text-muted small text-uppercase fw-semibold">Monatliches Zeitbudget</span>
-                            <button
-                                type="button"
-                                class="btn btn-link btn-sm p-0 text-decoration-none"
-                                data-bs-toggle="modal"
-                                data-bs-target="#monthlyBudgetModal"
-                                data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>"
-                                data-month-label="<?= htmlspecialchars((string) $selectedMonthData['label_long'], ENT_QUOTES) ?>"
-                                data-budget="<?= $selBudget !== null ? htmlspecialchars((string) $selBudget, ENT_QUOTES) : '' ?>"
-                            >
-                                Bearbeiten
-                            </button>
+                            <?php if ($selBudget !== null): ?>
+                                <button
+                                    type="button"
+                                    class="btn btn-link btn-sm p-0 text-decoration-none"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#monthlyBudgetModal"
+                                    data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>"
+                                    data-month-label="<?= htmlspecialchars((string) $selectedMonthData['label_long'], ENT_QUOTES) ?>"
+                                    data-budget="<?= htmlspecialchars((string) $selBudget, ENT_QUOTES) ?>"
+                                >
+                                    Bearbeiten
+                                </button>
+                            <?php endif; ?>
                         </div>
                         <?php if ($selBudget !== null): ?>
                             <div class="h4 fw-bold text-dark mb-1">
@@ -566,10 +512,18 @@ require_once __DIR__ . '/includes/header.php';
                                 </div>
                             <?php endif; ?>
                         <?php else: ?>
-                            <div class="h5 fw-semibold text-muted mb-1 fst-italic">Kein Budget hinterlegt</div>
-                            <div class="small text-muted">
-                                Lege ein Zeitbudget für diesen Monat fest, um deine Auslastung zu sehen.
-                            </div>
+                            <div class="h5 fw-semibold text-muted mb-2 fst-italic">Kein Budget hinterlegt</div>
+                            <button
+                                type="button"
+                                class="btn btn-outline-primary btn-sm"
+                                data-bs-toggle="modal"
+                                data-bs-target="#monthlyBudgetModal"
+                                data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>"
+                                data-month-label="<?= htmlspecialchars((string) $selectedMonthData['label_long'], ENT_QUOTES) ?>"
+                                data-budget=""
+                            >
+                                Zeitbudget festlegen
+                            </button>
                         <?php endif; ?>
                     </div>
                 </div>
