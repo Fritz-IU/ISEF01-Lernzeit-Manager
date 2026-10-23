@@ -147,6 +147,8 @@ document.addEventListener('DOMContentLoaded', () => {
    * @param {string} targetMonth Monat im Format YYYY-MM
    */
   async function switchMonthWithoutReload(targetMonth) {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(targetMonth)) return;
+
     const section = document.getElementById('monatsplanung');
     if (!section) return;
 
@@ -175,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // Monatsbereich und Data-Attribute ohne Scroll-Sprung aktualisieren
-      section.innerHTML = newSection.innerHTML;
+      section.replaceChildren(...newSection.childNodes);
       section.setAttribute('data-selected-month', targetMonth);
       const newShortLabel = newSection.getAttribute('data-selected-month-short');
       if (newShortLabel) {

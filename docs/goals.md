@@ -169,8 +169,9 @@ sequenceDiagram
 
 ## 5. Sicherheitsmaßnahmen
 
-1. **Schutz vor SQL-Injection:** Sämtliche Datenbankabfragen in `GoalDAO` werden ausnahmslos mit Prepared Statements und streng typisierten Bind-Parametern (`:user_id`, `:title`, `:description`, etc.) ausgeführt.
-2. **Schutz vor Cross-Site-Scripting (XSS):** Alle dynamischen Inhalte in `goals.php` (z. B. Modultitel, Notizen, Datumsangaben) werden bei der Ausgabe konsequent mit `htmlspecialchars()` maskiert.
-3. **Mandantenisolation & IDOR-Schutz:** Sämtliche CRUD-Operationen (`SELECT`, `UPDATE`, `DELETE`) binden zwingend die aktuelle `user_id` aus `$_SESSION['user_id']`. Ein Manipulieren von IDs in POST-Anfragen kann keine fremden Datensätze beeinflussen.
-4. **Sichere Löschoperationen:** Löschungen erfolgen ausschließlich per HTTP POST mit explizitem Formular und Bestätigungs-Modal (keine manipulierbaren GET-Links).
+1. **Schutz vor SQL-Injection:** Sämtliche Datenbankabfragen in `GoalDAO` werden ausnahmslos mit Prepared Statements (`PDO::ATTR_EMULATE_PREPARES => false`) und streng typisierten Bind-Parametern (`:user_id`, `:title`, `:description`, etc.) ausgeführt.
+2. **Schutz vor Cross-Site-Scripting (XSS):** Alle dynamischen Inhalte in `goals.php` (z. B. Modultitel, Notizen, Datumsangaben) werden bei der Ausgabe konsequent mit `htmlspecialchars()` maskiert; im JavaScript (`assets/js/goals.js`) werden Modalfelder über `.value` und `.textContent` befüllt.
+3. **Mandantenisolation & IDOR-Schutz:** Sämtliche CRUD-Operationen (`SELECT`, `UPDATE`, `DELETE`) sowie das Zuordnen eines Zwischenziels zu einem übergeordneten Lernziel (`goal_id`) binden zwingend die aktuelle `user_id` aus `$_SESSION['user_id']`. Ein Manipulieren von IDs in POST-Anfragen kann keine fremden Datensätze lesen, zuordnen oder verändern.
+4. **CSRF-Schutz (Cross-Site Request Forgery):** Jedes schreibende Formular auf `goals.php` überträgt ein kryptografisch sicheres Session-Token (`csrf_token` via `random_bytes(32)`), das serverseitig zeitkonstant mittels `hash_equals()` geprüft wird.
+5. **Sichere Löschoperationen:** Löschungen erfolgen ausschließlich per HTTP POST mit CSRF-Token und Bestätigungs-Modal (keine manipulierbaren GET-Links).
 

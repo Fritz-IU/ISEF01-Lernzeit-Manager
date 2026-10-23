@@ -25,6 +25,12 @@ if (!User::isLoggedIn()) {
     exit;
 }
 
+// Kryptografisch sicheres CSRF-Token pro Session erzeugen (Schutz vor Cross-Site Request Forgery)
+if (empty($_SESSION['csrf_token']) || !is_string($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrfToken = $_SESSION['csrf_token'];
+
 $userId = (int) $_SESSION['user_id'];
 $db = getDatabaseConnection();
 $goalDAO = new GoalDAO($db);
@@ -36,11 +42,11 @@ $errorMessage = '';
 $successMessage = (string) ($_SESSION['goals_success'] ?? '');
 unset($_SESSION['goals_success']);
 
-// Formularverarbeitung für 6-Monats-Ziele sowie monatliche Budgets und Zwischenziele.
+// Formularverarbeitung für Lernziele sowie monatliche Budgets und Zwischenziele.
 // Nach erfolgreicher Aktion wird per Redirect auf GET umgeleitet (Post/Redirect/Get),
 // damit ein Neuladen der Seite die Aktion nicht erneut ausführt.
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'] ?? '';
+    $action = isset($_POST['action']) && is_string($_POST['action']) ? $_POST['action'] : '';
     $redirectMonth = isset($_POST['redirect_month']) && is_string($_POST['redirect_month'])
         ? trim($_POST['redirect_month'])
         : (isset($_GET['month']) && is_string($_GET['month']) ? trim($_GET['month']) : '');
@@ -48,19 +54,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $semesterRedirectUrl = 'goals.php?tab=semester' . ($validRedirectMonth !== '' ? '&month=' . urlencode($validRedirectMonth) : '');
 
     try {
+        // CSRF-Schutz: Jede schreibende POST-Anfrage muss das gültige Session-Token vorweisen
+        $submittedCsrf = isset($_POST['csrf_token']) && is_string($_POST['csrf_token']) ? $_POST['csrf_token'] : '';
+        if (!hash_equals($csrfToken, $submittedCsrf)) {
+            throw new ValidationException('Ungültige Sitzungsanfrage. Bitte lade die Seite neu und versuche es erneut.');
+        }
+
         if ($action === 'create') {
             $goalController->createGoal($userId, $_POST);
             $_SESSION['goals_success'] = 'Das Lernziel wurde erfolgreich angelegt.';
             header('Location: ' . $semesterRedirectUrl);
             exit;
         } elseif ($action === 'update') {
-            $goalId = isset($_POST['goal_id']) ? (int) $_POST['goal_id'] : 0;
+            $goalId = isset($_POST['goal_id']) && is_scalar($_POST['goal_id']) ? (int) $_POST['goal_id'] : 0;
             $goalController->updateGoal($goalId, $userId, $_POST);
             $_SESSION['goals_success'] = 'Das Lernziel wurde erfolgreich aktualisiert.';
             header('Location: ' . $semesterRedirectUrl);
             exit;
         } elseif ($action === 'delete') {
-            $goalId = isset($_POST['goal_id']) ? (int) $_POST['goal_id'] : 0;
+            $goalId = isset($_POST['goal_id']) && is_scalar($_POST['goal_id']) ? (int) $_POST['goal_id'] : 0;
             $goalController->deleteGoal($goalId, $userId);
             $_SESSION['goals_success'] = 'Das Lernziel wurde erfolgreich gelöscht.';
             header('Location: ' . $semesterRedirectUrl);
@@ -76,13 +88,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: goals.php?tab=month&month=' . urlencode($targetMonth));
             exit;
         } elseif ($action === 'update_monthly_goal') {
-            $monthlyGoalId = isset($_POST['monthly_goal_id']) ? (int) $_POST['monthly_goal_id'] : 0;
+            $monthlyGoalId = isset($_POST['monthly_goal_id']) && is_scalar($_POST['monthly_goal_id']) ? (int) $_POST['monthly_goal_id'] : 0;
             $targetMonth = $goalController->updateMonthlyGoal($monthlyGoalId, $userId, $_POST);
             $_SESSION['goals_success'] = 'Das Zwischenziel wurde erfolgreich aktualisiert.';
             header('Location: goals.php?tab=month&month=' . urlencode($targetMonth));
             exit;
         } elseif ($action === 'delete_monthly_goal') {
-            $monthlyGoalId = isset($_POST['monthly_goal_id']) ? (int) $_POST['monthly_goal_id'] : 0;
+            $monthlyGoalId = isset($_POST['monthly_goal_id']) && is_scalar($_POST['monthly_goal_id']) ? (int) $_POST['monthly_goal_id'] : 0;
             $targetMonth = $goalController->deleteMonthlyGoal($monthlyGoalId, $userId);
             $_SESSION['goals_success'] = 'Das Zwischenziel wurde erfolgreich gelöscht.';
             header('Location: goals.php?tab=month&month=' . urlencode($targetMonth));
@@ -160,7 +172,7 @@ require_once __DIR__ . '/includes/header.php';
 <?php endif; ?>
 
 <!-- Kompakte Kennzahlen-Leiste -->
-<div class="card shadow-sm border-0 mb-4 <?= $isTotalOverAllocated ? 'border-start border-warning border-4' : '' ?>">
+<div class="card shadow-sm border mb-4">
     <div class="card-body py-2 px-3">
         <div class="row align-items-center g-2 text-center text-sm-start">
             <div class="col-6 col-sm-4 border-end-sm">
@@ -256,7 +268,7 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
             </div>
         <?php else: ?>
-            <div class="card shadow-sm border-0 mb-4">
+            <div class="card shadow-sm border goals-table-card mb-4">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0 table-mobile-cards">
                         <thead class="table-light">
@@ -491,7 +503,7 @@ require_once __DIR__ . '/includes/header.php';
                 $selIsOverBudget = (bool) $selectedMonthData['is_over_budget'];
                 $selWorkloadShare = (float) $selectedMonthData['workload_share_percent'];
             ?>
-            <div class="card shadow-sm border-0 <?= $selIsOverBudget ? 'border-top border-warning border-4' : 'border-top border-primary border-4' ?>">
+            <div class="card shadow-sm border mb-4">
                 <div class="card-header bg-white py-3 px-4 border-bottom">
                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
                         <div>
@@ -647,7 +659,7 @@ require_once __DIR__ . '/includes/header.php';
                             <?php endif; ?>
                         </div>
                     <?php else: ?>
-                        <div class="table-responsive">
+                        <div class="table-responsive goals-table-frame">
                             <table class="table table-hover align-middle mb-0 table-mobile-cards">
                                 <thead class="table-light">
                                     <tr>
@@ -747,6 +759,7 @@ require_once __DIR__ . '/includes/header.php';
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form action="goals.php" method="POST">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
                 <input type="hidden" name="action" value="create">
                 <input type="hidden" name="redirect_month" value="<?= htmlspecialchars($selectedMonth) ?>">
                 <div class="modal-header">
@@ -837,6 +850,7 @@ require_once __DIR__ . '/includes/header.php';
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form action="goals.php" method="POST" id="editGoalForm">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
                 <input type="hidden" name="action" value="update">
                 <input type="hidden" name="redirect_month" value="<?= htmlspecialchars($selectedMonth) ?>">
                 <input type="hidden" name="goal_id" id="edit_goal_id" value="">
@@ -922,6 +936,7 @@ require_once __DIR__ . '/includes/header.php';
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form action="goals.php" method="POST">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
                 <input type="hidden" name="action" value="delete">
                 <input type="hidden" name="redirect_month" value="<?= htmlspecialchars($selectedMonth) ?>">
                 <input type="hidden" name="goal_id" id="delete_goal_id" value="">
@@ -949,6 +964,7 @@ require_once __DIR__ . '/includes/header.php';
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form action="goals.php" method="POST">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
                 <input type="hidden" name="action" value="save_monthly_budget">
                 <div class="modal-header">
                     <h5 class="modal-title fw-bold" id="monthlyBudgetModalLabel">Monatliches Zeitbudget festlegen</h5>
@@ -1001,6 +1017,7 @@ require_once __DIR__ . '/includes/header.php';
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form action="goals.php" method="POST">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
                 <input type="hidden" name="action" value="create_monthly_goal">
                 <div class="modal-header">
                     <h5 class="modal-title fw-bold" id="createMonthlyGoalModalLabel">Zwischenziel planen</h5>
@@ -1093,6 +1110,7 @@ require_once __DIR__ . '/includes/header.php';
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form action="goals.php" method="POST">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
                 <input type="hidden" name="action" value="update_monthly_goal">
                 <input type="hidden" name="monthly_goal_id" id="edit_mg_id" value="">
                 <div class="modal-header">
@@ -1177,6 +1195,7 @@ require_once __DIR__ . '/includes/header.php';
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form action="goals.php" method="POST">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
                 <input type="hidden" name="action" value="delete_monthly_goal">
                 <input type="hidden" name="monthly_goal_id" id="delete_mg_id" value="">
                 <div class="modal-header">

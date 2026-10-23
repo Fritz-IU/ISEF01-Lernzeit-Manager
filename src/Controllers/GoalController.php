@@ -189,6 +189,10 @@ class GoalController
             throw new ValidationException("Bitte gib die geplanten Zielstunden an.");
         }
 
+        if (!is_string($hoursRaw) && !is_int($hoursRaw) && !is_float($hoursRaw)) {
+            throw new ValidationException("Die Zielstunden müssen eine Zahl sein.");
+        }
+
         // Kommas durch Punkte ersetzen (deutsches Eingabeformat unterstützen)
         if (is_string($hoursRaw)) {
             $hoursRaw = str_replace(',', '.', trim($hoursRaw));
@@ -199,7 +203,7 @@ class GoalController
         }
 
         $targetHours = (float) $hoursRaw;
-        if ($targetHours < self::MIN_TARGET_HOURS || $targetHours > self::MAX_TARGET_HOURS) {
+        if (!is_finite($targetHours) || $targetHours < self::MIN_TARGET_HOURS || $targetHours > self::MAX_TARGET_HOURS) {
             throw new ValidationException(sprintf(
                 "Die Zielstunden müssen zwischen %.1f und %.1f Stunden liegen.",
                 self::MIN_TARGET_HOURS,
@@ -274,6 +278,10 @@ class GoalController
             return $yearMonth;
         }
 
+        if (!is_string($budgetRaw) && !is_int($budgetRaw) && !is_float($budgetRaw)) {
+            throw new ValidationException("Das monatliche Zeitbudget muss eine Zahl sein.");
+        }
+
         if (is_string($budgetRaw)) {
             $budgetRaw = str_replace(',', '.', trim($budgetRaw));
         }
@@ -282,7 +290,12 @@ class GoalController
             throw new ValidationException("Das monatliche Zeitbudget muss eine Zahl sein.");
         }
 
-        $budgetHours = round((float) $budgetRaw, 2);
+        $budgetFloat = (float) $budgetRaw;
+        if (!is_finite($budgetFloat)) {
+            throw new ValidationException("Das monatliche Zeitbudget muss eine Zahl sein.");
+        }
+
+        $budgetHours = round($budgetFloat, 2);
         if ($budgetHours < 0.0 || $budgetHours > self::MAX_MONTHLY_HOURS) {
             throw new ValidationException(sprintf(
                 "Das monatliche Zeitbudget muss zwischen 0,0 und %.1f Stunden liegen.",
@@ -386,9 +399,16 @@ class GoalController
      */
     public function validateAndParseMonthlyGoalInput(int $userId, array $input): array
     {
-        // 1. Zugehöriges Lernziel prüfen
+        // 1. Zugehöriges Lernziel prüfen (nur echte Ganzzahlen zulassen)
         $goalIdRaw = $input['goal_id'] ?? null;
-        $goalId = is_numeric($goalIdRaw) ? (int) $goalIdRaw : 0;
+        if (is_int($goalIdRaw)) {
+            $goalId = $goalIdRaw;
+        } elseif (is_string($goalIdRaw)) {
+            $filteredId = filter_var(trim($goalIdRaw), FILTER_VALIDATE_INT);
+            $goalId = $filteredId !== false ? $filteredId : 0;
+        } else {
+            $goalId = 0;
+        }
         if ($goalId <= 0) {
             throw new ValidationException("Bitte wähle ein zugehöriges Lernziel aus.");
         }
@@ -417,6 +437,10 @@ class GoalController
             throw new ValidationException("Bitte gib die geplanten Lernstunden für dieses Zwischenziel an.");
         }
 
+        if (!is_string($hoursRaw) && !is_int($hoursRaw) && !is_float($hoursRaw)) {
+            throw new ValidationException("Die geplanten Lernstunden müssen eine Zahl sein.");
+        }
+
         if (is_string($hoursRaw)) {
             $hoursRaw = str_replace(',', '.', trim($hoursRaw));
         }
@@ -426,7 +450,7 @@ class GoalController
         }
 
         $plannedHours = (float) $hoursRaw;
-        if ($plannedHours < self::MIN_TARGET_HOURS || $plannedHours > self::MAX_MONTHLY_HOURS) {
+        if (!is_finite($plannedHours) || $plannedHours < self::MIN_TARGET_HOURS || $plannedHours > self::MAX_MONTHLY_HOURS) {
             throw new ValidationException(sprintf(
                 "Die geplanten Lernstunden im Monat müssen zwischen %.1f und %.1f Stunden liegen.",
                 self::MIN_TARGET_HOURS,

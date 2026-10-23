@@ -90,11 +90,53 @@ main {
 }
 
 /*
+ * Tabellen auf goals.php:
+ * Klare visuelle Abgrenzung vom Hintergrund und professioneller Tabellenkopf.
+ */
+.goals-table-card {
+  border: 1px solid rgba(0, 0, 0, 0.09) !important;
+  box-shadow: 0 0.125rem 0.35rem rgba(0, 0, 0, 0.04) !important;
+}
+
+.goals-table-frame {
+  border: 1px solid rgba(0, 0, 0, 0.09);
+  border-radius: var(--bs-border-radius, 0.375rem);
+  background-color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.table-mobile-cards thead th {
+  background-color: #f1f5f9;
+  color: #334155;
+  font-weight: 600;
+  border-bottom: 2px solid #cbd5e1;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.table-mobile-cards tbody tr.table-warning > td {
+  background-color: #fff9e6;
+  border-bottom-color: #fed7aa;
+}
+
+/*
  * Responsive Tabellen für Mobilgeräte und Tablets (< 992px):
- * Wandelt breite Tabellen (Lernziele & Zwischenziele) unterhalb des lg-Breakpoints in vertikal
- * gestapelte Karten um, sodass kein horizontales Scrollen mehr nötig ist.
+ * Wandelt Zeilen in eigenständige, abgehobene Karten um und entkoppelt
+ * die Hintergrundfarbe bei Zeitüberschreitung sauber von der Schrift.
  */
 @media (max-width: 991.98px) {
+  .goals-table-card {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .goals-table-frame {
+    border: none !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+  }
+
   .table-mobile-cards thead {
     display: none;
   }
@@ -107,12 +149,23 @@ main {
 
   .table-mobile-cards tbody tr {
     display: block;
-    padding: 1rem;
-    border-bottom: 0.5rem solid var(--bs-light, #f8f9fa);
+    background-color: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 0.5rem;
+    padding: 0.875rem 1rem;
+    margin-bottom: 0.875rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   }
 
   .table-mobile-cards tbody tr:last-child {
-    border-bottom: 0;
+    margin-bottom: 0;
+  }
+
+  /* Konsistentes Design für alle Karten; bei Überschreitung mit dezentem warmen Rahmen */
+  .table-mobile-cards tbody tr.table-warning {
+    background-color: #ffffff !important;
+    border-color: #fcd34d !important;
+    box-shadow: 0 1px 4px rgba(245, 158, 11, 0.1);
   }
 
   .table-mobile-cards tbody td {
@@ -120,9 +173,17 @@ main {
     justify-content: space-between;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.4rem 0;
+    padding: 0.45rem 0.25rem;
     border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    background-color: transparent !important;
+    box-shadow: none !important;
     text-align: right !important;
+  }
+
+  .table-mobile-cards tbody tr.table-warning td {
+    border-bottom-color: rgba(0, 0, 0, 0.06);
+    background-color: transparent !important;
+    box-shadow: none !important;
   }
 
   .table-mobile-cards tbody td::before {
@@ -139,9 +200,13 @@ main {
     display: block;
     text-align: left !important;
     padding-top: 0;
-    padding-bottom: 0.6rem;
-    margin-bottom: 0.25rem;
+    padding-bottom: 0.65rem;
+    margin-bottom: 0.35rem;
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  }
+
+  .table-mobile-cards tbody tr.table-warning td.td-mobile-header {
+    border-bottom-color: rgba(217, 119, 6, 0.2);
   }
 
   .table-mobile-cards tbody td.td-mobile-header::before {
@@ -151,7 +216,7 @@ main {
   .table-mobile-cards tbody td.td-mobile-block {
     display: block;
     text-align: left !important;
-    padding: 0.5rem 0;
+    padding: 0.5rem 0.25rem;
   }
 
   .table-mobile-cards tbody td.td-mobile-block::before {
