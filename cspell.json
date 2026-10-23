@@ -1,14 +1,7 @@
 {
   "version": "0.2",
   "language": "en,de",
-  "ignorePaths": [
-    ".git/",
-    "vendor/",
-    "node_modules/",
-    "**/*.min.js",
-    "**/*.min.css",
-    "*.sql"
-  ],
+  "ignorePaths": [".git/", "vendor/", "node_modules/", "**/*.min.js", "**/*.min.css", "*.sql"],
   "words": [
     "Alwaysdata",
     "committen",
@@ -28,6 +21,18 @@
     "XAMPP",
     "xamppfiles",
     "Zwischenziel",
-    "Zwischenziele"
+    "Zwischenziele",
+    "ISEF",
+    "semesterbezogene",
+    "Validierungsregeln",
+    "VARCHAR",
+    "TINYINT",
+    "Validierungsfehler",
+    "Sequenzdiagramm",
+    "autonumber",
+    "htmlspecialchars",
+    "Eingabevalidierung",
+    "hashen",
+    "httponly"
   ]
 }
