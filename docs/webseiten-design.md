@@ -48,8 +48,8 @@ Nimmt optionale Konfigurationsvariablen der jeweiligen Seite entgegen (`$pageTit
 2. **Kopfzeile & Navigation:**
    * Responsive Bootstrap-Navbar mit primärer Markenfarbe (`bg-primary`).
    * Marken-Logo und Projektname als Home-Button zur Startseite (`index.php`).
-   * Navigationslinks (`Dashboard`, `Profil`), die bei aktiver Seite mit der Klasse `.active` und `aria-current="page"` hervorgehoben werden.
-   * Kompaktes Benutzer-Dropdown-Menü mit gekürzter Anzeige des Namens im Button, vollständigem Namen und E-Mail-Adresse im Kopfbereich des Menüs, Schnellzugriff auf die Profilverwaltung sowie Abmelde-Button.
+   * Navigationslinks (aktuell `Dashboard`), die bei aktiver Seite mit der Klasse `.active` und `aria-current="page"` hervorgehoben werden.
+   * Kompaktes Benutzer-Dropdown-Menü mit gekürzter Anzeige des Namens im Button, vollständigem Namen und E-Mail-Adresse im Kopfbereich des Menüs, direktem Link auf die Profilverwaltung (`profile.php`) sowie Abmelde-Button.
 3. **Container-Eröffnung:**
    * Öffnet `<main class="py-4"><div class="container">` für den eigentlichen Seiteninhalt.
 

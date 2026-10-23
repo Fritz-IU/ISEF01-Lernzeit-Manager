@@ -54,9 +54,6 @@ $currentUserEmail = $isLoggedIn ? (string) ($_SESSION['user_email'] ?? '') : '';
                             <li class="nav-item">
                                 <a class="nav-link <?= $activeNav === 'dashboard' ? 'active" aria-current="page' : '' ?>" href="index.php">Dashboard</a>
                             </li>
-                            <li class="nav-item">
-                                <a class="nav-link <?= $activeNav === 'profile' ? 'active" aria-current="page' : '' ?>" href="profile.php">Profil</a>
-                            </li>
                         </ul>
                         <div class="dropdown">
                             <button
@@ -83,7 +80,7 @@ $currentUserEmail = $isLoggedIn ? (string) ($_SESSION['user_email'] ?? '') : '';
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
-                                    <a class="dropdown-item <?= $activeNav === 'profile' ? 'active' : '' ?>" href="profile.php">
+                                    <a class="dropdown-item <?= $activeNav === 'profile' ? 'active" aria-current="page' : '' ?>" href="profile.php">
                                         Profil bearbeiten
                                     </a>
                                 </li>
