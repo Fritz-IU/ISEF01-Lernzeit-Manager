@@ -279,13 +279,13 @@ class GoalController
         }
 
         if (!is_numeric($budgetRaw)) {
-            throw new ValidationException("Das monatliche Soll-Zeitbudget muss eine Zahl sein.");
+            throw new ValidationException("Das monatliche Zeitbudget muss eine Zahl sein.");
         }
 
         $budgetHours = round((float) $budgetRaw, 2);
         if ($budgetHours < 0.0 || $budgetHours > self::MAX_MONTHLY_HOURS) {
             throw new ValidationException(sprintf(
-                "Das monatliche Soll-Zeitbudget muss zwischen 0,0 und %.1f Stunden liegen.",
+                "Das monatliche Zeitbudget muss zwischen 0,0 und %.1f Stunden liegen.",
                 self::MAX_MONTHLY_HOURS
             ));
         }
@@ -386,16 +386,16 @@ class GoalController
      */
     public function validateAndParseMonthlyGoalInput(int $userId, array $input): array
     {
-        // 1. Zugeordnetes 6-Monats-Lernziel prüfen (inkl. Mandantenisolation)
+        // 1. Zugehöriges Lernziel prüfen
         $goalIdRaw = $input['goal_id'] ?? null;
         $goalId = is_numeric($goalIdRaw) ? (int) $goalIdRaw : 0;
         if ($goalId <= 0) {
-            throw new ValidationException("Bitte wähle ein übergeordnetes 6-Monats-Lernziel aus.");
+            throw new ValidationException("Bitte wähle ein zugehöriges Lernziel aus.");
         }
 
         $parentGoal = $this->goalDAO->findByIdAndUserId($goalId, $userId);
         if ($parentGoal === null) {
-            throw new ValidationException("Das ausgewählte 6-Monats-Lernziel existiert nicht oder gehört einem anderen Benutzer.");
+            throw new ValidationException("Das ausgewählte Lernziel existiert nicht oder gehört einem anderen Benutzer.");
         }
 
         // 2. Planungsmonat prüfen (YYYY-MM)
@@ -404,7 +404,7 @@ class GoalController
         // 3. Bezeichnung des Zwischenziels (Pflichtfeld)
         $titleRaw = $input['title'] ?? null;
         if (!is_string($titleRaw) || trim($titleRaw) === '') {
-            throw new ValidationException("Bitte gib eine Bezeichnung für das monatliche Zwischenziel an.");
+            throw new ValidationException("Bitte gib eine Bezeichnung für das Zwischenziel an.");
         }
         $title = trim($titleRaw);
         if (mb_strlen($title, 'UTF-8') > self::MAX_TITLE_LENGTH) {

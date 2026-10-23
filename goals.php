@@ -51,41 +51,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         if ($action === 'create') {
             $goalController->createGoal($userId, $_POST);
-            $_SESSION['goals_success'] = 'Das 6-Monats-Lernziel wurde erfolgreich angelegt.';
+            $_SESSION['goals_success'] = 'Das Lernziel wurde erfolgreich angelegt.';
             header('Location: goals.php' . $monthQuery);
             exit;
         } elseif ($action === 'update') {
             $goalId = isset($_POST['goal_id']) ? (int) $_POST['goal_id'] : 0;
             $goalController->updateGoal($goalId, $userId, $_POST);
-            $_SESSION['goals_success'] = 'Das 6-Monats-Lernziel wurde erfolgreich aktualisiert.';
+            $_SESSION['goals_success'] = 'Das Lernziel wurde erfolgreich aktualisiert.';
             header('Location: goals.php' . $monthQuery);
             exit;
         } elseif ($action === 'delete') {
             $goalId = isset($_POST['goal_id']) ? (int) $_POST['goal_id'] : 0;
             $goalController->deleteGoal($goalId, $userId);
-            $_SESSION['goals_success'] = 'Das 6-Monats-Lernziel wurde erfolgreich gelöscht.';
+            $_SESSION['goals_success'] = 'Das Lernziel wurde erfolgreich gelöscht.';
             header('Location: goals.php' . $monthQuery);
             exit;
         } elseif ($action === 'save_monthly_budget') {
             $targetMonth = $goalController->saveMonthlyBudget($userId, $_POST);
-            $_SESSION['goals_success'] = 'Das monatliche Soll-Zeitbudget für ' . GoalController::formatYearMonth($targetMonth) . ' wurde gespeichert.';
+            $_SESSION['goals_success'] = 'Das Zeitbudget für ' . GoalController::formatYearMonth($targetMonth) . ' wurde gespeichert.';
             header('Location: goals.php?month=' . urlencode($targetMonth) . '#monatsplanung');
             exit;
         } elseif ($action === 'create_monthly_goal') {
             $targetMonth = $goalController->createMonthlyGoal($userId, $_POST);
-            $_SESSION['goals_success'] = 'Das monatliche Zwischenziel wurde erfolgreich angelegt.';
+            $_SESSION['goals_success'] = 'Das Zwischenziel wurde erfolgreich angelegt.';
             header('Location: goals.php?month=' . urlencode($targetMonth) . '#monatsplanung');
             exit;
         } elseif ($action === 'update_monthly_goal') {
             $monthlyGoalId = isset($_POST['monthly_goal_id']) ? (int) $_POST['monthly_goal_id'] : 0;
             $targetMonth = $goalController->updateMonthlyGoal($monthlyGoalId, $userId, $_POST);
-            $_SESSION['goals_success'] = 'Das monatliche Zwischenziel wurde erfolgreich aktualisiert.';
+            $_SESSION['goals_success'] = 'Das Zwischenziel wurde erfolgreich aktualisiert.';
             header('Location: goals.php?month=' . urlencode($targetMonth) . '#monatsplanung');
             exit;
         } elseif ($action === 'delete_monthly_goal') {
             $monthlyGoalId = isset($_POST['monthly_goal_id']) ? (int) $_POST['monthly_goal_id'] : 0;
             $targetMonth = $goalController->deleteMonthlyGoal($monthlyGoalId, $userId);
-            $_SESSION['goals_success'] = 'Das monatliche Zwischenziel wurde erfolgreich gelöscht.';
+            $_SESSION['goals_success'] = 'Das Zwischenziel wurde erfolgreich gelöscht.';
             header('Location: goals.php?month=' . urlencode($targetMonth) . '#monatsplanung');
             exit;
         } else {
@@ -125,9 +125,9 @@ require_once __DIR__ . '/includes/header.php';
 
 <div class="row align-items-center mb-4">
     <div class="col-md-7">
-        <h1 class="h3 fw-bold text-primary mb-1">6-Monats-Lernzielplanung</h1>
+        <h1 class="h3 fw-bold text-primary mb-1">Lernziele</h1>
         <p class="text-muted mb-0">
-            Definiere deine Module, Zielstunden und Zeiträume für deine langfristige Grobplanung.
+            Definiere deine Lernziele, geplante Stunden und Zeiträume für die nächsten sechs Monate.
         </p>
     </div>
     <div class="col-md-5 text-md-end mt-3 mt-md-0">
@@ -155,12 +155,12 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 <?php endif; ?>
 
-<!-- Kennzahlen-Übersicht (6-Monats-Grobplanung) -->
+<!-- Kennzahlen zu den Lernzielen -->
 <div class="row g-3 mb-4">
     <div class="col-sm-6 col-md-4">
         <div class="card shadow-sm border-0 h-100">
             <div class="card-body">
-                <span class="text-muted small text-uppercase fw-semibold d-block">Geplante Module / 6-Monats-Ziele</span>
+                <span class="text-muted small text-uppercase fw-semibold d-block">Geplante Lernziele</span>
                 <span class="h3 fw-bold text-dark mb-0"><?= count($goals) ?></span>
             </div>
         </div>
@@ -168,7 +168,7 @@ require_once __DIR__ . '/includes/header.php';
     <div class="col-sm-6 col-md-4">
         <div class="card shadow-sm border-0 h-100">
             <div class="card-body">
-                <span class="text-muted small text-uppercase fw-semibold d-block">Geplante Gesamtlernzeit (6 Monate)</span>
+                <span class="text-muted small text-uppercase fw-semibold d-block">Geplante Gesamtlernzeit</span>
                 <span class="h3 fw-bold text-primary mb-0"><?= number_format($totalHours, 1, ',', '.') ?> <span class="fs-6 text-muted fw-normal">Stunden</span></span>
             </div>
         </div>
@@ -176,15 +176,15 @@ require_once __DIR__ . '/includes/header.php';
     <div class="col-sm-12 col-md-4">
         <div class="card shadow-sm border-0 h-100 <?= $isTotalOverAllocated ? 'border-start border-warning border-4' : '' ?>">
             <div class="card-body">
-                <span class="text-muted small text-uppercase fw-semibold d-block">In Monatsziele aufgeteilt</span>
+                <span class="text-muted small text-uppercase fw-semibold d-block">In Zwischenziele aufgeteilt</span>
                 <div class="d-flex align-items-baseline justify-content-between flex-wrap gap-2">
                     <span class="h3 fw-bold <?= $isTotalOverAllocated ? 'text-warning-emphasis' : 'text-secondary' ?> mb-0">
                         <?= number_format($totalPlannedAllMonths, 1, ',', '.') ?>
-                        <span class="fs-6 text-muted fw-normal">/ <?= number_format($totalHours, 1, ',', '.') ?> Std.</span>
+                        <span class="fs-6 text-muted fw-normal">von <?= number_format($totalHours, 1, ',', '.') ?> Stunden</span>
                     </span>
                     <?php if ($isTotalOverAllocated): ?>
                         <span class="badge text-bg-warning">
-                            +<?= number_format($totalPlannedAllMonths - $totalHours, 1, ',', '.') ?> h über Grobplanung
+                            +<?= number_format($totalPlannedAllMonths - $totalHours, 1, ',', '.') ?> h über Zielwert
                         </span>
                     <?php endif; ?>
                 </div>
@@ -193,7 +193,7 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 </div>
 
-<!-- Liste der 6-Monats-Lernziele -->
+<!-- Liste der Lernziele -->
 <?php if (empty($goals)): ?>
     <div class="card shadow-sm border-0 text-center py-5 mb-5">
         <div class="card-body">
@@ -204,9 +204,9 @@ require_once __DIR__ . '/includes/header.php';
                     <path d="M2.5 4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5H3a.5.5 0 0 1-.5-.5z"/>
                 </svg>
             </div>
-            <h2 class="h5 fw-bold">Noch keine 6-Monats-Lernziele geplant</h2>
+            <h2 class="h5 fw-bold">Noch keine Lernziele geplant</h2>
             <p class="text-muted mb-4 max-w-500 mx-auto">
-                Lege zuerst deine Module und geplante Lernzeit für die nächsten 6 Monate fest, um sie anschließend in monatliche Zwischenziele herunterzubrechen.
+                Lege zuerst deine Lernziele und die geplante Lernzeit für die nächsten sechs Monate fest, um sie anschließend in monatliche Zwischenziele aufzuteilen.
             </p>
             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createGoalModal">
                 Erstes Lernziel anlegen
@@ -219,11 +219,11 @@ require_once __DIR__ . '/includes/header.php';
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th scope="col" style="min-width: 190px;">Modul / 6-Monats-Ziel</th>
+                        <th scope="col" style="min-width: 190px;">Lernziel</th>
                         <th scope="col" class="text-end" style="min-width: 110px;">Zielstunden</th>
-                        <th scope="col" style="min-width: 210px;">Monatsverteilung (Zwischenziele)</th>
+                        <th scope="col" style="min-width: 210px;">Aufgeteilte Stunden</th>
                         <th scope="col" style="min-width: 180px;">Zeitraum</th>
-                        <th scope="col" style="min-width: 160px;">Beschreibung / Notizen</th>
+                        <th scope="col" style="min-width: 160px;">Notizen</th>
                         <th scope="col" class="text-end" style="min-width: 220px;">Aktionen</th>
                     </tr>
                 </thead>
@@ -268,13 +268,13 @@ require_once __DIR__ . '/includes/header.php';
                             <td>
                                 <div class="d-flex justify-content-between align-items-center small mb-1">
                                     <span class="<?= $allocTextClass ?>">
-                                        <?= number_format($allocatedHoursRow, 1, ',', '.') ?> / <?= number_format($targetHoursRow, 1, ',', '.') ?> h
+                                        <?= number_format($allocatedHoursRow, 1, ',', '.') ?> von <?= number_format($targetHoursRow, 1, ',', '.') ?> h
                                     </span>
                                     <span class="badge <?= $isGoalOverAllocated ? 'text-bg-warning' : 'bg-secondary-subtle text-secondary' ?>">
                                         <?= number_format($allocPercent, 0, ',', '.') ?> %
                                     </span>
                                 </div>
-                                <div class="progress" style="height: 6px;" role="progressbar" aria-label="Verplante Stunden in Monaten" aria-valuenow="<?= (int) $allocBarWidth ?>" aria-valuemin="0" aria-valuemax="100">
+                                <div class="progress" style="height: 6px;" role="progressbar" aria-label="Verplante Stunden" aria-valuenow="<?= (int) $allocBarWidth ?>" aria-valuemin="0" aria-valuemax="100">
                                     <div class="progress-bar <?= $allocBarClass ?>" style="width: <?= $allocBarWidth ?>%"></div>
                                 </div>
                                 <div class="mt-1 d-flex justify-content-between align-items-center">
@@ -291,7 +291,7 @@ require_once __DIR__ . '/includes/header.php';
                                     <?= $startFormatted ?> &ndash; <?= $endFormatted ?>
                                 </div>
                                 <div class="text-muted small">
-                                    Dauer: <?= $durationWeeks ?> Wochen (<?= $durationDays ?> Tage)
+                                    Dauer: <?= $durationWeeks ?> Wochen
                                 </div>
                             </td>
                             <td>
@@ -308,13 +308,13 @@ require_once __DIR__ . '/includes/header.php';
                                     <button
                                         type="button"
                                         class="btn btn-outline-primary quick-add-monthly-goal-btn"
-                                        title="In Monatsziel herunterbrechen"
+                                        title="Zwischenziel für dieses Lernziel anlegen"
                                         data-bs-toggle="modal"
                                         data-bs-target="#createMonthlyGoalModal"
                                         data-goal-id="<?= (int) $goal['id'] ?>"
                                         data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>"
                                     >
-                                        + Monatsziel
+                                        + Zwischenziel
                                     </button>
                                     <button
                                         type="button"
@@ -353,16 +353,16 @@ require_once __DIR__ . '/includes/header.php';
 <?php endif; ?>
 
 <!-- ====================================================================== -->
-<!-- BEREICH 2: Monatliche Detailplanung & Zwischenziele (Issue #2)         -->
+<!-- BEREICH 2: Monatliche Planung und Zwischenziele (Issue #2)             -->
 <!-- ====================================================================== -->
 <hr class="my-5 text-muted">
 
 <section id="monatsplanung" class="mb-4">
     <div class="row align-items-center mb-3">
         <div class="col-lg-7">
-            <h2 class="h4 fw-bold text-primary mb-1">Monatliche Detailplanung &amp; Zwischenziele</h2>
+            <h2 class="h4 fw-bold text-primary mb-1">Monatliche Planung und Zwischenziele</h2>
             <p class="text-muted mb-0">
-                Lege dein Soll-Zeitbudget je Monat fest, brich deine 6-Monats-Lernziele in monatliche Zwischenziele herunter und prüfe deine prozentuale Workload-Verteilung.
+                Lege dein Zeitbudget je Monat fest, teile deine Lernziele in Zwischenziele auf und prüfe die prozentuale Verteilung deines Workloads.
             </p>
         </div>
         <div class="col-lg-5 mt-3 mt-lg-0">
@@ -393,7 +393,7 @@ require_once __DIR__ . '/includes/header.php';
                     data-month-label="<?= htmlspecialchars((string) $selectedMonthData['label_long'], ENT_QUOTES) ?>"
                     data-budget="<?= $selectedMonthData['budget_hours'] !== null ? htmlspecialchars((string) $selectedMonthData['budget_hours'], ENT_QUOTES) : '' ?>"
                 >
-                    Monatsbudget anpassen
+                    Zeitbudget anpassen
                 </button>
 
                 <button
@@ -402,7 +402,7 @@ require_once __DIR__ . '/includes/header.php';
                     data-bs-toggle="modal"
                     data-bs-target="#createMonthlyGoalModal"
                     data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>"
-                    <?= empty($goals) ? 'disabled title="Bitte lege zuerst ein 6-Monats-Lernziel an"' : '' ?>
+                    <?= empty($goals) ? 'disabled title="Bitte lege zuerst ein Lernziel an"' : '' ?>
                 >
                     + Zwischenziel planen
                 </button>
@@ -410,18 +410,18 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </div>
 
-    <!-- Monats-Tab-Leiste (6 Monate im Überblick + Vor/Zurück-Navigation) -->
+    <!-- Monats-Tab-Leiste -->
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-body p-3">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <a href="goals.php?month=<?= urlencode((string) $monthlyPlanning['prev_month']) ?>#monatsplanung" class="btn btn-sm btn-outline-secondary">
-                    &lsaquo; Vorheriger Monat (<?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['prev_month'], true)) ?>)
+                    &lsaquo; <?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['prev_month'], false)) ?>
                 </a>
                 <span class="text-muted small fw-semibold d-none d-md-inline">
-                    Monat auswählen (Tab-Ansicht)
+                    Monatsübersicht
                 </span>
                 <a href="goals.php?month=<?= urlencode((string) $monthlyPlanning['next_month']) ?>#monatsplanung" class="btn btn-sm btn-outline-secondary">
-                    Nächster Monat (<?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['next_month'], true)) ?>) &rsaquo;
+                    <?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['next_month'], false)) ?> &rsaquo;
                 </a>
             </div>
 
@@ -461,14 +461,14 @@ require_once __DIR__ . '/includes/header.php';
                                 <div class="small <?= $isTabSelected && !$isTabOverBudget ? 'text-white' : ($isTabOverBudget ? 'text-warning-emphasis fw-bold' : 'text-muted') ?>">
                                     <?= number_format($tabPlanned, 1, ',', '.') ?>
                                     <?php if ($tabBudget !== null): ?>
-                                        / <?= number_format((float) $tabBudget, 1, ',', '.') ?> h
+                                        von <?= number_format((float) $tabBudget, 1, ',', '.') ?> h
                                     <?php else: ?>
                                         h geplant
                                     <?php endif; ?>
                                 </div>
                                 <div class="mt-1">
                                     <span class="badge <?= $isTabOverBudget ? 'text-bg-warning' : ($isTabSelected ? 'bg-white text-primary' : 'bg-secondary-subtle text-secondary') ?>" style="font-size: 0.7rem;">
-                                        <?= number_format($tabWorkloadShare, 0, ',', '.') ?> % Workload
+                                        <?= number_format($tabWorkloadShare, 0, ',', '.') ?> % vom Workload
                                     </span>
                                 </div>
                             </div>
@@ -492,7 +492,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="card-header bg-white py-3 px-4 border-bottom">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <div>
-                    <span class="text-uppercase text-muted small fw-semibold d-block">Aktiver Planungsmonat (Detailansicht)</span>
+                    <span class="text-uppercase text-muted small fw-semibold d-block">Ausgewählter Monat</span>
                     <h3 class="h4 fw-bold mb-0 d-flex align-items-center flex-wrap gap-2">
                         <span><?= htmlspecialchars((string) $selectedMonthData['label_long']) ?></span>
                         <?php if ($selectedMonthData['is_current_calendar_month']): ?>
@@ -500,7 +500,7 @@ require_once __DIR__ . '/includes/header.php';
                         <?php endif; ?>
                         <?php if ($selIsOverBudget): ?>
                             <span class="badge text-bg-warning fs-6">
-                                Soll-Zeitbudget um <?= number_format(abs((float) $selRemaining), 1, ',', '.') ?> h überschritten
+                                Zeitbudget um <?= number_format(abs((float) $selRemaining), 1, ',', '.') ?> h überschritten
                             </span>
                         <?php endif; ?>
                     </h3>
@@ -515,7 +515,7 @@ require_once __DIR__ . '/includes/header.php';
                         data-month-label="<?= htmlspecialchars((string) $selectedMonthData['label_long'], ENT_QUOTES) ?>"
                         data-budget="<?= $selBudget !== null ? htmlspecialchars((string) $selBudget, ENT_QUOTES) : '' ?>"
                     >
-                        Soll-Zeitbudget: <?= $selBudget !== null ? number_format((float) $selBudget, 1, ',', '.') . ' h' : 'Nicht gesetzt' ?> (Ändern)
+                        Zeitbudget ändern
                     </button>
                     <?php if (!empty($goals)): ?>
                         <button
@@ -535,11 +535,11 @@ require_once __DIR__ . '/includes/header.php';
         <div class="card-body p-4">
             <!-- 3 Kennzahlen-Karten für den ausgewählten Monat -->
             <div class="row g-3 mb-4">
-                <!-- Karte 1: Monatliches Soll-Zeitbudget -->
+                <!-- Karte 1: Monatliches Zeitbudget -->
                 <div class="col-md-4">
                     <div class="p-3 border rounded h-100 <?= $selIsOverBudget ? 'bg-warning-subtle border-warning' : 'bg-light' ?>">
                         <div class="d-flex justify-content-between align-items-start mb-1">
-                            <span class="text-muted small text-uppercase fw-semibold">Soll-Zeitbudget (<?= htmlspecialchars((string) $selectedMonthData['label_short']) ?>)</span>
+                            <span class="text-muted small text-uppercase fw-semibold">Monatliches Zeitbudget</span>
                             <button
                                 type="button"
                                 class="btn btn-link btn-sm p-0 text-decoration-none"
@@ -558,7 +558,7 @@ require_once __DIR__ . '/includes/header.php';
                             </div>
                             <?php if ($selIsOverBudget): ?>
                                 <div class="small text-warning-emphasis fw-semibold">
-                                    Überschreitung: +<?= number_format(abs((float) $selRemaining), 1, ',', '.') ?> h über Monatsbudget
+                                    Um <?= number_format(abs((float) $selRemaining), 1, ',', '.') ?> h über dem Zeitbudget
                                 </div>
                             <?php else: ?>
                                 <div class="small text-success fw-semibold">
@@ -568,16 +568,16 @@ require_once __DIR__ . '/includes/header.php';
                         <?php else: ?>
                             <div class="h5 fw-semibold text-muted mb-1 fst-italic">Kein Budget hinterlegt</div>
                             <div class="small text-muted">
-                                Weise diesem Monat ein Soll-Zeitbudget zu, um die Budget-Auslastung zu messen.
+                                Lege ein Zeitbudget für diesen Monat fest, um deine Auslastung zu sehen.
                             </div>
                         <?php endif; ?>
                     </div>
                 </div>
 
-                <!-- Karte 2: Geplante Zwischenziele & Budget-Auslastung im Monat -->
+                <!-- Karte 2: Geplante Zwischenziele & Auslastung im Monat -->
                 <div class="col-md-4">
                     <div class="p-3 border rounded h-100 <?= $selIsOverBudget ? 'bg-warning-subtle border-warning' : 'bg-light' ?>">
-                        <span class="text-muted small text-uppercase fw-semibold d-block mb-1">Verplante Lernzeit &amp; Auslastung</span>
+                        <span class="text-muted small text-uppercase fw-semibold d-block mb-1">Verplante Lernzeit</span>
                         <div class="d-flex justify-content-between align-items-baseline mb-2">
                             <span class="h4 fw-bold <?= $selIsOverBudget ? 'text-warning-emphasis' : 'text-primary' ?> mb-0">
                                 <?= number_format($selPlanned, 1, ',', '.') ?> <span class="fs-6 fw-normal text-muted">Stunden</span>
@@ -592,7 +592,7 @@ require_once __DIR__ . '/includes/header.php';
                             $utilBarWidth = $selUtilPercent !== null ? min(100.0, (float) $selUtilPercent) : ($selPlanned > 0 ? 100.0 : 0.0);
                             $utilBarClass = $selIsOverBudget ? 'bg-warning' : ($selUtilPercent !== null && $selUtilPercent >= 90.0 ? 'bg-success' : 'bg-primary');
                         ?>
-                        <div class="progress" style="height: 8px;" role="progressbar" aria-label="Monatsbudget-Auslastung" aria-valuenow="<?= (int) $utilBarWidth ?>" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress" style="height: 8px;" role="progressbar" aria-label="Auslastung des Zeitbudgets" aria-valuenow="<?= (int) $utilBarWidth ?>" aria-valuemin="0" aria-valuemax="100">
                             <div class="progress-bar <?= $utilBarClass ?>" style="width: <?= $utilBarWidth ?>%"></div>
                         </div>
                         <div class="small text-muted mt-1">
@@ -601,24 +601,24 @@ require_once __DIR__ . '/includes/header.php';
                     </div>
                 </div>
 
-                <!-- Karte 3: Prozentuale Workload-Verteilung (Anteil am Gesamt-Workload) -->
+                <!-- Karte 3: Prozentuale Verteilung des Workloads -->
                 <div class="col-md-4">
                     <div class="p-3 border rounded bg-light h-100">
-                        <span class="text-muted small text-uppercase fw-semibold d-block mb-1">Anteil am Gesamt-Workload</span>
+                        <span class="text-muted small text-uppercase fw-semibold d-block mb-1">Verteilung deines Workloads</span>
                         <div class="d-flex justify-content-between align-items-baseline mb-2">
                             <span class="h4 fw-bold text-dark mb-0">
                                 <?= number_format($selWorkloadShare, 1, ',', '.') ?> %
                             </span>
                             <span class="text-muted small">
-                                (<?= number_format($selPlanned, 1, ',', '.') ?> von <?= number_format($totalPlannedAllMonths, 1, ',', '.') ?> h)
+                                <?= number_format($selPlanned, 1, ',', '.') ?> von <?= number_format($totalPlannedAllMonths, 1, ',', '.') ?> h
                             </span>
                         </div>
                         <?php $shareBarWidth = min(100.0, $selWorkloadShare); ?>
-                        <div class="progress" style="height: 8px;" role="progressbar" aria-label="Prozentuale Workload-Verteilung" aria-valuenow="<?= (int) $shareBarWidth ?>" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress" style="height: 8px;" role="progressbar" aria-label="Prozentuale Verteilung deines Workloads" aria-valuenow="<?= (int) $shareBarWidth ?>" aria-valuemin="0" aria-valuemax="100">
                             <div class="progress-bar bg-info" style="width: <?= $shareBarWidth ?>%"></div>
                         </div>
                         <div class="small text-muted mt-1">
-                            Gleichverteilung über 6 Monate entspricht ca. 16,7 % je Monat.
+                            Gleichmäßig auf sechs Monate verteilt entspricht etwa 16,7 % je Monat.
                         </div>
                     </div>
                 </div>
@@ -628,10 +628,10 @@ require_once __DIR__ . '/includes/header.php';
             <?php if (empty($monthlyGoals)): ?>
                 <div class="text-center py-4 border rounded bg-light-subtle">
                     <p class="fw-semibold text-dark mb-1">
-                        Für <?= htmlspecialchars((string) $selectedMonthData['label_long']) ?> sind noch keine Zwischenziele eingeplant.
+                        Für <?= htmlspecialchars((string) $selectedMonthData['label_long']) ?> sind noch keine Zwischenziele geplant.
                     </p>
                     <p class="text-muted small mb-3">
-                        Ordne deine 6-Monats-Lernziele diesem Monat zu und definiere konkrete Zwischenziele und Stunden.
+                        Ordne deine Lernziele diesem Monat zu und lege konkrete Zwischenziele und Stunden fest.
                     </p>
                     <?php if (!empty($goals)): ?>
                         <button
@@ -650,10 +650,10 @@ require_once __DIR__ . '/includes/header.php';
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th scope="col" style="min-width: 200px;">Zwischenziel im Monat</th>
-                                <th scope="col" style="min-width: 220px;">Zugeordnetes 6-Monats-Lernziel</th>
+                                <th scope="col" style="min-width: 200px;">Zwischenziel</th>
+                                <th scope="col" style="min-width: 220px;">Zugehöriges Lernziel</th>
                                 <th scope="col" class="text-end" style="min-width: 150px;">Geplante Lernzeit</th>
-                                <th scope="col" style="min-width: 180px;">Notizen / Details</th>
+                                <th scope="col" style="min-width: 180px;">Notizen</th>
                                 <th scope="col" class="text-end" style="min-width: 150px;">Aktionen</th>
                             </tr>
                         </thead>
@@ -670,14 +670,14 @@ require_once __DIR__ . '/includes/header.php';
                                 <tr class="<?= $isParentOver ? 'table-warning' : '' ?>">
                                     <td>
                                         <strong class="text-dark d-block"><?= htmlspecialchars((string) $mGoal['title']) ?></strong>
-                                        <span class="text-muted small">Monat: <?= htmlspecialchars((string) $selectedMonthData['label_short']) ?></span>
+                                        <span class="text-muted small"><?= htmlspecialchars((string) $selectedMonthData['label_long']) ?></span>
                                     </td>
                                     <td>
                                         <span class="fw-semibold text-dark d-block"><?= htmlspecialchars((string) $mGoal['parent_goal_title']) ?></span>
                                         <span class="small <?= $isParentOver ? 'text-warning-emphasis fw-semibold' : 'text-muted' ?>">
-                                            Gesamt verplant: <?= number_format($parentAlloc, 1, ',', '.') ?> / <?= number_format($parentTarget, 1, ',', '.') ?> h
+                                            Insgesamt verplant: <?= number_format($parentAlloc, 1, ',', '.') ?> von <?= number_format($parentTarget, 1, ',', '.') ?> h
                                             <?php if ($isParentOver): ?>
-                                                <span class="badge text-bg-warning ms-1">6-Monats-Ziel überschritten</span>
+                                                <span class="badge text-bg-warning ms-1">Lernziel überschritten</span>
                                             <?php endif; ?>
                                         </span>
                                     </td>
@@ -687,7 +687,7 @@ require_once __DIR__ . '/includes/header.php';
                                         </span>
                                         <div class="text-muted small mt-1">
                                             <?php if ($shareOfBudget !== null): ?>
-                                                <?= number_format((float) $shareOfBudget, 1, ',', '.') ?> % vom Monatsbudget
+                                                <?= number_format((float) $shareOfBudget, 1, ',', '.') ?> % vom Zeitbudget
                                             <?php else: ?>
                                                 <?= number_format($shareOfPlanned, 1, ',', '.') ?> % der Monatsplanung
                                             <?php endif; ?>
@@ -756,14 +756,14 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="create_title" class="form-label fw-semibold">Modul / Lernziel <span class="text-danger">*</span></label>
+                        <label for="create_title" class="form-label fw-semibold">Lernziel <span class="text-danger">*</span></label>
                         <input
                             type="text"
                             class="form-control"
                             id="create_title"
                             name="title"
                             maxlength="150"
-                            placeholder="z. B. Software Engineering – Vorlesung & Übung"
+                            placeholder="z. B. Software Engineering"
                             required
                         >
                     </div>
@@ -813,7 +813,7 @@ require_once __DIR__ . '/includes/header.php';
                     </div>
 
                     <div class="mb-3">
-                        <label for="create_description" class="form-label fw-semibold">Notizen / Beschreibung</label>
+                        <label for="create_description" class="form-label fw-semibold">Notizen</label>
                         <textarea
                             class="form-control"
                             id="create_description"
@@ -847,7 +847,7 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="edit_title" class="form-label fw-semibold">Modul / Lernziel <span class="text-danger">*</span></label>
+                        <label for="edit_title" class="form-label fw-semibold">Lernziel <span class="text-danger">*</span></label>
                         <input
                             type="text"
                             class="form-control"
@@ -899,7 +899,7 @@ require_once __DIR__ . '/includes/header.php';
                     </div>
 
                     <div class="mb-3">
-                        <label for="edit_description" class="form-label fw-semibold">Notizen / Beschreibung</label>
+                        <label for="edit_description" class="form-label fw-semibold">Notizen</label>
                         <textarea
                             class="form-control"
                             id="edit_description"
@@ -932,7 +932,7 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
                 <div class="modal-body">
                     <p class="mb-2">
-                        Möchtest du das folgende Lernziel (inklusive der zugehörigen monatlichen Zwischenziele) wirklich unwiderruflich löschen?
+                        Möchtest du das folgende Lernziel und alle zugehörigen Zwischenziele wirklich unwiderruflich löschen?
                     </p>
                     <p class="fw-bold text-dark mb-0" id="delete_goal_title"></p>
                 </div>
@@ -945,19 +945,19 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 </div>
 
-<!-- Modal: Monatliches Soll-Zeitbudget festlegen / ändern -->
+<!-- Modal: Monatliches Zeitbudget festlegen / ändern -->
 <div class="modal fade" id="monthlyBudgetModal" tabindex="-1" aria-labelledby="monthlyBudgetModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form action="goals.php" method="POST">
                 <input type="hidden" name="action" value="save_monthly_budget">
                 <div class="modal-header">
-                    <h5 class="modal-title fw-bold" id="monthlyBudgetModalLabel">Monatliches Soll-Zeitbudget festlegen</h5>
+                    <h5 class="modal-title fw-bold" id="monthlyBudgetModalLabel">Monatliches Zeitbudget festlegen</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="budget_year_month" class="form-label fw-semibold">Planungsmonat <span class="text-danger">*</span></label>
+                        <label for="budget_year_month" class="form-label fw-semibold">Monat <span class="text-danger">*</span></label>
                         <input
                             type="month"
                             class="form-control"
@@ -968,7 +968,7 @@ require_once __DIR__ . '/includes/header.php';
                         >
                     </div>
                     <div class="mb-3">
-                        <label for="budget_hours_input" class="form-label fw-semibold">Verfügbares Soll-Zeitbudget im Monat</label>
+                        <label for="budget_hours_input" class="form-label fw-semibold">Verfügbares Zeitbudget im Monat</label>
                         <div class="input-group">
                             <input
                                 type="number"
@@ -984,41 +984,41 @@ require_once __DIR__ . '/includes/header.php';
                             <span class="input-group-text">Stunden</span>
                         </div>
                         <div class="form-text">
-                            Wie viele Stunden möchtest du in diesem Monat insgesamt für dein Studium aufwenden? (Feld leeren oder 0 eingeben, um das Budget zurückzusetzen.)
+                            Wie viele Stunden möchtest du in diesem Monat insgesamt für dein Studium aufwenden? Leere das Feld oder gib 0 ein, um das Budget zurückzusetzen.
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Abbrechen</button>
-                    <button type="submit" class="btn btn-primary">Monatsbudget speichern</button>
+                    <button type="submit" class="btn btn-primary">Zeitbudget speichern</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Modal: Monatliches Zwischenziel erstellen -->
+<!-- Modal: Zwischenziel erstellen -->
 <div class="modal fade" id="createMonthlyGoalModal" tabindex="-1" aria-labelledby="createMonthlyGoalModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form action="goals.php" method="POST">
                 <input type="hidden" name="action" value="create_monthly_goal">
                 <div class="modal-header">
-                    <h5 class="modal-title fw-bold" id="createMonthlyGoalModalLabel">Monatliches Zwischenziel planen</h5>
+                    <h5 class="modal-title fw-bold" id="createMonthlyGoalModalLabel">Zwischenziel planen</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="create_mg_goal_id" class="form-label fw-semibold">Zugeordnetes 6-Monats-Lernziel <span class="text-danger">*</span></label>
+                        <label for="create_mg_goal_id" class="form-label fw-semibold">Zugehöriges Lernziel <span class="text-danger">*</span></label>
                         <select class="form-select" id="create_mg_goal_id" name="goal_id" required>
-                            <option value="" disabled selected>Bitte 6-Monats-Lernziel wählen…</option>
+                            <option value="" disabled selected>Bitte Lernziel wählen…</option>
                             <?php foreach ($goals as $gOption): ?>
                                 <?php
                                     $optAlloc = (float) ($gOption['allocated_hours'] ?? 0.0);
                                     $optTarget = (float) $gOption['target_hours'];
                                 ?>
                                 <option value="<?= (int) $gOption['id'] ?>">
-                                    <?= htmlspecialchars((string) $gOption['title']) ?> (<?= number_format($optAlloc, 1, ',', '.') ?> / <?= number_format($optTarget, 1, ',', '.') ?> h verplant)
+                                    <?= htmlspecialchars((string) $gOption['title']) ?> &ndash; <?= number_format($optAlloc, 1, ',', '.') ?> von <?= number_format($optTarget, 1, ',', '.') ?> h verplant
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -1026,7 +1026,7 @@ require_once __DIR__ . '/includes/header.php';
 
                     <div class="row g-2 mb-3">
                         <div class="col-sm-6">
-                            <label for="create_mg_year_month" class="form-label fw-semibold">Planungsmonat <span class="text-danger">*</span></label>
+                            <label for="create_mg_year_month" class="form-label fw-semibold">Monat <span class="text-danger">*</span></label>
                             <input
                                 type="month"
                                 class="form-control"
@@ -1056,27 +1056,27 @@ require_once __DIR__ . '/includes/header.php';
                     </div>
 
                     <div class="mb-3">
-                        <label for="create_mg_title" class="form-label fw-semibold">Zwischenziel / Schwerpunkt im Monat <span class="text-danger">*</span></label>
+                        <label for="create_mg_title" class="form-label fw-semibold">Zwischenziel <span class="text-danger">*</span></label>
                         <input
                             type="text"
                             class="form-control"
                             id="create_mg_title"
                             name="title"
                             maxlength="150"
-                            placeholder="z. B. Skript Kapitel 1–3 durcharbeiten & zusammenfassen"
+                            placeholder="z. B. Skript Kapitel 1 bis 3 durcharbeiten"
                             required
                         >
                     </div>
 
                     <div class="mb-3">
-                        <label for="create_mg_description" class="form-label fw-semibold">Notizen zum Zwischenziel</label>
+                        <label for="create_mg_description" class="form-label fw-semibold">Notizen</label>
                         <textarea
                             class="form-control"
                             id="create_mg_description"
                             name="description"
                             rows="2"
                             maxlength="2000"
-                            placeholder="Optionale Details oder Meilensteine für diesen Monat..."
+                            placeholder="Optionale Notizen für diesen Monat..."
                         ></textarea>
                     </div>
                 </div>
@@ -1089,7 +1089,7 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 </div>
 
-<!-- Modal: Monatliches Zwischenziel bearbeiten -->
+<!-- Modal: Zwischenziel bearbeiten -->
 <div class="modal fade" id="editMonthlyGoalModal" tabindex="-1" aria-labelledby="editMonthlyGoalModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -1102,7 +1102,7 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="edit_mg_goal_id" class="form-label fw-semibold">Zugeordnetes 6-Monats-Lernziel <span class="text-danger">*</span></label>
+                        <label for="edit_mg_goal_id" class="form-label fw-semibold">Zugehöriges Lernziel <span class="text-danger">*</span></label>
                         <select class="form-select" id="edit_mg_goal_id" name="goal_id" required>
                             <?php foreach ($goals as $gOption): ?>
                                 <option value="<?= (int) $gOption['id'] ?>">
@@ -1114,7 +1114,7 @@ require_once __DIR__ . '/includes/header.php';
 
                     <div class="row g-2 mb-3">
                         <div class="col-sm-6">
-                            <label for="edit_mg_year_month" class="form-label fw-semibold">Planungsmonat <span class="text-danger">*</span></label>
+                            <label for="edit_mg_year_month" class="form-label fw-semibold">Monat <span class="text-danger">*</span></label>
                             <input
                                 type="month"
                                 class="form-control"
@@ -1142,7 +1142,7 @@ require_once __DIR__ . '/includes/header.php';
                     </div>
 
                     <div class="mb-3">
-                        <label for="edit_mg_title" class="form-label fw-semibold">Zwischenziel / Schwerpunkt im Monat <span class="text-danger">*</span></label>
+                        <label for="edit_mg_title" class="form-label fw-semibold">Zwischenziel <span class="text-danger">*</span></label>
                         <input
                             type="text"
                             class="form-control"
@@ -1154,7 +1154,7 @@ require_once __DIR__ . '/includes/header.php';
                     </div>
 
                     <div class="mb-3">
-                        <label for="edit_mg_description" class="form-label fw-semibold">Notizen zum Zwischenziel</label>
+                        <label for="edit_mg_description" class="form-label fw-semibold">Notizen</label>
                         <textarea
                             class="form-control"
                             id="edit_mg_description"
@@ -1173,7 +1173,7 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 </div>
 
-<!-- Modal: Monatliches Zwischenziel löschen -->
+<!-- Modal: Zwischenziel löschen -->
 <div class="modal fade" id="deleteMonthlyGoalModal" tabindex="-1" aria-labelledby="deleteMonthlyGoalModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -1186,7 +1186,7 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
                 <div class="modal-body">
                     <p class="mb-2">
-                        Möchtest du das folgende monatliche Zwischenziel wirklich löschen?
+                        Möchtest du das folgende Zwischenziel wirklich löschen?
                     </p>
                     <p class="fw-bold text-dark mb-0" id="delete_mg_title"></p>
                 </div>
