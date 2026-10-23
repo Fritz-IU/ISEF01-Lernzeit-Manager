@@ -69,24 +69,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'save_monthly_budget') {
             $targetMonth = $goalController->saveMonthlyBudget($userId, $_POST);
             $_SESSION['goals_success'] = 'Das Zeitbudget für ' . GoalController::formatYearMonth($targetMonth) . ' wurde gespeichert.';
-            header('Location: goals.php?month=' . urlencode($targetMonth) . '#monatsplanung');
+            header('Location: goals.php?month=' . urlencode($targetMonth));
             exit;
         } elseif ($action === 'create_monthly_goal') {
             $targetMonth = $goalController->createMonthlyGoal($userId, $_POST);
             $_SESSION['goals_success'] = 'Das Zwischenziel wurde erfolgreich angelegt.';
-            header('Location: goals.php?month=' . urlencode($targetMonth) . '#monatsplanung');
+            header('Location: goals.php?month=' . urlencode($targetMonth));
             exit;
         } elseif ($action === 'update_monthly_goal') {
             $monthlyGoalId = isset($_POST['monthly_goal_id']) ? (int) $_POST['monthly_goal_id'] : 0;
             $targetMonth = $goalController->updateMonthlyGoal($monthlyGoalId, $userId, $_POST);
             $_SESSION['goals_success'] = 'Das Zwischenziel wurde erfolgreich aktualisiert.';
-            header('Location: goals.php?month=' . urlencode($targetMonth) . '#monatsplanung');
+            header('Location: goals.php?month=' . urlencode($targetMonth));
             exit;
         } elseif ($action === 'delete_monthly_goal') {
             $monthlyGoalId = isset($_POST['monthly_goal_id']) ? (int) $_POST['monthly_goal_id'] : 0;
             $targetMonth = $goalController->deleteMonthlyGoal($monthlyGoalId, $userId);
             $_SESSION['goals_success'] = 'Das Zwischenziel wurde erfolgreich gelöscht.';
-            header('Location: goals.php?month=' . urlencode($targetMonth) . '#monatsplanung');
+            header('Location: goals.php?month=' . urlencode($targetMonth));
             exit;
         } else {
             $errorMessage = 'Ungültige Aktion.';
@@ -369,13 +369,21 @@ require_once __DIR__ . '/includes/header.php';
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-body p-3">
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <a href="goals.php?month=<?= urlencode((string) $monthlyPlanning['prev_month']) ?>#monatsplanung" class="btn btn-sm btn-outline-secondary">
+                <a
+                    href="goals.php?month=<?= urlencode((string) $monthlyPlanning['prev_month']) ?>"
+                    data-month-switch="<?= htmlspecialchars((string) $monthlyPlanning['prev_month'], ENT_QUOTES) ?>"
+                    class="btn btn-sm btn-outline-secondary"
+                >
                     &lsaquo; <?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['prev_month'], false)) ?>
                 </a>
                 <span class="text-muted small fw-semibold d-none d-md-inline">
                     Monatsübersicht
                 </span>
-                <a href="goals.php?month=<?= urlencode((string) $monthlyPlanning['next_month']) ?>#monatsplanung" class="btn btn-sm btn-outline-secondary">
+                <a
+                    href="goals.php?month=<?= urlencode((string) $monthlyPlanning['next_month']) ?>"
+                    data-month-switch="<?= htmlspecialchars((string) $monthlyPlanning['next_month'], ENT_QUOTES) ?>"
+                    class="btn btn-sm btn-outline-secondary"
+                >
                     <?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['next_month'], false)) ?> &rsaquo;
                 </a>
             </div>
@@ -401,7 +409,8 @@ require_once __DIR__ . '/includes/header.php';
                     ?>
                     <div class="col-6 col-md-4 col-lg-2">
                         <a
-                            href="goals.php?month=<?= urlencode((string) $ym) ?>#monatsplanung"
+                            href="goals.php?month=<?= urlencode((string) $ym) ?>"
+                            data-month-switch="<?= htmlspecialchars((string) $ym, ENT_QUOTES) ?>"
                             class="card h-100 text-decoration-none border month-tab-link <?= $tabCardClasses ?>"
                             role="tab"
                             aria-selected="<?= $isTabSelected ? 'true' : 'false' ?>"
@@ -1154,7 +1163,7 @@ require_once __DIR__ . '/includes/header.php';
 </div>
 
 <?php
-$extraScripts = '<script src="assets/js/goals.js"></script>';
+$extraScripts = '<script src="assets/js/goals.js?v=' . filemtime(__DIR__ . '/assets/js/goals.js') . '"></script>';
 require_once __DIR__ . '/includes/footer.php';
 ?>
 
