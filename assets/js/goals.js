@@ -124,6 +124,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Synchronisiert den Wechsel zwischen "Semesterübersicht" und "Monatsplanung"
+  // mit der URL in der Adresszeile, ohne die Seite neu zu laden.
+  document.querySelectorAll('[data-view-tab]').forEach((tabBtn) => {
+    tabBtn.addEventListener('shown.bs.tab', () => {
+      const viewTab = tabBtn.getAttribute('data-view-tab') || 'semester';
+      const section = document.getElementById('monatsplanung');
+      const currentMonth = section ? section.getAttribute('data-selected-month') : '';
+      const params = new URLSearchParams();
+      params.set('tab', viewTab);
+      if (currentMonth) {
+        params.set('month', currentMonth);
+      }
+      window.history.replaceState(null, '', `goals.php?${params.toString()}`);
+    });
+  });
+
   /**
    * Lädt den Bereich #monatsplanung für den gewählten Monat im Hintergrund nach
    * und tauscht ihn ohne Seiten-Reload und ohne Scroll-Sprung aus.
@@ -134,7 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const section = document.getElementById('monatsplanung');
     if (!section) return;
 
-    const url = `goals.php?month=${encodeURIComponent(targetMonth)}`;
+    const url = `goals.php?tab=month&month=${encodeURIComponent(targetMonth)}`;
 
     try {
       const response = await fetch(url, {
@@ -158,8 +174,17 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // Monatsbereich ohne Scroll-Sprung aktualisieren
+      // Monatsbereich und Data-Attribute ohne Scroll-Sprung aktualisieren
       section.innerHTML = newSection.innerHTML;
+      section.setAttribute('data-selected-month', targetMonth);
+      const newShortLabel = newSection.getAttribute('data-selected-month-short');
+      if (newShortLabel) {
+        section.setAttribute('data-selected-month-short', newShortLabel);
+        const tabMonthBadge = document.getElementById('tab-month-badge');
+        if (tabMonthBadge) {
+          tabMonthBadge.textContent = newShortLabel;
+        }
+      }
 
       // URL in der Adresszeile aktualisieren, ohne zu scrollen
       window.history.replaceState(null, '', url);
