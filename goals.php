@@ -37,12 +37,15 @@ $goalDAO = new GoalDAO($db);
 $goalController = new GoalController($goalDAO);
 
 $errorMessage = '';
+$errorField = null;
+$failedAction = '';
 
 // Erfolgsmeldung aus der Session übernehmen (gesetzt vor dem Redirect nach POST)
 $successMessage = (string) ($_SESSION['goals_success'] ?? '');
 unset($_SESSION['goals_success']);
 
 // Formularverarbeitung für Lernziele sowie monatliche Budgets und Zwischenziele.
+// Lernziele anlegen/bearbeiten läuft per JavaScript über api/goals.php; dieser Block dient dort als Fallback ohne JavaScript.
 // Nach erfolgreicher Aktion wird per Redirect auf GET umgeleitet (Post/Redirect/Get),
 // damit ein Neuladen der Seite die Aktion nicht erneut ausführt.
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -104,9 +107,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } catch (ValidationException $e) {
         $errorMessage = $e->getMessage();
+        $errorField = $e->getField();
+        $failedAction = $action;
     } catch (Throwable $e) {
         error_log((string) $e);
         $errorMessage = 'Es ist ein technischer Fehler aufgetreten. Bitte versuche es später erneut.';
+        $failedAction = $action;
     }
 }
 
@@ -133,6 +139,20 @@ $isTotalOverAllocated = $totalHours > 0 && $totalPlannedAllMonths > $totalHours;
 $defaultStartDate = date('Y-m-d');
 $defaultEndDate = date('Y-m-d', strtotime('+6 months'));
 
+// Vorbefüllte Werte bei fehlgeschlagenem POST-Fallback
+$createTitleVal = $failedAction === 'create' && is_string($_POST['title'] ?? null) ? $_POST['title'] : '';
+$createHoursVal = $failedAction === 'create' && is_string($_POST['target_hours'] ?? null) ? $_POST['target_hours'] : '';
+$createStartVal = $failedAction === 'create' && is_string($_POST['start_date'] ?? null) ? $_POST['start_date'] : $defaultStartDate;
+$createEndVal = $failedAction === 'create' && is_string($_POST['end_date'] ?? null) ? $_POST['end_date'] : $defaultEndDate;
+$createDescVal = $failedAction === 'create' && is_string($_POST['description'] ?? null) ? $_POST['description'] : '';
+
+$editIdVal = $failedAction === 'update' && is_string($_POST['goal_id'] ?? null) ? $_POST['goal_id'] : '';
+$editTitleVal = $failedAction === 'update' && is_string($_POST['title'] ?? null) ? $_POST['title'] : '';
+$editHoursVal = $failedAction === 'update' && is_string($_POST['target_hours'] ?? null) ? $_POST['target_hours'] : '';
+$editStartVal = $failedAction === 'update' && is_string($_POST['start_date'] ?? null) ? $_POST['start_date'] : '';
+$editEndVal = $failedAction === 'update' && is_string($_POST['end_date'] ?? null) ? $_POST['end_date'] : '';
+$editDescVal = $failedAction === 'update' && is_string($_POST['description'] ?? null) ? $_POST['description'] : '';
+
 $pageTitle = 'Lernzielplanung – Lernzeit-Manager';
 $activeNav = 'goals';
 
@@ -157,7 +177,7 @@ require_once __DIR__ . '/includes/header.php';
 </div>
 
 <!-- Statusmeldungen -->
-<?php if ($errorMessage !== ''): ?>
+<?php if ($errorMessage !== '' && $failedAction !== 'create' && $failedAction !== 'update'): ?>
     <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
         <strong>Fehler:</strong> <?= htmlspecialchars($errorMessage) ?>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Schließen"></button>
@@ -755,10 +775,10 @@ require_once __DIR__ . '/includes/header.php';
 </div>
 
 <!-- Modal: Lernziel erstellen -->
-<div class="modal fade" id="createGoalModal" tabindex="-1" aria-labelledby="createGoalModalLabel" aria-hidden="true">
+<div class="modal fade" id="createGoalModal" tabindex="-1" aria-labelledby="createGoalModalLabel" aria-hidden="true"<?= $failedAction === 'create' ? ' data-auto-open="true"' : '' ?>>
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <form action="goals.php" method="POST">
+            <form action="goals.php" method="POST" id="createGoalForm" data-ajax-form>
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
                 <input type="hidden" name="action" value="create">
                 <input type="hidden" name="redirect_month" value="<?= htmlspecialchars($selectedMonth) ?>">
@@ -767,31 +787,39 @@ require_once __DIR__ . '/includes/header.php';
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
                 </div>
                 <div class="modal-body">
+                    <div id="create-goal-alert" class="alert alert-danger<?= ($failedAction === 'create' && $errorMessage !== '') ? '' : ' d-none' ?>" role="alert">
+                        <?php if ($failedAction === 'create' && $errorMessage !== ''): ?>
+                            <strong>Fehler:</strong> <?= htmlspecialchars($errorMessage) ?>
+                        <?php endif; ?>
+                    </div>
+
                     <div class="mb-3">
                         <label for="create_title" class="form-label fw-semibold">Lernziel <span class="text-danger">*</span></label>
                         <input
                             type="text"
-                            class="form-control"
+                            class="form-control<?= ($failedAction === 'create' && $errorField === 'title') ? ' is-invalid' : '' ?>"
                             id="create_title"
                             name="title"
                             maxlength="150"
                             placeholder="z. B. Software Engineering"
+                            value="<?= htmlspecialchars($createTitleVal) ?>"
                             required
                         >
                     </div>
 
                     <div class="mb-3">
                         <label for="create_target_hours" class="form-label fw-semibold">Geplante Zielstunden <span class="text-danger">*</span></label>
-                        <div class="input-group">
+                        <div class="input-group has-validation">
                             <input
                                 type="number"
-                                class="form-control"
+                                class="form-control<?= ($failedAction === 'create' && $errorField === 'target_hours') ? ' is-invalid' : '' ?>"
                                 id="create_target_hours"
                                 name="target_hours"
                                 step="0.5"
                                 min="0.5"
                                 max="1500"
                                 placeholder="z. B. 150"
+                                value="<?= htmlspecialchars($createHoursVal) ?>"
                                 required
                             >
                             <span class="input-group-text">Stunden</span>
@@ -804,10 +832,11 @@ require_once __DIR__ . '/includes/header.php';
                             <label for="create_start_date" class="form-label fw-semibold">Startdatum <span class="text-danger">*</span></label>
                             <input
                                 type="date"
-                                class="form-control"
+                                class="form-control<?= ($failedAction === 'create' && $errorField === 'start_date') ? ' is-invalid' : '' ?>"
                                 id="create_start_date"
                                 name="start_date"
-                                value="<?= htmlspecialchars($defaultStartDate) ?>"
+                                value="<?= htmlspecialchars($createStartVal) ?>"
+                                data-default="<?= htmlspecialchars($defaultStartDate) ?>"
                                 required
                             >
                         </div>
@@ -815,10 +844,11 @@ require_once __DIR__ . '/includes/header.php';
                             <label for="create_end_date" class="form-label fw-semibold">Enddatum <span class="text-danger">*</span></label>
                             <input
                                 type="date"
-                                class="form-control"
+                                class="form-control<?= ($failedAction === 'create' && $errorField === 'end_date') ? ' is-invalid' : '' ?>"
                                 id="create_end_date"
                                 name="end_date"
-                                value="<?= htmlspecialchars($defaultEndDate) ?>"
+                                value="<?= htmlspecialchars($createEndVal) ?>"
+                                data-default="<?= htmlspecialchars($defaultEndDate) ?>"
                                 required
                             >
                         </div>
@@ -827,18 +857,18 @@ require_once __DIR__ . '/includes/header.php';
                     <div class="mb-3">
                         <label for="create_description" class="form-label fw-semibold">Notizen</label>
                         <textarea
-                            class="form-control"
+                            class="form-control<?= ($failedAction === 'create' && $errorField === 'description') ? ' is-invalid' : '' ?>"
                             id="create_description"
                             name="description"
                             rows="3"
                             maxlength="2000"
                             placeholder="Optionale Notizen, Themenblöcke oder Klausurtermin..."
-                        ></textarea>
+                        ><?= htmlspecialchars($createDescVal) ?></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Abbrechen</button>
-                    <button type="submit" class="btn btn-primary">Lernziel speichern</button>
+                    <button type="submit" id="create-goal-submit" class="btn btn-primary">Lernziel speichern</button>
                 </div>
             </form>
         </div>
@@ -846,42 +876,50 @@ require_once __DIR__ . '/includes/header.php';
 </div>
 
 <!-- Modal: Lernziel bearbeiten -->
-<div class="modal fade" id="editGoalModal" tabindex="-1" aria-labelledby="editGoalModalLabel" aria-hidden="true">
+<div class="modal fade" id="editGoalModal" tabindex="-1" aria-labelledby="editGoalModalLabel" aria-hidden="true"<?= $failedAction === 'update' ? ' data-auto-open="true"' : '' ?>>
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <form action="goals.php" method="POST" id="editGoalForm">
+            <form action="goals.php" method="POST" id="editGoalForm" data-ajax-form>
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
                 <input type="hidden" name="action" value="update">
                 <input type="hidden" name="redirect_month" value="<?= htmlspecialchars($selectedMonth) ?>">
-                <input type="hidden" name="goal_id" id="edit_goal_id" value="">
+                <input type="hidden" name="goal_id" id="edit_goal_id" value="<?= htmlspecialchars($editIdVal) ?>">
                 <div class="modal-header">
                     <h5 class="modal-title fw-bold" id="editGoalModalLabel">Lernziel bearbeiten</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
                 </div>
                 <div class="modal-body">
+                    <div id="edit-goal-alert" class="alert alert-danger<?= ($failedAction === 'update' && $errorMessage !== '') ? '' : ' d-none' ?>" role="alert">
+                        <?php if ($failedAction === 'update' && $errorMessage !== ''): ?>
+                            <strong>Fehler:</strong> <?= htmlspecialchars($errorMessage) ?>
+                        <?php endif; ?>
+                    </div>
+
                     <div class="mb-3">
                         <label for="edit_title" class="form-label fw-semibold">Lernziel <span class="text-danger">*</span></label>
                         <input
                             type="text"
-                            class="form-control"
+                            class="form-control<?= ($failedAction === 'update' && $errorField === 'title') ? ' is-invalid' : '' ?>"
                             id="edit_title"
                             name="title"
                             maxlength="150"
+                            value="<?= htmlspecialchars($editTitleVal) ?>"
                             required
                         >
                     </div>
 
                     <div class="mb-3">
                         <label for="edit_target_hours" class="form-label fw-semibold">Geplante Zielstunden <span class="text-danger">*</span></label>
-                        <div class="input-group">
+                        <div class="input-group has-validation">
                             <input
                                 type="number"
-                                class="form-control"
+                                class="form-control<?= ($failedAction === 'update' && $errorField === 'target_hours') ? ' is-invalid' : '' ?>"
                                 id="edit_target_hours"
                                 name="target_hours"
                                 step="0.5"
                                 min="0.5"
                                 max="1500"
+                                value="<?= htmlspecialchars($editHoursVal) ?>"
                                 required
                             >
                             <span class="input-group-text">Stunden</span>
@@ -893,9 +931,10 @@ require_once __DIR__ . '/includes/header.php';
                             <label for="edit_start_date" class="form-label fw-semibold">Startdatum <span class="text-danger">*</span></label>
                             <input
                                 type="date"
-                                class="form-control"
+                                class="form-control<?= ($failedAction === 'update' && $errorField === 'start_date') ? ' is-invalid' : '' ?>"
                                 id="edit_start_date"
                                 name="start_date"
+                                value="<?= htmlspecialchars($editStartVal) ?>"
                                 required
                             >
                         </div>
@@ -903,9 +942,10 @@ require_once __DIR__ . '/includes/header.php';
                             <label for="edit_end_date" class="form-label fw-semibold">Enddatum <span class="text-danger">*</span></label>
                             <input
                                 type="date"
-                                class="form-control"
+                                class="form-control<?= ($failedAction === 'update' && $errorField === 'end_date') ? ' is-invalid' : '' ?>"
                                 id="edit_end_date"
                                 name="end_date"
+                                value="<?= htmlspecialchars($editEndVal) ?>"
                                 required
                             >
                         </div>
@@ -914,17 +954,17 @@ require_once __DIR__ . '/includes/header.php';
                     <div class="mb-3">
                         <label for="edit_description" class="form-label fw-semibold">Notizen</label>
                         <textarea
-                            class="form-control"
+                            class="form-control<?= ($failedAction === 'update' && $errorField === 'description') ? ' is-invalid' : '' ?>"
                             id="edit_description"
                             name="description"
                             rows="3"
                             maxlength="2000"
-                        ></textarea>
+                        ><?= htmlspecialchars($editDescVal) ?></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Abbrechen</button>
-                    <button type="submit" class="btn btn-primary">Änderungen speichern</button>
+                    <button type="submit" id="edit-goal-submit" class="btn btn-primary">Änderungen speichern</button>
                 </div>
             </form>
         </div>
@@ -963,7 +1003,7 @@ require_once __DIR__ . '/includes/header.php';
 <div class="modal fade" id="monthlyBudgetModal" tabindex="-1" aria-labelledby="monthlyBudgetModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <form action="goals.php" method="POST">
+            <form action="goals.php" method="POST" id="monthlyBudgetForm" data-ajax-form>
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
                 <input type="hidden" name="action" value="save_monthly_budget">
                 <div class="modal-header">
@@ -971,6 +1011,8 @@ require_once __DIR__ . '/includes/header.php';
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
                 </div>
                 <div class="modal-body">
+                    <div id="monthly-budget-alert" class="alert alert-danger d-none" role="alert"></div>
+
                     <div class="mb-3">
                         <label for="budget_year_month" class="form-label fw-semibold">Monat <span class="text-danger">*</span></label>
                         <input
@@ -1016,7 +1058,7 @@ require_once __DIR__ . '/includes/header.php';
 <div class="modal fade" id="createMonthlyGoalModal" tabindex="-1" aria-labelledby="createMonthlyGoalModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <form action="goals.php" method="POST">
+            <form action="goals.php" method="POST" id="createMonthlyGoalForm" data-ajax-form>
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
                 <input type="hidden" name="action" value="create_monthly_goal">
                 <div class="modal-header">
@@ -1024,6 +1066,8 @@ require_once __DIR__ . '/includes/header.php';
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
                 </div>
                 <div class="modal-body">
+                    <div id="create-mg-alert" class="alert alert-danger d-none" role="alert"></div>
+
                     <div class="mb-3">
                         <label for="create_mg_goal_id" class="form-label fw-semibold">Zugehöriges Lernziel <span class="text-danger">*</span></label>
                         <select class="form-select" id="create_mg_goal_id" name="goal_id" required>
@@ -1109,7 +1153,7 @@ require_once __DIR__ . '/includes/header.php';
 <div class="modal fade" id="editMonthlyGoalModal" tabindex="-1" aria-labelledby="editMonthlyGoalModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <form action="goals.php" method="POST">
+            <form action="goals.php" method="POST" id="editMonthlyGoalForm" data-ajax-form>
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
                 <input type="hidden" name="action" value="update_monthly_goal">
                 <input type="hidden" name="monthly_goal_id" id="edit_mg_id" value="">
@@ -1118,6 +1162,8 @@ require_once __DIR__ . '/includes/header.php';
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
                 </div>
                 <div class="modal-body">
+                    <div id="edit-mg-alert" class="alert alert-danger d-none" role="alert"></div>
+
                     <div class="mb-3">
                         <label for="edit_mg_goal_id" class="form-label fw-semibold">Zugehöriges Lernziel <span class="text-danger">*</span></label>
                         <select class="form-select" id="edit_mg_goal_id" name="goal_id" required>

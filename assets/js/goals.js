@@ -1,6 +1,22 @@
 // assets/js/goals.js
 
 document.addEventListener('DOMContentLoaded', () => {
+  const createModalEl = document.getElementById('createGoalModal');
+  const createForm = document.getElementById('createGoalForm');
+  const editModalEl = document.getElementById('editGoalModal');
+  const editForm = document.getElementById('editGoalForm');
+  const createMonthlyForm = document.getElementById('createMonthlyGoalForm');
+
+  // Meldungen für Eingaben, die der Browser selbst nicht als Zahl bzw. Datum lesen kann
+  const BAD_INPUT_MESSAGES = {
+    target_hours: 'Die Zielstunden müssen eine Zahl sein.',
+    planned_hours: 'Die geplanten Lernstunden müssen eine Zahl sein.',
+    budget_hours: 'Das monatliche Zeitbudget muss eine Zahl sein.',
+    start_date: 'Das Startdatum muss im gültigen Format JJJJ-MM-TT vorliegen.',
+    end_date: 'Das Enddatum muss im gültigen Format JJJJ-MM-TT vorliegen.',
+    year_month: 'Der Monat muss im gültigen Format JJJJ-MM vorliegen.',
+  };
+
   // Scroll-Position nach Formular-Submit (Post/Redirect/Get) wiederherstellen,
   // damit die Seite nach dem Speichern ruhig an derselben Stelle bleibt.
   const savedScrollY = sessionStorage.getItem('goals_scroll_y');
@@ -15,6 +31,199 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('submit', (event) => {
     if (event.target && event.target.tagName === 'FORM') {
       sessionStorage.setItem('goals_scroll_y', String(window.scrollY));
+    }
+  });
+
+  /**
+   * Liefert die Fehlerbox im Modal eines Formulars.
+   * @param {HTMLFormElement|null} form
+   * @returns {HTMLElement|null}
+   */
+  function getFormAlert(form) {
+    return form ? form.querySelector('.modal-body > .alert-danger') : null;
+  }
+
+  /**
+   * Entfernt die Rotmarkierung (is-invalid) eines einzelnen Eingabefelds.
+   * @param {Element} field
+   */
+  function clearFieldError(field) {
+    field.classList.remove('is-invalid');
+    field.removeAttribute('aria-invalid');
+    field.removeAttribute('aria-describedby');
+  }
+
+  /**
+   * Entfernt Fehlermeldung und rote Markierungen (is-invalid) innerhalb eines Formulars.
+   * @param {HTMLFormElement|null} form
+   */
+  function clearFormErrors(form) {
+    if (!form) return;
+
+    const alertBox = getFormAlert(form);
+    if (alertBox) {
+      alertBox.className = 'alert alert-danger d-none';
+      alertBox.textContent = '';
+    }
+
+    form.querySelectorAll('.is-invalid').forEach(clearFieldError);
+  }
+
+  /**
+   * Zeigt eine Fehlermeldung im Modal an und markiert optional das betroffene Eingabefeld rot.
+   * @param {HTMLFormElement} form
+   * @param {string} message
+   * @param {string|null} [fieldName]
+   */
+  function showFormError(form, message, fieldName = null) {
+    const alertBox = getFormAlert(form);
+    if (alertBox) {
+      alertBox.className = 'alert alert-danger mb-3';
+      alertBox.textContent = '';
+
+      const strong = document.createElement('strong');
+      strong.textContent = 'Fehler: ';
+      alertBox.appendChild(strong);
+      alertBox.appendChild(document.createTextNode(message));
+    }
+
+    if (fieldName) {
+      const fieldEl = form.querySelector(`[name="${fieldName}"]`);
+      if (fieldEl) {
+        fieldEl.classList.add('is-invalid');
+        fieldEl.setAttribute('aria-invalid', 'true');
+        if (alertBox && alertBox.id) {
+          fieldEl.setAttribute('aria-describedby', alertBox.id);
+        }
+        fieldEl.focus();
+      }
+    }
+  }
+
+  /**
+   * Richtet die asynchrone Übermittlung via Fetch an api/goals.php ein. Bei Fehlern bleibt
+   * das Modal mit allen Eingaben offen; nach Erfolg wird auf die passende Ansicht weitergeleitet.
+   * @param {HTMLFormElement} form
+   */
+  function setupAjaxForm(form) {
+    // Native Browser-Tooltips deaktivieren, damit alle Fehler einheitlich im Modal dargestellt werden
+    form.noValidate = true;
+
+    // Rote Markierung eines Feldes entfernen, sobald der Nutzer die Eingabe korrigiert
+    form.querySelectorAll('.form-control, .form-select').forEach((field) => {
+      const clearSingleField = () => {
+        if (field.classList.contains('is-invalid')) {
+          clearFieldError(field);
+        }
+      };
+      field.addEventListener('input', clearSingleField);
+      field.addEventListener('change', clearSingleField);
+    });
+
+    const submitBtn = form.querySelector('[type="submit"]');
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      clearFormErrors(form);
+
+      // Prüfen, ob der Browser eine syntaktisch ungültige Zahl oder ein ungültiges Datum erkannt hat
+      for (const [fieldName, message] of Object.entries(BAD_INPUT_MESSAGES)) {
+        const input = form.querySelector(`[name="${fieldName}"]`);
+        if (input && input.validity && input.validity.badInput) {
+          showFormError(form, message, fieldName);
+          return;
+        }
+      }
+
+      // Alle Formularfelder inkl. CSRF-Token und Aktion übernehmen
+      const payload = Object.fromEntries(new FormData(form).entries());
+
+      const originalBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML =
+          '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Speichern…';
+      }
+
+      try {
+        const response = await fetch('api/goals.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        // Antwort ohne gültiges JSON (z. B. PHP-Fehlerseite) als technischen Fehler behandeln
+        const result = await response.json().catch(() => null);
+        if (!result) {
+          showFormError(
+            form,
+            'Es ist ein technischer Fehler aufgetreten. Bitte versuche es später erneut.'
+          );
+          return;
+        }
+
+        if (response.ok && result.success) {
+          window.location.href = result.redirect || 'goals.php';
+          return;
+        }
+
+        showFormError(form, result.message || 'Bitte überprüfe deine Eingaben.', result.field || null);
+      } catch (error) {
+        showFormError(form, 'Netzwerkfehler: Die Eingaben konnten nicht gespeichert werden.');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnHtml;
+        }
+      }
+    });
+
+    // Fehlermarkierungen beim Schließen des Modals entfernen
+    const modalEl = form.closest('.modal');
+    if (modalEl) {
+      modalEl.addEventListener('hidden.bs.modal', () => clearFormErrors(form));
+    }
+  }
+
+  /**
+   * Setzt das Formular für ein neues Lernziel auf die Standardwerte zurück.
+   */
+  function resetCreateGoalForm() {
+    if (!createForm) return;
+    createForm.reset();
+    clearFormErrors(createForm);
+
+    const startInput = createForm.querySelector('[name="start_date"]');
+    const endInput = createForm.querySelector('[name="end_date"]');
+    if (startInput && startInput.dataset.default) {
+      startInput.value = startInput.dataset.default;
+    }
+    if (endInput && endInput.dataset.default) {
+      endInput.value = endInput.dataset.default;
+    }
+  }
+
+  document.querySelectorAll('form[data-ajax-form]').forEach(setupAjaxForm);
+
+  // Formular beim Schließen oder erneuten Öffnen des Erstellen-Modals zurücksetzen
+  if (createModalEl) {
+    createModalEl.addEventListener('show.bs.modal', () => {
+      if (createModalEl.dataset.autoOpen !== 'true') {
+        resetCreateGoalForm();
+      }
+    });
+
+    createModalEl.addEventListener('hidden.bs.modal', resetCreateGoalForm);
+  }
+
+  // Beim Schließen der Bearbeiten-Modals ungespeicherte Eingaben verwerfen
+  [editForm, createMonthlyForm, document.getElementById('editMonthlyGoalForm')].forEach((form) => {
+    const modalEl = form ? form.closest('.modal') : null;
+    if (modalEl) {
+      modalEl.addEventListener('hidden.bs.modal', () => form.reset());
     }
   });
 
@@ -37,6 +246,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Modal: Lernziel bearbeiten
     const editGoalBtn = target.closest('.edit-goal-btn');
     if (editGoalBtn) {
+      clearFormErrors(editForm);
+
       const editIdInput = document.getElementById('edit_goal_id');
       const editTitleInput = document.getElementById('edit_title');
       const editHoursInput = document.getElementById('edit_target_hours');
@@ -208,4 +419,16 @@ document.addEventListener('DOMContentLoaded', () => {
       window.location.href = url;
     }
   }
+
+  // Falls nach einem serverseitigen POST-Fallback ein Modal automatisch geöffnet werden soll
+  [createModalEl, editModalEl].forEach((modalEl) => {
+    if (
+      modalEl &&
+      modalEl.dataset.autoOpen === 'true' &&
+      typeof bootstrap !== 'undefined' &&
+      bootstrap.Modal
+    ) {
+      bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+  });
 });

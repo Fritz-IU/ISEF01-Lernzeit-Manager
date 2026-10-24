@@ -176,21 +176,21 @@ class GoalController
         // 1. Modul / Titel (Pflichtfeld)
         $titleRaw = $input['title'] ?? null;
         if (!is_string($titleRaw) || trim($titleRaw) === '') {
-            throw new ValidationException("Bitte gib einen Modul- bzw. Lernzielnamen an.");
+            throw new ValidationException("Bitte gib einen Modul- bzw. Lernzielnamen an.", 'title');
         }
         $title = trim($titleRaw);
         if (mb_strlen($title, 'UTF-8') > self::MAX_TITLE_LENGTH) {
-            throw new ValidationException("Der Name darf höchstens " . self::MAX_TITLE_LENGTH . " Zeichen lang sein.");
+            throw new ValidationException("Der Name darf höchstens " . self::MAX_TITLE_LENGTH . " Zeichen lang sein.", 'title');
         }
 
         // 2. Zielstunden (Pflichtfeld, positiv)
         $hoursRaw = $input['target_hours'] ?? null;
         if ($hoursRaw === null || (is_string($hoursRaw) && trim($hoursRaw) === '')) {
-            throw new ValidationException("Bitte gib die geplanten Zielstunden an.");
+            throw new ValidationException("Bitte gib die geplanten Zielstunden an.", 'target_hours');
         }
 
         if (!is_string($hoursRaw) && !is_int($hoursRaw) && !is_float($hoursRaw)) {
-            throw new ValidationException("Die Zielstunden müssen eine Zahl sein.");
+            throw new ValidationException("Die Zielstunden müssen eine Zahl sein.", 'target_hours');
         }
 
         // Kommas durch Punkte ersetzen (deutsches Eingabeformat unterstützen)
@@ -199,7 +199,7 @@ class GoalController
         }
 
         if (!is_numeric($hoursRaw)) {
-            throw new ValidationException("Die Zielstunden müssen eine Zahl sein.");
+            throw new ValidationException("Die Zielstunden müssen eine Zahl sein.", 'target_hours');
         }
 
         $targetHours = (float) $hoursRaw;
@@ -208,34 +208,34 @@ class GoalController
                 "Die Zielstunden müssen zwischen %.1f und %.1f Stunden liegen.",
                 self::MIN_TARGET_HOURS,
                 self::MAX_TARGET_HOURS
-            ));
+            ), 'target_hours');
         }
 
         // 3. Startdatum (Pflichtfeld, Format Y-m-d)
         $startDateRaw = $input['start_date'] ?? null;
         if (!is_string($startDateRaw) || trim($startDateRaw) === '') {
-            throw new ValidationException("Bitte gib ein Startdatum an.");
+            throw new ValidationException("Bitte gib ein Startdatum an.", 'start_date');
         }
         $startDate = trim($startDateRaw);
         $startDt = DateTimeImmutable::createFromFormat('Y-m-d', $startDate);
         if (!$startDt || $startDt->format('Y-m-d') !== $startDate) {
-            throw new ValidationException("Das Startdatum muss im gültigen Format JJJJ-MM-TT vorliegen.");
+            throw new ValidationException("Das Startdatum muss im gültigen Format JJJJ-MM-TT vorliegen.", 'start_date');
         }
 
         // 4. Enddatum (Pflichtfeld, Format Y-m-d)
         $endDateRaw = $input['end_date'] ?? null;
         if (!is_string($endDateRaw) || trim($endDateRaw) === '') {
-            throw new ValidationException("Bitte gib ein Enddatum an.");
+            throw new ValidationException("Bitte gib ein Enddatum an.", 'end_date');
         }
         $endDate = trim($endDateRaw);
         $endDt = DateTimeImmutable::createFromFormat('Y-m-d', $endDate);
         if (!$endDt || $endDt->format('Y-m-d') !== $endDate) {
-            throw new ValidationException("Das Enddatum muss im gültigen Format JJJJ-MM-TT vorliegen.");
+            throw new ValidationException("Das Enddatum muss im gültigen Format JJJJ-MM-TT vorliegen.", 'end_date');
         }
 
         // Logische Prüfung: Enddatum darf nicht vor dem Startdatum liegen
         if ($endDt < $startDt) {
-            throw new ValidationException("Das Enddatum darf zeitlich nicht vor dem Startdatum liegen.");
+            throw new ValidationException("Das Enddatum darf zeitlich nicht vor dem Startdatum liegen.", 'end_date');
         }
 
         // 5. Beschreibung (optional)
@@ -244,7 +244,7 @@ class GoalController
             $descTrimmed = trim($input['description']);
             if ($descTrimmed !== '') {
                 if (mb_strlen($descTrimmed, 'UTF-8') > self::MAX_DESCRIPTION_LENGTH) {
-                    throw new ValidationException("Die Beschreibung darf höchstens " . self::MAX_DESCRIPTION_LENGTH . " Zeichen lang sein.");
+                    throw new ValidationException("Die Beschreibung darf höchstens " . self::MAX_DESCRIPTION_LENGTH . " Zeichen lang sein.", 'description');
                 }
                 $description = $descTrimmed;
             }
@@ -279,7 +279,7 @@ class GoalController
         }
 
         if (!is_string($budgetRaw) && !is_int($budgetRaw) && !is_float($budgetRaw)) {
-            throw new ValidationException("Das monatliche Zeitbudget muss eine Zahl sein.");
+            throw new ValidationException("Das monatliche Zeitbudget muss eine Zahl sein.", 'budget_hours');
         }
 
         if (is_string($budgetRaw)) {
@@ -287,12 +287,12 @@ class GoalController
         }
 
         if (!is_numeric($budgetRaw)) {
-            throw new ValidationException("Das monatliche Zeitbudget muss eine Zahl sein.");
+            throw new ValidationException("Das monatliche Zeitbudget muss eine Zahl sein.", 'budget_hours');
         }
 
         $budgetFloat = (float) $budgetRaw;
         if (!is_finite($budgetFloat)) {
-            throw new ValidationException("Das monatliche Zeitbudget muss eine Zahl sein.");
+            throw new ValidationException("Das monatliche Zeitbudget muss eine Zahl sein.", 'budget_hours');
         }
 
         $budgetHours = round($budgetFloat, 2);
@@ -300,7 +300,7 @@ class GoalController
             throw new ValidationException(sprintf(
                 "Das monatliche Zeitbudget muss zwischen 0,0 und %.1f Stunden liegen.",
                 self::MAX_MONTHLY_HOURS
-            ));
+            ), 'budget_hours');
         }
 
         if ($budgetHours === 0.0) {
@@ -410,35 +410,46 @@ class GoalController
             $goalId = 0;
         }
         if ($goalId <= 0) {
-            throw new ValidationException("Bitte wähle ein zugehöriges Lernziel aus.");
+            throw new ValidationException("Bitte wähle ein zugehöriges Lernziel aus.", 'goal_id');
         }
 
         $parentGoal = $this->goalDAO->findByIdAndUserId($goalId, $userId);
         if ($parentGoal === null) {
-            throw new ValidationException("Das ausgewählte Lernziel existiert nicht oder gehört einem anderen Benutzer.");
+            throw new ValidationException("Das ausgewählte Lernziel existiert nicht oder gehört einem anderen Benutzer.", 'goal_id');
         }
 
         // 2. Planungsmonat prüfen (YYYY-MM)
         $yearMonth = $this->validateYearMonth($input['year_month'] ?? null);
 
+        // Der Monat muss im Zeitraum des Lernziels liegen (Vergleich auf Monatsebene)
+        $parentStartMonth = substr((string) $parentGoal['start_date'], 0, 7);
+        $parentEndMonth = substr((string) $parentGoal['end_date'], 0, 7);
+        if ($yearMonth < $parentStartMonth || $yearMonth > $parentEndMonth) {
+            throw new ValidationException(sprintf(
+                "Der Monat muss im Zeitraum des Lernziels liegen (%s bis %s).",
+                self::formatYearMonth($parentStartMonth),
+                self::formatYearMonth($parentEndMonth)
+            ), 'year_month');
+        }
+
         // 3. Bezeichnung des Zwischenziels (Pflichtfeld)
         $titleRaw = $input['title'] ?? null;
         if (!is_string($titleRaw) || trim($titleRaw) === '') {
-            throw new ValidationException("Bitte gib eine Bezeichnung für das Zwischenziel an.");
+            throw new ValidationException("Bitte gib eine Bezeichnung für das Zwischenziel an.", 'title');
         }
         $title = trim($titleRaw);
         if (mb_strlen($title, 'UTF-8') > self::MAX_TITLE_LENGTH) {
-            throw new ValidationException("Die Bezeichnung des Zwischenziels darf höchstens " . self::MAX_TITLE_LENGTH . " Zeichen lang sein.");
+            throw new ValidationException("Die Bezeichnung des Zwischenziels darf höchstens " . self::MAX_TITLE_LENGTH . " Zeichen lang sein.", 'title');
         }
 
         // 4. Geplante Lernzeit im Monat (Pflichtfeld, positiv)
         $hoursRaw = $input['planned_hours'] ?? null;
         if ($hoursRaw === null || (is_string($hoursRaw) && trim($hoursRaw) === '')) {
-            throw new ValidationException("Bitte gib die geplanten Lernstunden für dieses Zwischenziel an.");
+            throw new ValidationException("Bitte gib die geplanten Lernstunden für dieses Zwischenziel an.", 'planned_hours');
         }
 
         if (!is_string($hoursRaw) && !is_int($hoursRaw) && !is_float($hoursRaw)) {
-            throw new ValidationException("Die geplanten Lernstunden müssen eine Zahl sein.");
+            throw new ValidationException("Die geplanten Lernstunden müssen eine Zahl sein.", 'planned_hours');
         }
 
         if (is_string($hoursRaw)) {
@@ -446,7 +457,7 @@ class GoalController
         }
 
         if (!is_numeric($hoursRaw)) {
-            throw new ValidationException("Die geplanten Lernstunden müssen eine Zahl sein.");
+            throw new ValidationException("Die geplanten Lernstunden müssen eine Zahl sein.", 'planned_hours');
         }
 
         $plannedHours = (float) $hoursRaw;
@@ -455,7 +466,7 @@ class GoalController
                 "Die geplanten Lernstunden im Monat müssen zwischen %.1f und %.1f Stunden liegen.",
                 self::MIN_TARGET_HOURS,
                 self::MAX_MONTHLY_HOURS
-            ));
+            ), 'planned_hours');
         }
 
         // 5. Optionale Beschreibung / Notiz
@@ -464,7 +475,7 @@ class GoalController
             $descTrimmed = trim($input['description']);
             if ($descTrimmed !== '') {
                 if (mb_strlen($descTrimmed, 'UTF-8') > self::MAX_DESCRIPTION_LENGTH) {
-                    throw new ValidationException("Die Notiz darf höchstens " . self::MAX_DESCRIPTION_LENGTH . " Zeichen lang sein.");
+                    throw new ValidationException("Die Notiz darf höchstens " . self::MAX_DESCRIPTION_LENGTH . " Zeichen lang sein.", 'description');
                 }
                 $description = $descTrimmed;
             }
@@ -489,12 +500,12 @@ class GoalController
     public function validateYearMonth(mixed $yearMonthRaw): string
     {
         if (!is_string($yearMonthRaw) || trim($yearMonthRaw) === '') {
-            throw new ValidationException("Bitte wähle einen gültigen Planungsmonat aus.");
+            throw new ValidationException("Bitte wähle einen gültigen Planungsmonat aus.", 'year_month');
         }
 
         $yearMonth = trim($yearMonthRaw);
         if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $yearMonth)) {
-            throw new ValidationException("Der Monat muss im gültigen Format JJJJ-MM vorliegen.");
+            throw new ValidationException("Der Monat muss im gültigen Format JJJJ-MM vorliegen.", 'year_month');
         }
 
         return $yearMonth;

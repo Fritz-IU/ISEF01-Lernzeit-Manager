@@ -14,7 +14,7 @@ Dieses Dokument beschreibt die Architektur, Datenhaltung und Funktionsweise der 
 ### Warum wurde es so implementiert? (Entwurfsprinzipien)
 * **Separation of Concerns (SoC) & MVC/DAO-Muster:** Klare Trennung zwischen Benutzeroberfläche ([`goals.php`](../goals.php)), Controller-/Geschäftslogik ([`src/Controllers/GoalController.php`](../src/Controllers/GoalController.php)), Datenzugriffsschicht ([`src/DAO/GoalDAO.php`](../src/DAO/GoalDAO.php)) und MariaDB-Datenbank ([`sql/schema.sql`](../sql/schema.sql)).
 * **Mandantenisolation (Sicherheit):** Alle Lese-, Aktualisierungs- und Löschoperationen erzwingen die `user_id` der aktiven Benutzersitzung (`$_SESSION['user_id']`). Studierende können ausschließlich ihre eigenen Lernziele verwalten.
-* **Progressive Enhancement:** Voll funktionsfähige serverbasierte Formularabwicklung via POST (Funktioniert garantiert auch ohne JavaScript) ergänzt durch Bootstrap-5-Modals zur komfortablen Interaktion.
+* **Progressive Enhancement & Asynchrone Formularverarbeitung:** Alle Formulare zum Anlegen und Bearbeiten (Lernziele, Monatsbudget, Zwischenziele) werden per Fetch-API an [`api/goals.php`](../api/goals.php) übermittelt, sodass das Modal bei Validierungsfehlern geöffnet bleibt, Nutzereingaben nicht verloren gehen und fehlerhafte Eingabefelder direkt mit `is-invalid` rot markiert werden. Ergänzt durch einen serverseitigen POST-Fallback in [`goals.php`](../goals.php); Löschungen laufen direkt über diesen POST-Weg.
 
 ---
 
@@ -22,8 +22,10 @@ Dieses Dokument beschreibt die Architektur, Datenhaltung und Funktionsweise der 
 
 ```text
 lernzeit-manager/
+├── api/
+│   └── goals.php                # JSON-Endpunkt für asynchrone CRUD-Operationen & Validierungsfeedback
 ├── assets/
-│   └── js/goals.js              # Clientseitiges Befüllen der Modals (Bearbeiten, Löschen)
+│   └── js/goals.js              # Asynchrone Formularverarbeitung (Fetch), Fehler-Markierung & Modal-Steuerung
 ├── docs/
 │   └── goals.md                 # Diese Dokumentation
 ├── goals.php                    # UI / View für 6-Monats-Grobplanung (Tabelle, Kennzahlen, Modals)
@@ -35,7 +37,7 @@ lernzeit-manager/
 │   └── seed.sql                 # Synthetische Beispieldaten für Lernziele
 └── src/
     ├── Classes/
-    │   └── ValidationException.php # Exception für nutzerbezogene Validierungsfehler
+    │   └── ValidationException.php # Exception für nutzerbezogene Validierungsfehler (inkl. Feldzuordnung)
     ├── Controllers/
     │   └── GoalController.php   # Geschäftslogik & Validierung (Pflichtfelder, Datumslogik, Stunden)
     └── DAO/
@@ -121,6 +123,7 @@ CREATE TABLE monthly_goals (
 * **Beschreibung (`description`):** Optional, maximal 2000 Zeichen. Leere Zeichenketten werden in der Datenbank als `NULL` abgelegt.
 * **Monat (`year_month`):** Pflichtfeld im Format `JJJJ-MM` (`^\d{4}-(0[1-9]|1[0-2])$`).
 * **Monatliches Soll-Zeitbudget (`budget_hours`):** Numerisch zwischen 0,0 und 744,0 Stunden (`GoalController::MAX_MONTHLY_HOURS`). Bei leerem Wert oder `0` wird das hinterlegte Monatsbudget zurückgesetzt.
+* **Zwischenziel-Monat (`year_month`):** Pflichtfeld im Format JJJJ-MM. Der Monat muss im Zeitraum des zugehörigen Lernziels liegen (Vergleich auf Monatsebene zwischen `start_date` und `end_date`).
 * **Zwischenziel-Stunden (`planned_hours`):** Pflichtfeld, numerisch zwischen 0,5 und 744,0 Stunden. Überschreitet die Summe der Zwischenziele die Zielstunden des 6-Monats-Ziels oder das Monatsbudget, bleibt das Speichern erlaubt und die Oberfläche hebt die Überschreitung farblich hervor.
 
 ---
@@ -142,26 +145,30 @@ Kapselt sämtliche Datenbankinteraktionen und stellt atomare Methoden bereit:
 sequenceDiagram
     autonumber
     actor Nutzer as Studierende*r / Browser
-    participant View as goals.php
+    participant JS as assets/js/goals.js
+    participant API as api/goals.php
     participant Controller as GoalController
     participant DAO as GoalDAO
     participant DB as MariaDB
 
-    Nutzer->>View: Formular absenden (POST action=create)
-    View->>View: Prüfe User::isLoggedIn()
-    View->>Controller: createGoal(userId, $_POST)
+    Nutzer->>JS: Formular im Modal absenden (submit)
+    JS->>API: fetch POST (JSON: action=create, ...)
+    API->>API: Prüfe User::isLoggedIn()
+    API->>Controller: createGoal(userId, input)
     Controller->>Controller: validateAndParseInput()
     
     alt Validierung fehlgeschlagen
-        Controller-->>View: throw ValidationException("...")
-        View-->>Nutzer: Fehlermeldung (Alert) anzeigen
+        Controller-->>API: throw ValidationException(message, field)
+        API-->>JS: HTTP 422 JSON {success: false, message, field}
+        JS-->>Nutzer: Modal bleibt offen, Alert einblenden & Feld rot markieren (is-invalid)
     else Validierung erfolgreich
         Controller->>DAO: create(userId, title, desc, hours, start, end)
         DAO->>DB: Prepared Statement INSERT INTO learning_goals ...
         DB-->>DAO: lastInsertId
         DAO-->>Controller: int goalId
-        Controller-->>View: int goalId
-        View-->>Nutzer: Erfolgsmeldung & aktualisierte Liste
+        Controller-->>API: int goalId
+        API-->>JS: HTTP 200 JSON {success: true, goal_id}
+        JS-->>Nutzer: Reload goals.php -> Erfolgsmeldung & aktualisierte Liste
     end
 ```
 
@@ -172,6 +179,6 @@ sequenceDiagram
 1. **Schutz vor SQL-Injection:** Sämtliche Datenbankabfragen in `GoalDAO` werden ausnahmslos mit Prepared Statements (`PDO::ATTR_EMULATE_PREPARES => false`) und streng typisierten Bind-Parametern (`:user_id`, `:title`, `:description`, etc.) ausgeführt.
 2. **Schutz vor Cross-Site-Scripting (XSS):** Alle dynamischen Inhalte in `goals.php` (z. B. Modultitel, Notizen, Datumsangaben) werden bei der Ausgabe konsequent mit `htmlspecialchars()` maskiert; im JavaScript (`assets/js/goals.js`) werden Modalfelder über `.value` und `.textContent` befüllt.
 3. **Mandantenisolation & IDOR-Schutz:** Sämtliche CRUD-Operationen (`SELECT`, `UPDATE`, `DELETE`) sowie das Zuordnen eines Zwischenziels zu einem übergeordneten Lernziel (`goal_id`) binden zwingend die aktuelle `user_id` aus `$_SESSION['user_id']`. Ein Manipulieren von IDs in POST-Anfragen kann keine fremden Datensätze lesen, zuordnen oder verändern.
-4. **CSRF-Schutz (Cross-Site Request Forgery):** Jedes schreibende Formular auf `goals.php` überträgt ein kryptografisch sicheres Session-Token (`csrf_token` via `random_bytes(32)`), das serverseitig zeitkonstant mittels `hash_equals()` geprüft wird.
+4. **CSRF-Schutz (Cross-Site Request Forgery):** Jedes schreibende Formular auf `goals.php` überträgt ein kryptografisch sicheres Session-Token (`csrf_token` via `random_bytes(32)`), das serverseitig zeitkonstant mittels `hash_equals()` geprüft wird – sowohl im POST-Fallback von `goals.php` als auch in `api/goals.php` (dort HTTP 403 bei fehlendem oder falschem Token).
 5. **Sichere Löschoperationen:** Löschungen erfolgen ausschließlich per HTTP POST mit CSRF-Token und Bestätigungs-Modal (keine manipulierbaren GET-Links).
 
