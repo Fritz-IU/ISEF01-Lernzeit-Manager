@@ -3,51 +3,80 @@
 document.addEventListener('DOMContentLoaded', () => {
   const createModalEl = document.getElementById('createGoalModal');
   const createForm = document.getElementById('createGoalForm');
-  const createAlert = document.getElementById('create-goal-alert');
-  const createSubmitBtn = document.getElementById('create-goal-submit');
-
   const editModalEl = document.getElementById('editGoalModal');
   const editForm = document.getElementById('editGoalForm');
-  const editAlert = document.getElementById('edit-goal-alert');
-  const editSubmitBtn = document.getElementById('edit-goal-submit');
+  const createMonthlyForm = document.getElementById('createMonthlyGoalForm');
 
-  const editButtons = document.querySelectorAll('.edit-goal-btn');
-  const editIdInput = document.getElementById('edit_goal_id');
-  const editTitleInput = document.getElementById('edit_title');
-  const editHoursInput = document.getElementById('edit_target_hours');
-  const editStartInput = document.getElementById('edit_start_date');
-  const editEndInput = document.getElementById('edit_end_date');
-  const editDescInput = document.getElementById('edit_description');
+  // Meldungen für Eingaben, die der Browser selbst nicht als Zahl bzw. Datum lesen kann
+  const BAD_INPUT_MESSAGES = {
+    target_hours: 'Die Zielstunden müssen eine Zahl sein.',
+    planned_hours: 'Die geplanten Lernstunden müssen eine Zahl sein.',
+    budget_hours: 'Das monatliche Zeitbudget muss eine Zahl sein.',
+    start_date: 'Das Startdatum muss im gültigen Format JJJJ-MM-TT vorliegen.',
+    end_date: 'Das Enddatum muss im gültigen Format JJJJ-MM-TT vorliegen.',
+    year_month: 'Der Monat muss im gültigen Format JJJJ-MM vorliegen.',
+  };
+
+  // Scroll-Position nach Formular-Submit (Post/Redirect/Get) wiederherstellen,
+  // damit die Seite nach dem Speichern ruhig an derselben Stelle bleibt.
+  const savedScrollY = sessionStorage.getItem('goals_scroll_y');
+  if (savedScrollY !== null) {
+    sessionStorage.removeItem('goals_scroll_y');
+    const y = parseInt(savedScrollY, 10);
+    if (!Number.isNaN(y)) {
+      window.scrollTo({ top: y, behavior: 'instant' });
+    }
+  }
+
+  document.addEventListener('submit', (event) => {
+    if (event.target && event.target.tagName === 'FORM') {
+      sessionStorage.setItem('goals_scroll_y', String(window.scrollY));
+    }
+  });
+
+  /**
+   * Liefert die Fehlerbox im Modal eines Formulars.
+   * @param {HTMLFormElement|null} form
+   * @returns {HTMLElement|null}
+   */
+  function getFormAlert(form) {
+    return form ? form.querySelector('.modal-body > .alert-danger') : null;
+  }
+
+  /**
+   * Entfernt die Rotmarkierung (is-invalid) eines einzelnen Eingabefelds.
+   * @param {Element} field
+   */
+  function clearFieldError(field) {
+    field.classList.remove('is-invalid');
+    field.removeAttribute('aria-invalid');
+    field.removeAttribute('aria-describedby');
+  }
 
   /**
    * Entfernt Fehlermeldung und rote Markierungen (is-invalid) innerhalb eines Formulars.
    * @param {HTMLFormElement|null} form
-   * @param {HTMLElement|null} alertBox
    */
-  function clearFormErrors(form, alertBox) {
+  function clearFormErrors(form) {
+    if (!form) return;
+
+    const alertBox = getFormAlert(form);
     if (alertBox) {
       alertBox.className = 'alert alert-danger d-none';
       alertBox.textContent = '';
     }
 
-    if (!form) return;
-
-    const invalidFields = form.querySelectorAll('.is-invalid');
-    invalidFields.forEach((field) => {
-      field.classList.remove('is-invalid');
-      field.removeAttribute('aria-invalid');
-      field.removeAttribute('aria-describedby');
-    });
+    form.querySelectorAll('.is-invalid').forEach(clearFieldError);
   }
 
   /**
    * Zeigt eine Fehlermeldung im Modal an und markiert optional das betroffene Eingabefeld rot.
    * @param {HTMLFormElement} form
-   * @param {HTMLElement|null} alertBox
    * @param {string} message
    * @param {string|null} [fieldName]
    */
-  function showFormError(form, alertBox, message, fieldName = null) {
+  function showFormError(form, message, fieldName = null) {
+    const alertBox = getFormAlert(form);
     if (alertBox) {
       alertBox.className = 'alert alert-danger mb-3';
       alertBox.textContent = '';
@@ -72,78 +101,44 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * Richtet die asynchrone Formularübermittlung via Fetch für ein Lernziel-Formular ein.
-   * @param {HTMLFormElement|null} form
-   * @param {HTMLElement|null} alertBox
-   * @param {HTMLButtonElement|null} submitBtn
+   * Richtet die asynchrone Übermittlung via Fetch an api/goals.php ein. Bei Fehlern bleibt
+   * das Modal mit allen Eingaben offen; nach Erfolg wird auf die passende Ansicht weitergeleitet.
+   * @param {HTMLFormElement} form
    */
-  function setupGoalForm(form, alertBox, submitBtn) {
-    if (!form) return;
-
+  function setupAjaxForm(form) {
     // Native Browser-Tooltips deaktivieren, damit alle Fehler einheitlich im Modal dargestellt werden
     form.noValidate = true;
 
     // Rote Markierung eines Feldes entfernen, sobald der Nutzer die Eingabe korrigiert
-    const fields = form.querySelectorAll('.form-control');
-    fields.forEach((field) => {
+    form.querySelectorAll('.form-control, .form-select').forEach((field) => {
       const clearSingleField = () => {
         if (field.classList.contains('is-invalid')) {
-          field.classList.remove('is-invalid');
-          field.removeAttribute('aria-invalid');
-          field.removeAttribute('aria-describedby');
+          clearFieldError(field);
         }
       };
       field.addEventListener('input', clearSingleField);
       field.addEventListener('change', clearSingleField);
     });
 
+    const submitBtn = form.querySelector('[type="submit"]');
+
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
-      clearFormErrors(form, alertBox);
-
-      const actionInput = form.querySelector('[name="action"]');
-      const goalIdInput = form.querySelector('[name="goal_id"]');
-      const titleInput = form.querySelector('[name="title"]');
-      const hoursInput = form.querySelector('[name="target_hours"]');
-      const startInput = form.querySelector('[name="start_date"]');
-      const endInput = form.querySelector('[name="end_date"]');
-      const descInput = form.querySelector('[name="description"]');
+      clearFormErrors(form);
 
       // Prüfen, ob der Browser eine syntaktisch ungültige Zahl oder ein ungültiges Datum erkannt hat
-      if (hoursInput && hoursInput.validity && hoursInput.validity.badInput) {
-        showFormError(form, alertBox, 'Die Zielstunden müssen eine Zahl sein.', 'target_hours');
-        return;
-      }
-      if (startInput && startInput.validity && startInput.validity.badInput) {
-        showFormError(
-          form,
-          alertBox,
-          'Das Startdatum muss im gültigen Format JJJJ-MM-TT vorliegen.',
-          'start_date'
-        );
-        return;
-      }
-      if (endInput && endInput.validity && endInput.validity.badInput) {
-        showFormError(
-          form,
-          alertBox,
-          'Das Enddatum muss im gültigen Format JJJJ-MM-TT vorliegen.',
-          'end_date'
-        );
-        return;
+      for (const [fieldName, message] of Object.entries(BAD_INPUT_MESSAGES)) {
+        const input = form.querySelector(`[name="${fieldName}"]`);
+        if (input && input.validity && input.validity.badInput) {
+          showFormError(form, message, fieldName);
+          return;
+        }
       }
 
-      const payload = {
-        action: actionInput ? actionInput.value : '',
-        goal_id: goalIdInput ? goalIdInput.value : '',
-        title: titleInput ? titleInput.value : '',
-        target_hours: hoursInput ? hoursInput.value : '',
-        start_date: startInput ? startInput.value : '',
-        end_date: endInput ? endInput.value : '',
-        description: descInput ? descInput.value : '',
-      };
+      // Alle Formularfelder inkl. CSRF-Token und Aktion übernehmen
+      const payload = Object.fromEntries(new FormData(form).entries());
 
-      const originalBtnHtml = submitBtn ? submitBtn.innerHTML : 'Speichern';
+      const originalBtnHtml = submitBtn ? submitBtn.innerHTML : '';
       if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.innerHTML =
@@ -160,26 +155,24 @@ document.addEventListener('DOMContentLoaded', () => {
           body: JSON.stringify(payload),
         });
 
-        const result = await response.json();
-
-        if (response.ok && result.success) {
-          window.location.href = 'goals.php';
+        // Antwort ohne gültiges JSON (z. B. PHP-Fehlerseite) als technischen Fehler behandeln
+        const result = await response.json().catch(() => null);
+        if (!result) {
+          showFormError(
+            form,
+            'Es ist ein technischer Fehler aufgetreten. Bitte versuche es später erneut.'
+          );
           return;
         }
 
-        showFormError(
-          form,
-          alertBox,
-          result.message || 'Bitte überprüfe deine Eingaben.',
-          result.field || null
-        );
+        if (response.ok && result.success) {
+          window.location.href = result.redirect || 'goals.php';
+          return;
+        }
+
+        showFormError(form, result.message || 'Bitte überprüfe deine Eingaben.', result.field || null);
       } catch (error) {
-        showFormError(
-          form,
-          alertBox,
-          'Netzwerkfehler: Das Lernziel konnte nicht gespeichert werden.',
-          null
-        );
+        showFormError(form, 'Netzwerkfehler: Die Eingaben konnten nicht gespeichert werden.');
       } finally {
         if (submitBtn) {
           submitBtn.disabled = false;
@@ -187,6 +180,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     });
+
+    // Fehlermarkierungen beim Schließen des Modals entfernen
+    const modalEl = form.closest('.modal');
+    if (modalEl) {
+      modalEl.addEventListener('hidden.bs.modal', () => clearFormErrors(form));
+    }
   }
 
   /**
@@ -195,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function resetCreateGoalForm() {
     if (!createForm) return;
     createForm.reset();
-    clearFormErrors(createForm, createAlert);
+    clearFormErrors(createForm);
 
     const startInput = createForm.querySelector('[name="start_date"]');
     const endInput = createForm.querySelector('[name="end_date"]');
@@ -207,10 +206,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  setupGoalForm(createForm, createAlert, createSubmitBtn);
-  setupGoalForm(editForm, editAlert, editSubmitBtn);
+  document.querySelectorAll('form[data-ajax-form]').forEach(setupAjaxForm);
 
-  // Formular und Fehler beim Schließen oder erneuten Öffnen des Erstellen-Modals zurücksetzen
+  // Formular beim Schließen oder erneuten Öffnen des Erstellen-Modals zurücksetzen
   if (createModalEl) {
     createModalEl.addEventListener('show.bs.modal', () => {
       if (createModalEl.dataset.autoOpen !== 'true') {
@@ -218,45 +216,209 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    createModalEl.addEventListener('hidden.bs.modal', () => {
-      resetCreateGoalForm();
-    });
+    createModalEl.addEventListener('hidden.bs.modal', resetCreateGoalForm);
   }
 
-  // Beim Schließen des Bearbeiten-Modals Fehler und ungespeicherte Eingaben zurücksetzen
-  if (editModalEl) {
-    editModalEl.addEventListener('hidden.bs.modal', () => {
-      clearFormErrors(editForm, editAlert);
-      if (editForm) {
-        editForm.reset();
+  // Beim Schließen der Bearbeiten-Modals ungespeicherte Eingaben verwerfen
+  [editForm, createMonthlyForm, document.getElementById('editMonthlyGoalForm')].forEach((form) => {
+    const modalEl = form ? form.closest('.modal') : null;
+    if (modalEl) {
+      modalEl.addEventListener('hidden.bs.modal', () => form.reset());
+    }
+  });
+
+  // Event-Delegation für alle Modal-Buttons und den asynchronen Monatswechsel
+  document.addEventListener('click', async (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+
+    // 1. Monatswechsel ohne Seiten-Reload und ohne Scrollen
+    const monthSwitchLink = target.closest('[data-month-switch]');
+    if (monthSwitchLink) {
+      const targetMonth = monthSwitchLink.getAttribute('data-month-switch');
+      if (targetMonth) {
+        event.preventDefault();
+        await switchMonthWithoutReload(targetMonth);
       }
+      return;
+    }
+
+    // 2. Modal: Lernziel bearbeiten
+    const editGoalBtn = target.closest('.edit-goal-btn');
+    if (editGoalBtn) {
+      clearFormErrors(editForm);
+
+      const editIdInput = document.getElementById('edit_goal_id');
+      const editTitleInput = document.getElementById('edit_title');
+      const editHoursInput = document.getElementById('edit_target_hours');
+      const editStartInput = document.getElementById('edit_start_date');
+      const editEndInput = document.getElementById('edit_end_date');
+      const editDescInput = document.getElementById('edit_description');
+
+      if (editIdInput) editIdInput.value = editGoalBtn.dataset.id || '';
+      if (editTitleInput) editTitleInput.value = editGoalBtn.dataset.title || '';
+      if (editHoursInput) editHoursInput.value = editGoalBtn.dataset.hours || '';
+      if (editStartInput) editStartInput.value = editGoalBtn.dataset.start || '';
+      if (editEndInput) editEndInput.value = editGoalBtn.dataset.end || '';
+      if (editDescInput) editDescInput.value = editGoalBtn.dataset.description || '';
+      return;
+    }
+
+    // 3. Modal: Lernziel löschen
+    const deleteGoalBtn = target.closest('.delete-goal-btn');
+    if (deleteGoalBtn) {
+      const deleteIdInput = document.getElementById('delete_goal_id');
+      const deleteTitleSpan = document.getElementById('delete_goal_title');
+
+      if (deleteIdInput) deleteIdInput.value = deleteGoalBtn.dataset.id || '';
+      if (deleteTitleSpan) deleteTitleSpan.textContent = deleteGoalBtn.dataset.title || '';
+      return;
+    }
+
+    // 4. Modal: Monatliches Zeitbudget festlegen / bearbeiten
+    const budgetBtn = target.closest('[data-bs-target="#monthlyBudgetModal"]');
+    if (budgetBtn) {
+      const budgetMonthInput = document.getElementById('budget_year_month');
+      const budgetHoursInput = document.getElementById('budget_hours_input');
+
+      if (budgetMonthInput && budgetBtn.dataset.month) {
+        budgetMonthInput.value = budgetBtn.dataset.month;
+      }
+      if (budgetHoursInput && typeof budgetBtn.dataset.budget !== 'undefined') {
+        budgetHoursInput.value = budgetBtn.dataset.budget;
+      }
+      return;
+    }
+
+    // 5. Modal: Zwischenziel anlegen
+    const createMonthlyBtn = target.closest('[data-bs-target="#createMonthlyGoalModal"]');
+    if (createMonthlyBtn) {
+      const createMgGoalSelect = document.getElementById('create_mg_goal_id');
+      const createMgMonthInput = document.getElementById('create_mg_year_month');
+
+      if (createMgMonthInput && createMonthlyBtn.dataset.month) {
+        createMgMonthInput.value = createMonthlyBtn.dataset.month;
+      }
+      if (createMgGoalSelect && createMonthlyBtn.dataset.goalId) {
+        createMgGoalSelect.value = createMonthlyBtn.dataset.goalId;
+      }
+      return;
+    }
+
+    // 6. Modal: Zwischenziel bearbeiten
+    const editMonthlyBtn = target.closest('.edit-monthly-goal-btn');
+    if (editMonthlyBtn) {
+      const editMgIdInput = document.getElementById('edit_mg_id');
+      const editMgGoalSelect = document.getElementById('edit_mg_goal_id');
+      const editMgMonthInput = document.getElementById('edit_mg_year_month');
+      const editMgHoursInput = document.getElementById('edit_mg_planned_hours');
+      const editMgTitleInput = document.getElementById('edit_mg_title');
+      const editMgDescInput = document.getElementById('edit_mg_description');
+
+      if (editMgIdInput) editMgIdInput.value = editMonthlyBtn.dataset.id || '';
+      if (editMgGoalSelect) editMgGoalSelect.value = editMonthlyBtn.dataset.goalId || '';
+      if (editMgMonthInput) editMgMonthInput.value = editMonthlyBtn.dataset.month || '';
+      if (editMgHoursInput) editMgHoursInput.value = editMonthlyBtn.dataset.hours || '';
+      if (editMgTitleInput) editMgTitleInput.value = editMonthlyBtn.dataset.title || '';
+      if (editMgDescInput) editMgDescInput.value = editMonthlyBtn.dataset.description || '';
+      return;
+    }
+
+    // 7. Modal: Zwischenziel löschen
+    const deleteMonthlyBtn = target.closest('.delete-monthly-goal-btn');
+    if (deleteMonthlyBtn) {
+      const deleteMgIdInput = document.getElementById('delete_mg_id');
+      const deleteMgTitleSpan = document.getElementById('delete_mg_title');
+
+      if (deleteMgIdInput) deleteMgIdInput.value = deleteMonthlyBtn.dataset.id || '';
+      if (deleteMgTitleSpan) deleteMgTitleSpan.textContent = deleteMonthlyBtn.dataset.title || '';
+    }
+  });
+
+  // Synchronisiert den Wechsel zwischen "Semesterübersicht" und "Monatsplanung"
+  // mit der URL in der Adresszeile, ohne die Seite neu zu laden.
+  document.querySelectorAll('[data-view-tab]').forEach((tabBtn) => {
+    tabBtn.addEventListener('shown.bs.tab', () => {
+      const viewTab = tabBtn.getAttribute('data-view-tab') || 'semester';
+      const section = document.getElementById('monatsplanung');
+      const currentMonth = section ? section.getAttribute('data-selected-month') : '';
+      const params = new URLSearchParams();
+      params.set('tab', viewTab);
+      if (currentMonth) {
+        params.set('month', currentMonth);
+      }
+      window.history.replaceState(null, '', `goals.php?${params.toString()}`);
     });
+  });
+
+  /**
+   * Lädt den Bereich #monatsplanung für den gewählten Monat im Hintergrund nach
+   * und tauscht ihn ohne Seiten-Reload und ohne Scroll-Sprung aus.
+   *
+   * @param {string} targetMonth Monat im Format YYYY-MM
+   */
+  async function switchMonthWithoutReload(targetMonth) {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(targetMonth)) return;
+
+    const section = document.getElementById('monatsplanung');
+    if (!section) return;
+
+    const url = `goals.php?tab=month&month=${encodeURIComponent(targetMonth)}`;
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
+
+      if (!response.ok) {
+        window.location.href = url;
+        return;
+      }
+
+      const htmlText = await response.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(htmlText, 'text/html');
+      const newSection = doc.getElementById('monatsplanung');
+
+      if (!newSection) {
+        window.location.href = url;
+        return;
+      }
+
+      // Monatsbereich und Data-Attribute ohne Scroll-Sprung aktualisieren
+      section.replaceChildren(...newSection.childNodes);
+      section.setAttribute('data-selected-month', targetMonth);
+      const newShortLabel = newSection.getAttribute('data-selected-month-short');
+      if (newShortLabel) {
+        section.setAttribute('data-selected-month-short', newShortLabel);
+        const tabMonthBadge = document.getElementById('tab-month-badge');
+        if (tabMonthBadge) {
+          tabMonthBadge.textContent = newShortLabel;
+        }
+      }
+
+      // URL in der Adresszeile aktualisieren, ohne zu scrollen
+      window.history.replaceState(null, '', url);
+
+      // Vorausgewählten Monat in den Formularen und Schnell-Buttons synchronisieren
+      document.querySelectorAll('input[name="redirect_month"]').forEach((input) => {
+        input.value = targetMonth;
+      });
+      document.querySelectorAll('.quick-add-monthly-goal-btn').forEach((btn) => {
+        btn.setAttribute('data-month', targetMonth);
+      });
+
+      const budgetMonthInput = document.getElementById('budget_year_month');
+      if (budgetMonthInput) budgetMonthInput.value = targetMonth;
+
+      const createMgMonthInput = document.getElementById('create_mg_year_month');
+      if (createMgMonthInput) createMgMonthInput.value = targetMonth;
+    } catch (error) {
+      window.location.href = url;
+    }
   }
-
-  // Modal zur Bearbeitung eines Lernziels befüllen
-  editButtons.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      clearFormErrors(editForm, editAlert);
-      if (editIdInput) editIdInput.value = btn.dataset.id || '';
-      if (editTitleInput) editTitleInput.value = btn.dataset.title || '';
-      if (editHoursInput) editHoursInput.value = btn.dataset.hours || '';
-      if (editStartInput) editStartInput.value = btn.dataset.start || '';
-      if (editEndInput) editEndInput.value = btn.dataset.end || '';
-      if (editDescInput) editDescInput.value = btn.dataset.description || '';
-    });
-  });
-
-  // Modal zur Löschbestätigung eines Lernziels befüllen
-  const deleteButtons = document.querySelectorAll('.delete-goal-btn');
-  const deleteIdInput = document.getElementById('delete_goal_id');
-  const deleteTitleSpan = document.getElementById('delete_goal_title');
-
-  deleteButtons.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      if (deleteIdInput) deleteIdInput.value = btn.dataset.id || '';
-      if (deleteTitleSpan) deleteTitleSpan.textContent = btn.dataset.title || '';
-    });
-  });
 
   // Falls nach einem serverseitigen POST-Fallback ein Modal automatisch geöffnet werden soll
   [createModalEl, editModalEl].forEach((modalEl) => {
@@ -266,8 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
       typeof bootstrap !== 'undefined' &&
       bootstrap.Modal
     ) {
-      const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
-      modalInstance.show();
+      bootstrap.Modal.getOrCreateInstance(modalEl).show();
     }
   });
 });

@@ -8,6 +8,8 @@
 SET NAMES utf8mb4;
 
 DROP TABLE IF EXISTS time_entries;
+DROP TABLE IF EXISTS monthly_goals;
+DROP TABLE IF EXISTS monthly_budgets;
 DROP TABLE IF EXISTS learning_goals;
 DROP TABLE IF EXISTS users;
 
@@ -37,6 +39,38 @@ CREATE TABLE learning_goals (
     CONSTRAINT fk_learning_goals_user FOREIGN KEY (user_id)
         REFERENCES users (id) ON DELETE CASCADE,
     CONSTRAINT chk_learning_goals_dates CHECK (end_date >= start_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE monthly_budgets (
+    id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id      INT UNSIGNED NOT NULL,
+    plan_month   CHAR(7)      NOT NULL,
+    budget_hours DECIMAL(6,2) NOT NULL,
+    created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_monthly_budgets_user_month (user_id, plan_month),
+    CONSTRAINT fk_monthly_budgets_user FOREIGN KEY (user_id)
+        REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT chk_monthly_budgets_hours CHECK (budget_hours >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE monthly_goals (
+    id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id       INT UNSIGNED NOT NULL,
+    goal_id       INT UNSIGNED NOT NULL,
+    plan_month    CHAR(7)      NOT NULL,
+    title         VARCHAR(150) NOT NULL,
+    description   TEXT         NULL,
+    planned_hours DECIMAL(6,2) NOT NULL,
+    created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_monthly_goals_user_month (user_id, plan_month),
+    KEY idx_monthly_goals_goal (goal_id),
+    CONSTRAINT fk_monthly_goals_user FOREIGN KEY (user_id)
+        REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT fk_monthly_goals_goal FOREIGN KEY (goal_id)
+        REFERENCES learning_goals (id) ON DELETE CASCADE,
+    CONSTRAINT chk_monthly_goals_hours CHECK (planned_hours > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE time_entries (

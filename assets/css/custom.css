@@ -50,3 +50,198 @@ main {
   min-width: 15rem;
   max-width: 20rem;
 }
+
+/*
+ * Hauptansicht-Umschalter ("Semesterübersicht" / "Monatsplanung") und
+ * kompakte Kennzahlen-Leiste auf goals.php:
+ */
+.goals-view-switcher .nav-link.active .badge {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  color: var(--bs-primary) !important;
+}
+
+@media (min-width: 576px) {
+  .border-end-sm {
+    border-right: 1px solid var(--bs-border-color, #dee2e6);
+  }
+
+  .border-sm-top-0 {
+    border-top: 0 !important;
+  }
+}
+
+/*
+ * Monats-Tab-Leiste auf goals.php:
+ * Gleichmäßige Kacheln für den 6-Monats-Zeitraum, die den aktiv gewählten Monat
+ * optisch hervorheben und bei Überschreitung des Budgets farblich warnen.
+ */
+.month-tab-link {
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.month-tab-link:hover {
+  transform: translateY(-1px);
+}
+
+.month-tab-link.active {
+  border-width: 2px !important;
+}
+
+/*
+ * Tabellen auf goals.php:
+ * Klare visuelle Abgrenzung vom Hintergrund und professioneller Tabellenkopf.
+ */
+.goals-table-card {
+  border: 1px solid rgba(0, 0, 0, 0.09) !important;
+  box-shadow: 0 0.125rem 0.35rem rgba(0, 0, 0, 0.04) !important;
+}
+
+.goals-table-frame {
+  border: 1px solid rgba(0, 0, 0, 0.09);
+  border-radius: var(--bs-border-radius, 0.375rem);
+  background-color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.table-mobile-cards thead th {
+  background-color: #f1f5f9;
+  color: #334155;
+  font-weight: 600;
+  border-bottom: 2px solid #cbd5e1;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.table-mobile-cards tbody tr.table-warning > td {
+  background-color: #fff9e6;
+  border-bottom-color: #fed7aa;
+}
+
+/*
+ * Responsive Tabellen für Mobilgeräte und Tablets (< 992px):
+ * Wandelt Zeilen in eigenständige, abgehobene Karten um und entkoppelt
+ * die Hintergrundfarbe bei Zeitüberschreitung sauber von der Schrift.
+ */
+@media (max-width: 991.98px) {
+  .goals-table-card {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .goals-table-frame {
+    border: none !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .table-mobile-cards thead {
+    display: none;
+  }
+
+  .table-mobile-cards,
+  .table-mobile-cards tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .table-mobile-cards tbody tr {
+    display: block;
+    background-color: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 0.5rem;
+    padding: 0.875rem 1rem;
+    margin-bottom: 0.875rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+
+  .table-mobile-cards tbody tr:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Konsistentes Design für alle Karten; bei Überschreitung mit dezentem warmen Rahmen */
+  .table-mobile-cards tbody tr.table-warning {
+    background-color: #ffffff !important;
+    border-color: #fcd34d !important;
+    box-shadow: 0 1px 4px rgba(245, 158, 11, 0.1);
+  }
+
+  .table-mobile-cards tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.45rem 0.25rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    background-color: transparent !important;
+    box-shadow: none !important;
+    text-align: right !important;
+  }
+
+  .table-mobile-cards tbody tr.table-warning td {
+    border-bottom-color: rgba(0, 0, 0, 0.06);
+    background-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .table-mobile-cards tbody td::before {
+    content: attr(data-label);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--bs-secondary-color, #6c757d);
+    text-align: left;
+    flex-shrink: 0;
+  }
+
+  .table-mobile-cards tbody td.td-mobile-header {
+    display: block;
+    text-align: left !important;
+    padding-top: 0;
+    padding-bottom: 0.65rem;
+    margin-bottom: 0.35rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  }
+
+  .table-mobile-cards tbody tr.table-warning td.td-mobile-header {
+    border-bottom-color: rgba(217, 119, 6, 0.2);
+  }
+
+  .table-mobile-cards tbody td.td-mobile-header::before {
+    display: none;
+  }
+
+  .table-mobile-cards tbody td.td-mobile-block {
+    display: block;
+    text-align: left !important;
+    padding: 0.5rem 0.25rem;
+  }
+
+  .table-mobile-cards tbody td.td-mobile-block::before {
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+
+  .table-mobile-cards tbody td.td-mobile-actions {
+    display: block;
+    padding-top: 0.75rem;
+    padding-bottom: 0;
+    border-bottom: 0;
+    text-align: stretch !important;
+  }
+
+  .table-mobile-cards tbody td.td-mobile-actions::before {
+    display: none;
+  }
+
+  .table-mobile-cards tbody td.td-mobile-actions .btn-group {
+    display: flex;
+    width: 100%;
+  }
+
+  .table-mobile-cards tbody td.td-mobile-actions .btn-group .btn {
+    flex: 1 1 auto;
+  }
+}
