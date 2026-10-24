@@ -13,7 +13,7 @@ Dieses Dokument beschreibt die Architektur, Datenhaltung und Funktionsweise der 
 ### Warum wurde es so implementiert? (Entwurfsprinzipien)
 * **Separation of Concerns (SoC) & MVC/DAO-Muster:** Klare Trennung zwischen Benutzeroberfläche ([`goals.php`](../goals.php)), Controller-/Geschäftslogik ([`src/Controllers/GoalController.php`](../src/Controllers/GoalController.php)), Datenzugriffsschicht ([`src/DAO/GoalDAO.php`](../src/DAO/GoalDAO.php)) und MariaDB-Datenbank ([`sql/schema.sql`](../sql/schema.sql)).
 * **Mandantenisolation (Sicherheit):** Alle Lese-, Aktualisierungs- und Löschoperationen erzwingen die `user_id` der aktiven Benutzersitzung (`$_SESSION['user_id']`). Studierende können ausschließlich ihre eigenen Lernziele verwalten.
-* **Progressive Enhancement:** Voll funktionsfähige serverbasierte Formularabwicklung via POST (Funktioniert garantiert auch ohne JavaScript) ergänzt durch Bootstrap-5-Modals zur komfortablen Interaktion.
+* **Progressive Enhancement & Asynchrone Formularverarbeitung:** Primäre Übermittlung per Fetch-API an [`api/goals.php`](../api/goals.php), sodass das Modal bei Validierungsfehlern geöffnet bleibt, Nutzereingaben nicht verloren gehen und fehlerhafte Eingabefelder direkt mit `is-invalid` rot markiert werden. Ergänzt durch einen serverseitigen POST-Fallback in [`goals.php`](../goals.php).
 
 ---
 
@@ -21,8 +21,10 @@ Dieses Dokument beschreibt die Architektur, Datenhaltung und Funktionsweise der 
 
 ```text
 lernzeit-manager/
+├── api/
+│   └── goals.php                # JSON-Endpunkt für asynchrone CRUD-Operationen & Validierungsfeedback
 ├── assets/
-│   └── js/goals.js              # Clientseitiges Befüllen der Modals (Bearbeiten, Löschen)
+│   └── js/goals.js              # Asynchrone Formularverarbeitung (Fetch), Fehler-Markierung & Modal-Steuerung
 ├── docs/
 │   └── goals.md                 # Diese Dokumentation
 ├── goals.php                    # UI / View für 6-Monats-Grobplanung (Tabelle, Kennzahlen, Modals)
@@ -34,7 +36,7 @@ lernzeit-manager/
 │   └── seed.sql                 # Synthetische Beispieldaten für Lernziele
 └── src/
     ├── Classes/
-    │   └── ValidationException.php # Exception für nutzerbezogene Validierungsfehler
+    │   └── ValidationException.php # Exception für nutzerbezogene Validierungsfehler (inkl. Feldzuordnung)
     ├── Controllers/
     │   └── GoalController.php   # Geschäftslogik & Validierung (Pflichtfelder, Datumslogik, Stunden)
     └── DAO/
@@ -99,26 +101,30 @@ Kapselt sämtliche Datenbankinteraktionen und stellt atomare Methoden bereit:
 sequenceDiagram
     autonumber
     actor Nutzer as Studierende*r / Browser
-    participant View as goals.php
+    participant JS as assets/js/goals.js
+    participant API as api/goals.php
     participant Controller as GoalController
     participant DAO as GoalDAO
     participant DB as MariaDB
 
-    Nutzer->>View: Formular absenden (POST action=create)
-    View->>View: Prüfe User::isLoggedIn()
-    View->>Controller: createGoal(userId, $_POST)
+    Nutzer->>JS: Formular im Modal absenden (submit)
+    JS->>API: fetch POST (JSON: action=create, ...)
+    API->>API: Prüfe User::isLoggedIn()
+    API->>Controller: createGoal(userId, input)
     Controller->>Controller: validateAndParseInput()
     
     alt Validierung fehlgeschlagen
-        Controller-->>View: throw ValidationException("...")
-        View-->>Nutzer: Fehlermeldung (Alert) anzeigen
+        Controller-->>API: throw ValidationException(message, field)
+        API-->>JS: HTTP 422 JSON {success: false, message, field}
+        JS-->>Nutzer: Modal bleibt offen, Alert einblenden & Feld rot markieren (is-invalid)
     else Validierung erfolgreich
         Controller->>DAO: create(userId, title, desc, hours, start, end)
         DAO->>DB: Prepared Statement INSERT INTO learning_goals ...
         DB-->>DAO: lastInsertId
         DAO-->>Controller: int goalId
-        Controller-->>View: int goalId
-        View-->>Nutzer: Erfolgsmeldung & aktualisierte Liste
+        Controller-->>API: int goalId
+        API-->>JS: HTTP 200 JSON {success: true, goal_id}
+        JS-->>Nutzer: Reload goals.php -> Erfolgsmeldung & aktualisierte Liste
     end
 ```
 
