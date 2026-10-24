@@ -145,17 +145,17 @@ class GoalController
         // 1. Modul / Titel (Pflichtfeld)
         $titleRaw = $input['title'] ?? null;
         if (!is_string($titleRaw) || trim($titleRaw) === '') {
-            throw new ValidationException("Bitte gib einen Modul- bzw. Lernzielnamen an.");
+            throw new ValidationException("Bitte gib einen Modul- bzw. Lernzielnamen an.", 'title');
         }
         $title = trim($titleRaw);
         if (mb_strlen($title, 'UTF-8') > self::MAX_TITLE_LENGTH) {
-            throw new ValidationException("Der Name darf höchstens " . self::MAX_TITLE_LENGTH . " Zeichen lang sein.");
+            throw new ValidationException("Der Name darf höchstens " . self::MAX_TITLE_LENGTH . " Zeichen lang sein.", 'title');
         }
 
         // 2. Zielstunden (Pflichtfeld, positiv)
         $hoursRaw = $input['target_hours'] ?? null;
         if ($hoursRaw === null || (is_string($hoursRaw) && trim($hoursRaw) === '')) {
-            throw new ValidationException("Bitte gib die geplanten Zielstunden an.");
+            throw new ValidationException("Bitte gib die geplanten Zielstunden an.", 'target_hours');
         }
 
         // Kommas durch Punkte ersetzen (deutsches Eingabeformat unterstützen)
@@ -164,7 +164,7 @@ class GoalController
         }
 
         if (!is_numeric($hoursRaw)) {
-            throw new ValidationException("Die Zielstunden müssen eine Zahl sein.");
+            throw new ValidationException("Die Zielstunden müssen eine Zahl sein.", 'target_hours');
         }
 
         $targetHours = (float) $hoursRaw;
@@ -173,34 +173,34 @@ class GoalController
                 "Die Zielstunden müssen zwischen %.1f und %.1f Stunden liegen.",
                 self::MIN_TARGET_HOURS,
                 self::MAX_TARGET_HOURS
-            ));
+            ), 'target_hours');
         }
 
         // 3. Startdatum (Pflichtfeld, Format Y-m-d)
         $startDateRaw = $input['start_date'] ?? null;
         if (!is_string($startDateRaw) || trim($startDateRaw) === '') {
-            throw new ValidationException("Bitte gib ein Startdatum an.");
+            throw new ValidationException("Bitte gib ein Startdatum an.", 'start_date');
         }
         $startDate = trim($startDateRaw);
         $startDt = DateTimeImmutable::createFromFormat('Y-m-d', $startDate);
         if (!$startDt || $startDt->format('Y-m-d') !== $startDate) {
-            throw new ValidationException("Das Startdatum muss im gültigen Format JJJJ-MM-TT vorliegen.");
+            throw new ValidationException("Das Startdatum muss im gültigen Format JJJJ-MM-TT vorliegen.", 'start_date');
         }
 
         // 4. Enddatum (Pflichtfeld, Format Y-m-d)
         $endDateRaw = $input['end_date'] ?? null;
         if (!is_string($endDateRaw) || trim($endDateRaw) === '') {
-            throw new ValidationException("Bitte gib ein Enddatum an.");
+            throw new ValidationException("Bitte gib ein Enddatum an.", 'end_date');
         }
         $endDate = trim($endDateRaw);
         $endDt = DateTimeImmutable::createFromFormat('Y-m-d', $endDate);
         if (!$endDt || $endDt->format('Y-m-d') !== $endDate) {
-            throw new ValidationException("Das Enddatum muss im gültigen Format JJJJ-MM-TT vorliegen.");
+            throw new ValidationException("Das Enddatum muss im gültigen Format JJJJ-MM-TT vorliegen.", 'end_date');
         }
 
         // Logische Prüfung: Enddatum darf nicht vor dem Startdatum liegen
         if ($endDt < $startDt) {
-            throw new ValidationException("Das Enddatum darf zeitlich nicht vor dem Startdatum liegen.");
+            throw new ValidationException("Das Enddatum darf zeitlich nicht vor dem Startdatum liegen.", 'end_date');
         }
 
         // 5. Beschreibung (optional)
@@ -209,7 +209,7 @@ class GoalController
             $descTrimmed = trim($input['description']);
             if ($descTrimmed !== '') {
                 if (mb_strlen($descTrimmed, 'UTF-8') > self::MAX_DESCRIPTION_LENGTH) {
-                    throw new ValidationException("Die Beschreibung darf höchstens " . self::MAX_DESCRIPTION_LENGTH . " Zeichen lang sein.");
+                    throw new ValidationException("Die Beschreibung darf höchstens " . self::MAX_DESCRIPTION_LENGTH . " Zeichen lang sein.", 'description');
                 }
                 $description = $descTrimmed;
             }
