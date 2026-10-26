@@ -1,6 +1,6 @@
-# Dokumentation: 6-Monats-Lernzielplanung & Monatliche Detailplanung
+# Dokumentation: 6-Monats-Lernzielplanung, Monats- & Wochenplanung
 
-Dieses Dokument beschreibt die Architektur, Datenhaltung und Funktionsweise der langfristigen Lernzielplanung (Issue #1: 6-Monats-Grobplanung) sowie der monatlichen Detail- und Workload-Planung (Issue #2: Monatliche Grobplanung & Zwischenziele) im **Lernzeit-Manager** (Modul ISEF01 – Software Engineering).
+Dieses Dokument beschreibt die Architektur, Datenhaltung und Funktionsweise der langfristigen Lernzielplanung (Issue #1: 6-Monats-Grobplanung), der monatlichen Detail- und Workload-Planung (Issue #2: Monatliche Grobplanung & Zwischenziele) sowie der wöchentlichen Detailplanung inklusive verfügbarer Lern-Timeslots (Issue #3: Wöchentliche Detailplanung) im **Lernzeit-Manager** (Modul ISEF01 – Software Engineering).
 
 ---
 
@@ -9,7 +9,8 @@ Dieses Dokument beschreibt die Architektur, Datenhaltung und Funktionsweise der 
 ### Wofür wurde es implementiert?
 * **Langfristige Semester- und Modulplanung (6 Monate):** Studierende können für einen Zeitraum von 6 Monaten ihre Module und Lernziele mit geplanten Zielstunden (z. B. 150 Stunden für ein 5-ECTS-Modul), Startdatum und Enddatum erfassen, überblicken, anpassen und löschen.
 * **Monatliche Detailplanung & Zwischenziele (1 Monat):** Die übergeordneten 6-Monats-Lernziele lassen sich in konkrete monatliche Zwischenziele mit eigenem Stundenkontingent herunterbrechen. Zusätzlich kann je Monat ein persönliches Soll-Zeitbudget hinterlegt werden.
-* **Prozentuale Workload-Verteilung & Überplanungs-Warnung:** Das System berechnet sowohl die prozentuale Auslastung des monatlichen Soll-Zeitbudgets als auch den prozentualen Anteil jedes Monats am gesamten Semester-Workload. Wird das 6-Monats-Ziel oder ein Monatsbudget überschritten, bleibt die Planung flexibel möglich, wird aber farblich (Gelb/Warnhinweis) hervorgehoben.
+* **Wöchentliche Detailplanung & verfügbare Timeslots (1 Woche):** Innerhalb jedes Kalendermonats können die monatlichen Zwischenziele auf Kalenderwochen (KW) und konkrete Wochentage (Montag bis Sonntag) heruntergebrochen werden. Studierende tragen ihre tatsächlich verfügbaren Lern-Timeslots mit freier Start- und Endzeit (`HH:MM`) ein, ordnen sie einem Zwischenziel zu und können absolvierte Einheiten als erledigt markieren.
+* **Prozentuale Workload-Verteilung, Überplanungs- & Kollisions-Warnung:** Das System berechnet die Auslastung auf Semester-, Monats- und Wochenebene. Überschreitungen eines 6-Monats-Ziels, eines Monatsbudgets, eines Zwischenziels oder zeitliche Überschneidungen zweier Timeslots am selben Tag werden farblich (Gelb/Warnhinweis) hervorgehoben.
 
 ### Warum wurde es so implementiert? (Entwurfsprinzipien)
 * **Separation of Concerns (SoC) & MVC/DAO-Muster:** Klare Trennung zwischen Benutzeroberfläche ([`goals.php`](../goals.php)), Controller-/Geschäftslogik ([`src/Controllers/GoalController.php`](../src/Controllers/GoalController.php)), Datenzugriffsschicht ([`src/DAO/GoalDAO.php`](../src/DAO/GoalDAO.php)) und MariaDB-Datenbank ([`sql/schema.sql`](../sql/schema.sql)).
@@ -114,6 +115,32 @@ CREATE TABLE monthly_goals (
 * `monthly_budgets`: Speichert das persönliche Soll-Zeitbudget (`budget_hours`) je Studierendem und Kalendermonat (`plan_month` im Format `YYYY-MM`).
 * `monthly_goals`: Speichert die heruntergebrochenen monatlichen Zwischenziele (`title`, `planned_hours`, `description`), verknüpft mit dem übergeordneten 6-Monats-Lernziel (`goal_id`). Wird ein 6-Monats-Lernziel gelöscht, werden dessen Zwischenziele per `ON DELETE CASCADE` automatisch mitentfernt.
 
+Für die wöchentliche Detailplanung und die Einteilung tatsächlicher Lern-Timeslots ergänzt die Tabelle `learning_slots` das Schema:
+
+```sql
+CREATE TABLE learning_slots (
+    id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id         INT UNSIGNED NOT NULL,
+    monthly_goal_id INT UNSIGNED NOT NULL,
+    slot_date       DATE         NOT NULL,
+    start_time      TIME         NOT NULL,
+    end_time        TIME         NOT NULL,
+    notes           VARCHAR(255) NULL     DEFAULT NULL,
+    is_completed    TINYINT(1)   NOT NULL DEFAULT 0,
+    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_learning_slots_user_date (user_id, slot_date),
+    KEY idx_learning_slots_monthly_goal (monthly_goal_id),
+    CONSTRAINT fk_learning_slots_user FOREIGN KEY (user_id)
+        REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT fk_learning_slots_monthly_goal FOREIGN KEY (monthly_goal_id)
+        REFERENCES monthly_goals (id) ON DELETE CASCADE,
+    CONSTRAINT chk_learning_slots_time CHECK (end_time > start_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+* `learning_slots`: Speichert die konkret eingeplanten Lern-Timeslots an einem Datum (`slot_date`) mit freier Start- und Endzeit (`start_time`, `end_time`), optionaler Lernnotiz (`notes`) und Erledigt-Status (`is_completed`), verknüpft mit einem monatlichen Zwischenziel (`monthly_goal_id`).
+
 ### 3.2 Validierungsregeln in [`Controllers\GoalController`](../src/Controllers/GoalController.php)
 
 * **Modul / Lernzielname (`title`):** Pflichtfeld, nicht leer, maximal 150 Zeichen (`GoalController::MAX_TITLE_LENGTH`).
@@ -125,6 +152,9 @@ CREATE TABLE monthly_goals (
 * **Monatliches Soll-Zeitbudget (`budget_hours`):** Numerisch zwischen 0,0 und 744,0 Stunden (`GoalController::MAX_MONTHLY_HOURS`). Bei leerem Wert oder `0` wird das hinterlegte Monatsbudget zurückgesetzt.
 * **Zwischenziel-Monat (`year_month`):** Pflichtfeld im Format JJJJ-MM. Der Monat muss im Zeitraum des zugehörigen Lernziels liegen (Vergleich auf Monatsebene zwischen `start_date` und `end_date`).
 * **Zwischenziel-Stunden (`planned_hours`):** Pflichtfeld, numerisch zwischen 0,5 und 744,0 Stunden. Überschreitet die Summe der Zwischenziele die Zielstunden des 6-Monats-Ziels oder das Monatsbudget, bleibt das Speichern erlaubt und die Oberfläche hebt die Überschreitung farblich hervor.
+* **Timeslot-Datum (`slot_date`):** Pflichtfeld im Format `JJJJ-MM-TT`. Muss im Zeitraum des übergeordneten Lernziels sowie im Monat des zugeordneten Zwischenziels (inkl. überlappender Kalenderwochen an den Monatsrändern) liegen.
+* **Timeslot-Uhrzeit (`start_time`, `end_time`):** Pflichtfelder im Format `HH:MM`. `end_time` muss zeitlich nach `start_time` liegen, mit einer Mindestdauer von 15 Minuten (`GoalController::MIN_SLOT_MINUTES`). Zeitliche Überschneidungen am selben Tag werden erkannt und in der Wochenansicht als Kollision hervorgehoben.
+* **Timeslot-Notiz (`notes`):** Optional, maximal 255 Zeichen (`GoalController::MAX_SLOT_NOTES_LENGTH`).
 
 ---
 

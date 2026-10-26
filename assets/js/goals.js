@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const editModalEl = document.getElementById('editGoalModal');
   const editForm = document.getElementById('editGoalForm');
   const createMonthlyForm = document.getElementById('createMonthlyGoalForm');
+  const createSlotForm = document.getElementById('createSlotForm');
+  const editSlotForm = document.getElementById('editSlotForm');
 
   // Meldungen für Eingaben, die der Browser selbst nicht als Zahl bzw. Datum lesen kann
   const BAD_INPUT_MESSAGES = {
@@ -15,6 +17,9 @@ document.addEventListener('DOMContentLoaded', () => {
     start_date: 'Das Startdatum muss im gültigen Format JJJJ-MM-TT vorliegen.',
     end_date: 'Das Enddatum muss im gültigen Format JJJJ-MM-TT vorliegen.',
     year_month: 'Der Monat muss im gültigen Format JJJJ-MM vorliegen.',
+    slot_date: 'Das Datum muss im gültigen Format JJJJ-MM-TT vorliegen.',
+    start_time: 'Die Startzeit muss im gültigen Format HH:MM vorliegen.',
+    end_time: 'Die Endzeit muss im gültigen Format HH:MM vorliegen.',
   };
 
   // Scroll-Position nach Formular-Submit (Post/Redirect/Get) wiederherstellen,
@@ -206,6 +211,78 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  /**
+   * Berechnet die Dauer zwischen Start- und Endzeit in einem Timeslot-Formular
+   * und zeigt sie als Hinweis unterhalb der Zeitfelder an.
+   *
+   * @param {HTMLInputElement|null} startInput
+   * @param {HTMLInputElement|null} endInput
+   * @param {HTMLElement|null} hintEl
+   */
+  function updateSlotDurationHint(startInput, endInput, hintEl) {
+    if (!startInput || !endInput || !hintEl) return;
+
+    const startVal = startInput.value;
+    const endVal = endInput.value;
+    if (!startVal || !endVal) {
+      hintEl.className = 'form-text';
+      hintEl.textContent = 'Mindestdauer: 15 Minuten.';
+      return;
+    }
+
+    const [sh, sm] = startVal.split(':').map(Number);
+    const [eh, em] = endVal.split(':').map(Number);
+    if (Number.isNaN(sh) || Number.isNaN(sm) || Number.isNaN(eh) || Number.isNaN(em)) {
+      return;
+    }
+
+    const diffMinutes = eh * 60 + em - (sh * 60 + sm);
+    if (diffMinutes <= 0) {
+      hintEl.className = 'form-text text-danger';
+      hintEl.textContent = 'Die Endzeit muss zeitlich nach der Startzeit liegen.';
+      return;
+    }
+
+    if (diffMinutes < 15) {
+      hintEl.className = 'form-text text-danger';
+      hintEl.textContent = 'Ein Lern-Timeslot muss mindestens 15 Minuten dauern.';
+      return;
+    }
+
+    const hoursFormatted = (diffMinutes / 60).toLocaleString('de-DE', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 2,
+    });
+
+    hintEl.className = 'form-text';
+    hintEl.textContent = '';
+    hintEl.appendChild(document.createTextNode('Geplante Dauer: '));
+    const strong = document.createElement('strong');
+    strong.textContent = `${hoursFormatted} Stunden`;
+    hintEl.appendChild(strong);
+    hintEl.appendChild(document.createTextNode(` (${diffMinutes} Min.)`));
+  }
+
+  const createSlotStartInput = document.getElementById('create_slot_start_time');
+  const createSlotEndInput = document.getElementById('create_slot_end_time');
+  const createSlotHintEl = document.getElementById('create_slot_duration_hint');
+  if (createSlotStartInput && createSlotEndInput) {
+    const refreshCreateHint = () =>
+      updateSlotDurationHint(createSlotStartInput, createSlotEndInput, createSlotHintEl);
+    createSlotStartInput.addEventListener('input', refreshCreateHint);
+    createSlotEndInput.addEventListener('input', refreshCreateHint);
+  }
+
+  const editSlotStartInput = document.getElementById('edit_slot_start_time');
+  const editSlotEndInput = document.getElementById('edit_slot_end_time');
+  const editSlotHintEl = document.getElementById('edit_slot_duration_hint');
+  if (editSlotStartInput && editSlotEndInput) {
+    const refreshEditHint = () =>
+      updateSlotDurationHint(editSlotStartInput, editSlotEndInput, editSlotHintEl);
+    editSlotStartInput.addEventListener('input', refreshEditHint);
+    editSlotEndInput.addEventListener('input', refreshEditHint);
+  }
+
   document.querySelectorAll('form[data-ajax-form]').forEach(setupAjaxForm);
 
   // Formular beim Schließen oder erneuten Öffnen des Erstellen-Modals zurücksetzen
@@ -220,25 +297,54 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Beim Schließen der Bearbeiten-Modals ungespeicherte Eingaben verwerfen
-  [editForm, createMonthlyForm, document.getElementById('editMonthlyGoalForm')].forEach((form) => {
+  [
+    editForm,
+    createMonthlyForm,
+    document.getElementById('editMonthlyGoalForm'),
+    createSlotForm,
+    editSlotForm,
+  ].forEach((form) => {
     const modalEl = form ? form.closest('.modal') : null;
     if (modalEl) {
       modalEl.addEventListener('hidden.bs.modal', () => form.reset());
     }
   });
 
-  // Event-Delegation für alle Modal-Buttons und den asynchronen Monatswechsel
+  // Event-Delegation für alle Modal-Buttons sowie den asynchronen Monats- und Wochenwechsel
   document.addEventListener('click', async (event) => {
     const target = event.target instanceof Element ? event.target : null;
     if (!target) return;
 
-    // 1. Monatswechsel ohne Seiten-Reload und ohne Scrollen
+    // 1a. Monatswechsel ohne Seiten-Reload und ohne Scrollen
     const monthSwitchLink = target.closest('[data-month-switch]');
     if (monthSwitchLink) {
       const targetMonth = monthSwitchLink.getAttribute('data-month-switch');
       if (targetMonth) {
         event.preventDefault();
         await switchMonthWithoutReload(targetMonth);
+      }
+      return;
+    }
+
+    // 1b. Wochenwechsel ohne Seiten-Reload und ohne Scrollen
+    const weekSwitchLink = target.closest('[data-week-switch]');
+    if (weekSwitchLink) {
+      const targetWeek = weekSwitchLink.getAttribute('data-week-switch');
+      const targetMonth = weekSwitchLink.getAttribute('data-week-month') || '';
+      if (targetWeek) {
+        event.preventDefault();
+        await switchWeekWithoutReload(targetWeek, targetMonth);
+      }
+      return;
+    }
+
+    // 1c. Schnellwechsel aus der Monatsplanung in den Tab "Wochenplanung"
+    const openWeekTabBtn = target.closest('[data-open-week-tab]');
+    if (openWeekTabBtn) {
+      const weekTabBtn = document.getElementById('tab-week-btn');
+      if (weekTabBtn && typeof bootstrap !== 'undefined' && bootstrap.Tab) {
+        event.preventDefault();
+        bootstrap.Tab.getOrCreateInstance(weekTabBtn).show();
       }
       return;
     }
@@ -332,27 +438,153 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (deleteMgIdInput) deleteMgIdInput.value = deleteMonthlyBtn.dataset.id || '';
       if (deleteMgTitleSpan) deleteMgTitleSpan.textContent = deleteMonthlyBtn.dataset.title || '';
+      return;
+    }
+
+    // 8. Modal: Lern-Timeslot planen
+    const createSlotBtn = target.closest('[data-bs-target="#createSlotModal"]');
+    if (createSlotBtn) {
+      clearFormErrors(createSlotForm);
+
+      const createSlotMgSelect = document.getElementById('create_slot_monthly_goal_id');
+      const createSlotDateInput = document.getElementById('create_slot_date');
+
+      if (createSlotDateInput) {
+        const weekSection = document.getElementById('wochenplanung');
+        const fallbackDate = weekSection
+          ? weekSection.getAttribute('data-default-slot-date')
+          : createSlotDateInput.dataset.default;
+        createSlotDateInput.value = createSlotBtn.dataset.date || fallbackDate || '';
+      }
+
+      if (createSlotMgSelect) {
+        if (createSlotBtn.dataset.monthlyGoalId) {
+          createSlotMgSelect.value = createSlotBtn.dataset.monthlyGoalId;
+        } else if (createSlotMgSelect.options.length === 2) {
+          // Wenn genau ein Zwischenziel zur Auswahl steht, dieses komfortabel vorauswählen
+          createSlotMgSelect.selectedIndex = 1;
+        }
+      }
+
+      updateSlotDurationHint(createSlotStartInput, createSlotEndInput, createSlotHintEl);
+      return;
+    }
+
+    // 9. Modal: Lern-Timeslot bearbeiten
+    const editSlotBtn = target.closest('.edit-slot-btn');
+    if (editSlotBtn) {
+      clearFormErrors(editSlotForm);
+
+      const editSlotIdInput = document.getElementById('edit_slot_id');
+      const editSlotMgSelect = document.getElementById('edit_slot_monthly_goal_id');
+      const editSlotDateInput = document.getElementById('edit_slot_date');
+      const editSlotNotesInput = document.getElementById('edit_slot_notes');
+
+      if (editSlotIdInput) editSlotIdInput.value = editSlotBtn.dataset.id || '';
+      if (editSlotMgSelect) editSlotMgSelect.value = editSlotBtn.dataset.monthlyGoalId || '';
+      if (editSlotDateInput) editSlotDateInput.value = editSlotBtn.dataset.date || '';
+      if (editSlotStartInput) editSlotStartInput.value = editSlotBtn.dataset.start || '';
+      if (editSlotEndInput) editSlotEndInput.value = editSlotBtn.dataset.end || '';
+      if (editSlotNotesInput) editSlotNotesInput.value = editSlotBtn.dataset.notes || '';
+
+      updateSlotDurationHint(editSlotStartInput, editSlotEndInput, editSlotHintEl);
+      return;
+    }
+
+    // 10. Modal: Lern-Timeslot löschen
+    const deleteSlotBtn = target.closest('.delete-slot-btn');
+    if (deleteSlotBtn) {
+      const deleteSlotIdInput = document.getElementById('delete_slot_id');
+      const deleteSlotSummaryEl = document.getElementById('delete_slot_summary');
+
+      if (deleteSlotIdInput) deleteSlotIdInput.value = deleteSlotBtn.dataset.id || '';
+      if (deleteSlotSummaryEl) deleteSlotSummaryEl.textContent = deleteSlotBtn.dataset.summary || '';
     }
   });
 
-  // Synchronisiert den Wechsel zwischen "Semesterübersicht" und "Monatsplanung"
+  // Synchronisiert den Wechsel zwischen "Semesterübersicht", "Monatsplanung" und "Wochenplanung"
   // mit der URL in der Adresszeile, ohne die Seite neu zu laden.
   document.querySelectorAll('[data-view-tab]').forEach((tabBtn) => {
     tabBtn.addEventListener('shown.bs.tab', () => {
       const viewTab = tabBtn.getAttribute('data-view-tab') || 'semester';
-      const section = document.getElementById('monatsplanung');
-      const currentMonth = section ? section.getAttribute('data-selected-month') : '';
+      const monthSection = document.getElementById('monatsplanung');
+      const weekSection = document.getElementById('wochenplanung');
+      const currentMonth = monthSection ? monthSection.getAttribute('data-selected-month') : '';
+      const currentWeek = weekSection ? weekSection.getAttribute('data-selected-week') : '';
       const params = new URLSearchParams();
       params.set('tab', viewTab);
       if (currentMonth) {
         params.set('month', currentMonth);
+      }
+      if (viewTab === 'week' && currentWeek) {
+        params.set('week', currentWeek);
       }
       window.history.replaceState(null, '', `goals.php?${params.toString()}`);
     });
   });
 
   /**
-   * Lädt den Bereich #monatsplanung für den gewählten Monat im Hintergrund nach
+   * Synchronisiert die Bereiche #monatsplanung und #wochenplanung sowie die Auswahlfelder
+   * der Timeslot-Modals aus einem per fetch() nachgeladenen HTML-Dokument.
+   *
+   * @param {Document} doc Geparstes HTML-Dokument
+   */
+  function applyPlanningSectionsFromDocument(doc) {
+    const monthSection = document.getElementById('monatsplanung');
+    const newMonthSection = doc.getElementById('monatsplanung');
+    if (monthSection && newMonthSection) {
+      monthSection.replaceChildren(...newMonthSection.childNodes);
+      const newMonth = newMonthSection.getAttribute('data-selected-month') || '';
+      const newMonthShort = newMonthSection.getAttribute('data-selected-month-short') || '';
+      if (newMonth) {
+        monthSection.setAttribute('data-selected-month', newMonth);
+      }
+      if (newMonthShort) {
+        monthSection.setAttribute('data-selected-month-short', newMonthShort);
+        const tabMonthBadge = document.getElementById('tab-month-badge');
+        if (tabMonthBadge) {
+          tabMonthBadge.textContent = newMonthShort;
+        }
+      }
+    }
+
+    const weekSection = document.getElementById('wochenplanung');
+    const newWeekSection = doc.getElementById('wochenplanung');
+    if (weekSection && newWeekSection) {
+      weekSection.replaceChildren(...newWeekSection.childNodes);
+      const newWeek = newWeekSection.getAttribute('data-selected-week') || '';
+      const newWeekShort = newWeekSection.getAttribute('data-selected-week-short') || '';
+      const newDefaultDate = newWeekSection.getAttribute('data-default-slot-date') || '';
+      if (newWeek) {
+        weekSection.setAttribute('data-selected-week', newWeek);
+      }
+      if (newWeekShort) {
+        weekSection.setAttribute('data-selected-week-short', newWeekShort);
+        const tabWeekBadge = document.getElementById('tab-week-badge');
+        if (tabWeekBadge) {
+          tabWeekBadge.textContent = newWeekShort;
+        }
+      }
+      if (newDefaultDate) {
+        weekSection.setAttribute('data-default-slot-date', newDefaultDate);
+      }
+
+      // Neu eingefügte Toggle-Formulare innerhalb der Wochenplanung für Fetch aktivieren
+      weekSection.querySelectorAll('form[data-ajax-form]').forEach(setupAjaxForm);
+    }
+
+    // Auswahlfelder für Zwischenziele in den Timeslot-Modals aktualisieren
+    ['create_slot_monthly_goal_id', 'edit_slot_monthly_goal_id'].forEach((selectId) => {
+      const currentSelect = document.getElementById(selectId);
+      const newSelect = doc.getElementById(selectId);
+      if (currentSelect && newSelect) {
+        currentSelect.replaceChildren(...newSelect.childNodes);
+      }
+    });
+  }
+
+  /**
+   * Lädt den Bereich #monatsplanung (und #wochenplanung) für den gewählten Monat im Hintergrund nach
    * und tauscht ihn ohne Seiten-Reload und ohne Scroll-Sprung aus.
    *
    * @param {string} targetMonth Monat im Format YYYY-MM
@@ -387,17 +619,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // Monatsbereich und Data-Attribute ohne Scroll-Sprung aktualisieren
-      section.replaceChildren(...newSection.childNodes);
-      section.setAttribute('data-selected-month', targetMonth);
-      const newShortLabel = newSection.getAttribute('data-selected-month-short');
-      if (newShortLabel) {
-        section.setAttribute('data-selected-month-short', newShortLabel);
-        const tabMonthBadge = document.getElementById('tab-month-badge');
-        if (tabMonthBadge) {
-          tabMonthBadge.textContent = newShortLabel;
-        }
-      }
+      applyPlanningSectionsFromDocument(doc);
 
       // URL in der Adresszeile aktualisieren, ohne zu scrollen
       window.history.replaceState(null, '', url);
@@ -415,6 +637,56 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const createMgMonthInput = document.getElementById('create_mg_year_month');
       if (createMgMonthInput) createMgMonthInput.value = targetMonth;
+    } catch (error) {
+      window.location.href = url;
+    }
+  }
+
+  /**
+   * Lädt den Bereich #wochenplanung für die gewählte Kalenderwoche im Hintergrund nach
+   * und tauscht ihn ohne Seiten-Reload und ohne Scroll-Sprung aus.
+   *
+   * @param {string} targetWeek Kalenderwoche im Format YYYY-Www
+   * @param {string} [targetMonth] Zugehöriger Monat im Format YYYY-MM
+   */
+  async function switchWeekWithoutReload(targetWeek, targetMonth = '') {
+    if (!/^\d{4}-W(0[1-9]|[1-4]\d|5[0-3])$/.test(targetWeek)) return;
+
+    const weekSection = document.getElementById('wochenplanung');
+    if (!weekSection) return;
+
+    const params = new URLSearchParams();
+    params.set('tab', 'week');
+    if (/^\d{4}-(0[1-9]|1[0-2])$/.test(targetMonth)) {
+      params.set('month', targetMonth);
+    }
+    params.set('week', targetWeek);
+    const url = `goals.php?${params.toString()}`;
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
+
+      if (!response.ok) {
+        window.location.href = url;
+        return;
+      }
+
+      const htmlText = await response.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(htmlText, 'text/html');
+      const newWeekSection = doc.getElementById('wochenplanung');
+
+      if (!newWeekSection) {
+        window.location.href = url;
+        return;
+      }
+
+      applyPlanningSectionsFromDocument(doc);
+      window.history.replaceState(null, '', url);
     } catch (error) {
       window.location.href = url;
     }

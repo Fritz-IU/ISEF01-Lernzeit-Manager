@@ -71,22 +71,35 @@ main {
 }
 
 /*
- * Monats-Tab-Leiste auf goals.php:
- * Gleichmäßige Kacheln für den 6-Monats-Zeitraum, die den aktiv gewählten Monat
- * optisch hervorheben und bei Überschreitung des Budgets farblich warnen.
+ * Monats- und Wochen-Tab-Leiste auf goals.php:
+ * Gleichmäßige Kacheln für den 6-Monats-Zeitraum bzw. die Kalenderwochen des Monats,
+ * die den aktiv gewählten Zeitraum optisch hervorheben.
  */
-.month-tab-link {
+.month-tab-link,
+.week-tab-link {
   transition:
     transform 0.12s ease,
     box-shadow 0.12s ease;
 }
 
-.month-tab-link:hover {
+.month-tab-link:hover,
+.week-tab-link:hover {
   transform: translateY(-1px);
 }
 
-.month-tab-link.active {
+.month-tab-link.active,
+.week-tab-link.active {
   border-width: 2px !important;
+}
+
+.week-day-card {
+  transition: box-shadow 0.15s ease;
+}
+
+.slot-item-card {
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 /*

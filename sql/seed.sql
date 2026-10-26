@@ -32,6 +32,15 @@ INSERT INTO monthly_goals (id, user_id, goal_id, plan_month, title, description,
     (7, 1, 1, '2026-12', 'Generalprobe & Karteikarten wiederholen',    'Prüfungssimulation unter Zeitdruck',      4.00, '2026-09-25 14:00:00'),
     (8, 2, 3, '2026-10', 'Lineare Algebra Grundlagen',                 NULL,                                      4.00, '2026-09-05 10:10:00');
 
+INSERT INTO learning_slots (id, user_id, monthly_goal_id, slot_date, start_time, end_time, notes, is_completed, created_at) VALUES
+    (1, 1, 3, '2026-10-20', '18:00:00', '20:00:00', 'Kapitel 3 lesen und Use-Case-Elemente notieren',     1, '2026-10-18 10:00:00'),
+    (2, 1, 4, '2026-10-22', '17:30:00', '19:00:00', 'INNER und LEFT JOIN an Beispieltabellen üben',       1, '2026-10-18 10:05:00'),
+    (3, 1, 3, '2026-10-26', '18:00:00', '20:00:00', 'Klassendiagramme für Fallstudie modellieren',        1, '2026-10-25 09:00:00'),
+    (4, 1, 4, '2026-10-28', '16:00:00', '18:00:00', 'Normalisierungsaufgaben (1NF bis 3NF) durchrechnen', 0, '2026-10-25 09:10:00'),
+    (5, 1, 3, '2026-10-30', '14:00:00', '16:00:00', 'Sequenz- und Aktivitätsdiagramme wiederholen',       0, '2026-10-25 09:15:00'),
+    (6, 1, 5, '2026-11-03', '18:00:00', '20:00:00', 'Schichtenarchitektur und MVC-Muster zusammenfassen', 0, '2026-10-25 09:20:00'),
+    (7, 2, 8, '2026-10-27', '09:00:00', '11:00:00', 'Vektorräume und Matrizenmultiplikation',             0, '2026-10-20 12:00:00');
+
 INSERT INTO time_entries (id, user_id, goal_id, started_at, ended_at, tracked_seconds) VALUES
     (1, 1, 1,    '2026-10-01 09:00:00', '2026-10-01 10:30:00', 5400),
     (2, 1, 1,    '2026-10-03 14:00:00', '2026-10-03 14:45:00', 2700),
