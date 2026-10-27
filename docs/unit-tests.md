@@ -71,15 +71,16 @@ Vorlage zum Kopieren: [`tests/Unit/Controllers/GoalControllerTest.php`](../tests
 - **Aufwand:** Zeit für Tests zählt zum **Aufwand Ist (h)** des Issues (siehe [CONTRIBUTING.md](../CONTRIBUTING.md)).
 - **Bugs:** Wird ein Bug behoben, kommt zuerst ein Test, der ihn reproduziert, dann die Korrektur.
 
-## Nächste Schritte (Issue #26, Punkt 2)
+## Vorhandene Tests
 
-Kandidaten für die ersten fünf Tests, alle ohne Datenbank umsetzbar:
+| Testklasse                                      | Geprüfte Methoden                                                                                                                                    |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tests/Unit/Controllers/GoalControllerTest.php` | `formatYearMonth`, `validateYearMonth`, `validateAndParseInput`, `validateAndParseMonthlyGoalInput`, `saveMonthlyBudget`, `buildMonthlyPlanningData` |
+| `tests/Unit/Classes/UserTest.php`               | `parseProfileInput`, `isLoggedIn`, `currentNavName`, `currentShortNavName`                                                                           |
 
-| Methode                                            | Prüfen                                                                                                                    |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `GoalController::validateAndParseInput`            | Pflichtfelder, Länge des Titels, Stunden mit Komma, Bereich 0,5–1500, Datumsformat, Ende vor Start, Beschreibung optional |
-| `GoalController::validateAndParseMonthlyGoalInput` | Mock liefert Lernziel; Monat außerhalb des Zeitraums, fremdes Lernziel (`null`), Stunden-Bereich                          |
-| `GoalController::saveMonthlyBudget`                | Leer oder 0 ruft `deleteMonthlyBudget`, Wert ruft `upsertMonthlyBudget` (`expects($this->once())`), Bereich 0–744         |
-| `GoalController::buildMonthlyPlanningData`         | 6-Monats-Fenster, Überplanung, Prozentwerte, Vor-/Nachmonat                                                               |
-| `User::parseProfileInput`                          | Semester als String, Zahl, leer, ungültig; Leerzeichen werden entfernt                                                    |
-| `User::currentShortNavName`                        | `$_SESSION` im Test direkt setzen: Vorname, Bindestrich, nur E-Mail                                                       |
+Zwei Sonderfälle, die in den Tests gelöst sind und als Muster dienen:
+
+- **`$_SESSION`:** Methoden wie `currentShortNavName` lesen aus `$_SESSION`. Im Test wird kein `session_start()` aufgerufen, sondern `$_SESSION` in `setUp()` als leeres Array gesetzt und in `tearDown()` wieder entfernt. Jeder Test befüllt nur die Schlüssel, die er braucht.
+- **`date()`:** `buildMonthlyPlanningData` nutzt den aktuellen Kalendermonat nur als Fallback. Die Tests übergeben immer einen gültigen Monat und feste Lernziel-Daten, nur der Fallback-Test vergleicht gegen `date('Y-m')`. Neue Logik, die von „heute“ abhängt, bekommt den Zeitpunkt besser als Parameter.
+
+Noch ohne Tests: `GoalController::createGoal`, `updateGoal`, `deleteGoal` und die Monatsziel-Varianten (reine Weiterleitung an das DAO) sowie `User::register`, `login`, `updateProfile` (brauchen Datenbank bzw. Session).
