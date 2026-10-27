@@ -18,8 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
     end_date: 'Das Enddatum muss im gültigen Format JJJJ-MM-TT vorliegen.',
     year_month: 'Der Monat muss im gültigen Format JJJJ-MM vorliegen.',
     slot_date: 'Das Datum muss im gültigen Format JJJJ-MM-TT vorliegen.',
-    start_time: 'Die Startzeit muss im gültigen Format HH:MM vorliegen.',
-    end_time: 'Die Endzeit muss im gültigen Format HH:MM vorliegen.',
+    start_time: 'Die Startzeit muss im Format HH:MM und in 10-Minuten-Schritten vorliegen.',
+    end_time: 'Die Endzeit muss im Format HH:MM und in 10-Minuten-Schritten vorliegen.',
   };
 
   // Scroll-Position nach Formular-Submit (Post/Redirect/Get) wiederherstellen,
@@ -213,10 +213,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /**
    * Berechnet die Dauer zwischen Start- und Endzeit in einem Timeslot-Formular
-   * und zeigt sie als Hinweis unterhalb der Zeitfelder an.
+   * und zeigt sie als Hinweis unterhalb der Zeitfelder in Minuten an.
    *
-   * @param {HTMLInputElement|null} startInput
-   * @param {HTMLInputElement|null} endInput
+   * @param {HTMLInputElement|HTMLSelectElement|null} startInput
+   * @param {HTMLInputElement|HTMLSelectElement|null} endInput
    * @param {HTMLElement|null} hintEl
    */
   function updateSlotDurationHint(startInput, endInput, hintEl) {
@@ -226,7 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const endVal = endInput.value;
     if (!startVal || !endVal) {
       hintEl.className = 'form-text';
-      hintEl.textContent = 'Mindestdauer: 15 Minuten.';
+      hintEl.textContent = 'Mindestdauer: 10 Minuten.';
       return;
     }
 
@@ -243,44 +243,135 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    if (diffMinutes < 15) {
+    if (diffMinutes < 10) {
       hintEl.className = 'form-text text-danger';
-      hintEl.textContent = 'Ein Lern-Timeslot muss mindestens 15 Minuten dauern.';
+      hintEl.textContent = 'Eine Lerneinheit muss mindestens 10 Minuten dauern.';
       return;
     }
-
-    const hoursFormatted = (diffMinutes / 60).toLocaleString('de-DE', {
-      minimumFractionDigits: 1,
-      maximumFractionDigits: 2,
-    });
 
     hintEl.className = 'form-text';
     hintEl.textContent = '';
     hintEl.appendChild(document.createTextNode('Geplante Dauer: '));
     const strong = document.createElement('strong');
-    strong.textContent = `${hoursFormatted} Stunden`;
+    strong.textContent = `${diffMinutes} Minuten`;
     hintEl.appendChild(strong);
-    hintEl.appendChild(document.createTextNode(` (${diffMinutes} Min.)`));
   }
 
+  const createStartHour = document.getElementById('create_slot_start_hour');
+  const createStartMinute = document.getElementById('create_slot_start_minute');
+  const createEndHour = document.getElementById('create_slot_end_hour');
+  const createEndMinute = document.getElementById('create_slot_end_minute');
   const createSlotStartInput = document.getElementById('create_slot_start_time');
   const createSlotEndInput = document.getElementById('create_slot_end_time');
   const createSlotHintEl = document.getElementById('create_slot_duration_hint');
-  if (createSlotStartInput && createSlotEndInput) {
-    const refreshCreateHint = () =>
-      updateSlotDurationHint(createSlotStartInput, createSlotEndInput, createSlotHintEl);
-    createSlotStartInput.addEventListener('input', refreshCreateHint);
-    createSlotEndInput.addEventListener('input', refreshCreateHint);
-  }
 
+  const editStartHour = document.getElementById('edit_slot_start_hour');
+  const editStartMinute = document.getElementById('edit_slot_start_minute');
+  const editEndHour = document.getElementById('edit_slot_end_hour');
+  const editEndMinute = document.getElementById('edit_slot_end_minute');
   const editSlotStartInput = document.getElementById('edit_slot_start_time');
   const editSlotEndInput = document.getElementById('edit_slot_end_time');
   const editSlotHintEl = document.getElementById('edit_slot_duration_hint');
-  if (editSlotStartInput && editSlotEndInput) {
-    const refreshEditHint = () =>
-      updateSlotDurationHint(editSlotStartInput, editSlotEndInput, editSlotHintEl);
-    editSlotStartInput.addEventListener('input', refreshEditHint);
-    editSlotEndInput.addEventListener('input', refreshEditHint);
+
+  function syncTimeToHidden(hourSelect, minuteSelect, hiddenInput) {
+    if (hourSelect && minuteSelect && hiddenInput) {
+      const h = String(hourSelect.value || '00').padStart(2, '0');
+      const m = String(minuteSelect.value || '00').padStart(2, '0');
+      hiddenInput.value = `${h}:${m}`;
+    }
+  }
+
+  function syncHiddenToTime(hiddenInput, hourSelect, minuteSelect) {
+    if (hiddenInput && hourSelect && minuteSelect) {
+      const val = hiddenInput.value || '';
+      const parts = val.split(':');
+      if (parts.length >= 2) {
+        hourSelect.value = parts[0].padStart(2, '0');
+        minuteSelect.value = parts[1].padStart(2, '0');
+      }
+    }
+  }
+
+  function setupTimeSync(hourSelect, minuteSelect, hiddenInput, startInput, endInput, hintEl) {
+    if (!hourSelect || !minuteSelect || !hiddenInput) return;
+    const updateHandler = () => {
+      syncTimeToHidden(hourSelect, minuteSelect, hiddenInput);
+      updateSlotDurationHint(startInput, endInput, hintEl);
+    };
+    hourSelect.addEventListener('change', updateHandler);
+    minuteSelect.addEventListener('change', updateHandler);
+  }
+
+  setupTimeSync(createStartHour, createStartMinute, createSlotStartInput, createSlotStartInput, createSlotEndInput, createSlotHintEl);
+  setupTimeSync(createEndHour, createEndMinute, createSlotEndInput, createSlotStartInput, createSlotEndInput, createSlotHintEl);
+
+  setupTimeSync(editStartHour, editStartMinute, editSlotStartInput, editSlotStartInput, editSlotEndInput, editSlotHintEl);
+  setupTimeSync(editEndHour, editEndMinute, editSlotEndInput, editSlotStartInput, editSlotEndInput, editSlotHintEl);
+
+  /**
+   * Ermittelt für die Lernzeit-Planung den nächstmöglichen Startzeit-Slot in 10-Minuten-Schritten
+   * basierend auf der aktuellen Uhrzeit sowie eine passende Standard-Endzeit (+60 Minuten).
+   *
+   * @param {Date} [now=new Date()]
+   * @returns {{ startTime: string, endTime: string, startHour: string, startMinute: string, endHour: string, endMinute: string }}
+   */
+  function getNextSlotTimeDefaults(now = new Date()) {
+    const totalMinutes = now.getHours() * 60 + now.getMinutes() + (now.getSeconds() > 0 ? 1 : 0);
+    let startTotal = Math.ceil(totalMinutes / 10) * 10;
+
+    // Auf maximal 23:40 deckeln, damit noch mindestens ein 10-Minuten-Slot bis 23:50 möglich bleibt
+    if (startTotal > 23 * 60 + 40) {
+      startTotal = 23 * 60 + 40;
+    }
+
+    const startH = Math.floor(startTotal / 60);
+    const startM = startTotal % 60;
+
+    // Standard-Endzeit: 60 Minuten später (maximal 23:50)
+    let endTotal = Math.min(23 * 60 + 50, startTotal + 60);
+    if (endTotal <= startTotal) {
+      endTotal = Math.min(23 * 60 + 50, startTotal + 10);
+    }
+    const endH = Math.floor(endTotal / 60);
+    const endM = endTotal % 60;
+
+    const startHour = String(startH).padStart(2, '0');
+    const startMinute = String(startM).padStart(2, '0');
+    const endHour = String(endH).padStart(2, '0');
+    const endMinute = String(endM).padStart(2, '0');
+
+    return {
+      startTime: `${startHour}:${startMinute}`,
+      endTime: `${endHour}:${endMinute}`,
+      startHour,
+      startMinute,
+      endHour,
+      endMinute,
+    };
+  }
+
+  /**
+   * Setzt Start- und Endzeit im "Lernzeit planen"-Modal auf den aktuellen nächstmöglichen
+   * 10-Minuten-Slot und aktualisiert die Dropdown-Felder sowie den Dauerhinweis.
+   */
+  function applyDefaultSlotTimes() {
+    const defaults = getNextSlotTimeDefaults();
+    if (createSlotStartInput) {
+      createSlotStartInput.value = defaults.startTime;
+      syncHiddenToTime(createSlotStartInput, createStartHour, createStartMinute);
+    }
+    if (createSlotEndInput) {
+      createSlotEndInput.value = defaults.endTime;
+      syncHiddenToTime(createSlotEndInput, createEndHour, createEndMinute);
+    }
+    updateSlotDurationHint(createSlotStartInput, createSlotEndInput, createSlotHintEl);
+  }
+
+  const createSlotModalEl = document.getElementById('createSlotModal');
+  if (createSlotModalEl) {
+    createSlotModalEl.addEventListener('show.bs.modal', () => {
+      applyDefaultSlotTimes();
+    });
   }
 
   document.querySelectorAll('form[data-ajax-form]').forEach(setupAjaxForm);
@@ -579,7 +670,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // 8. Modal: Lern-Timeslot planen
+    // 8. Modal: Lernzeit planen
     const createSlotBtn = target.closest('[data-bs-target="#createSlotModal"]');
     if (createSlotBtn) {
       clearFormErrors(createSlotForm);
@@ -595,6 +686,8 @@ document.addEventListener('DOMContentLoaded', () => {
         createSlotDateInput.value = createSlotBtn.dataset.date || fallbackDate || '';
       }
 
+      applyDefaultSlotTimes();
+
       if (createSlotMgSelect) {
         if (createSlotBtn.dataset.monthlyGoalId) {
           createSlotMgSelect.value = createSlotBtn.dataset.monthlyGoalId;
@@ -608,7 +701,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // 9. Modal: Lern-Timeslot bearbeiten
+    // 9. Modal: Lernzeit bearbeiten
     const editSlotBtn = target.closest('.edit-slot-btn');
     if (editSlotBtn) {
       clearFormErrors(editSlotForm);
@@ -621,15 +714,22 @@ document.addEventListener('DOMContentLoaded', () => {
       if (editSlotIdInput) editSlotIdInput.value = editSlotBtn.dataset.id || '';
       if (editSlotMgSelect) editSlotMgSelect.value = editSlotBtn.dataset.monthlyGoalId || '';
       if (editSlotDateInput) editSlotDateInput.value = editSlotBtn.dataset.date || '';
-      if (editSlotStartInput) editSlotStartInput.value = editSlotBtn.dataset.start || '';
-      if (editSlotEndInput) editSlotEndInput.value = editSlotBtn.dataset.end || '';
+
+      if (editSlotStartInput && editSlotBtn.dataset.start) {
+        editSlotStartInput.value = editSlotBtn.dataset.start;
+        syncHiddenToTime(editSlotStartInput, editStartHour, editStartMinute);
+      }
+      if (editSlotEndInput && editSlotBtn.dataset.end) {
+        editSlotEndInput.value = editSlotBtn.dataset.end;
+        syncHiddenToTime(editSlotEndInput, editEndHour, editEndMinute);
+      }
       if (editSlotNotesInput) editSlotNotesInput.value = editSlotBtn.dataset.notes || '';
 
       updateSlotDurationHint(editSlotStartInput, editSlotEndInput, editSlotHintEl);
       return;
     }
 
-    // 10. Modal: Lern-Timeslot löschen
+    // 11. Modal: Lernzeit löschen
     const deleteSlotBtn = target.closest('.delete-slot-btn');
     if (deleteSlotBtn) {
       const deleteSlotIdInput = document.getElementById('delete_slot_id');

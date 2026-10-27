@@ -24,7 +24,7 @@ class GoalController
     public const MAX_TARGET_HOURS = 1500.0;
     public const MAX_MONTHLY_HOURS = 744.0;
     public const MAX_SLOT_NOTES_LENGTH = 255;
-    public const MIN_SLOT_MINUTES = 15;
+    public const MIN_SLOT_MINUTES = 10;
 
     private const DAY_NAMES_LONG = [
         1 => 'Montag',
@@ -893,6 +893,9 @@ class GoalController
             throw new ValidationException("Die Startzeit muss im gültigen Format HH:MM vorliegen.", 'start_time');
         }
         $startMinutes = ((int) $startMatches[1]) * 60 + ((int) $startMatches[2]);
+        if (((int) $startMatches[2]) % 10 !== 0) {
+            throw new ValidationException("Die Startzeit muss in 10-Minuten-Schritten angegeben werden (z. B. 18:00, 18:10, 18:20).", 'start_time');
+        }
         $startTimeNormalized = sprintf('%02d:%02d:00', (int) $startMatches[1], (int) $startMatches[2]);
 
         // 4. Endzeit prüfen (HH:MM)
@@ -905,6 +908,9 @@ class GoalController
             throw new ValidationException("Die Endzeit muss im gültigen Format HH:MM vorliegen.", 'end_time');
         }
         $endMinutes = ((int) $endMatches[1]) * 60 + ((int) $endMatches[2]);
+        if (((int) $endMatches[2]) % 10 !== 0) {
+            throw new ValidationException("Die Endzeit muss in 10-Minuten-Schritten angegeben werden (z. B. 19:30, 19:40).", 'end_time');
+        }
         $endTimeNormalized = sprintf('%02d:%02d:00', (int) $endMatches[1], (int) $endMatches[2]);
 
         // Logische Zeitprüfung: Endzeit nach Startzeit und Mindestdauer

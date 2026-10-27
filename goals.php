@@ -178,6 +178,29 @@ $defaultSlotDate = (string) $weeklyPlanning['default_slot_date'];
 $weeklyReferenceHours = $weeklyPlanning['weekly_reference_hours'];
 $selectableMonthlyGoals = $weeklyPlanning['selectable_monthly_goals'];
 
+// Standard-Zeiten für Lernzeit-Modal: nächstmöglicher 10-Minuten-Slot basierend auf der aktuellen Uhrzeit
+$nowTimestamp = time();
+$nowMinutesTotal = ((int) date('H', $nowTimestamp)) * 60 + ((int) date('i', $nowTimestamp));
+if (((int) date('s', $nowTimestamp)) > 0) {
+    $nowMinutesTotal++;
+}
+$initStartMinutesTotal = (int) (ceil($nowMinutesTotal / 10) * 10);
+if ($initStartMinutesTotal > (23 * 60 + 40)) {
+    $initStartMinutesTotal = 23 * 60 + 40;
+}
+$initStartHour = (int) floor($initStartMinutesTotal / 60);
+$initStartMinute = $initStartMinutesTotal % 60;
+$initStartTime = sprintf('%02d:%02d', $initStartHour, $initStartMinute);
+
+$initEndMinutesTotal = min(23 * 60 + 50, $initStartMinutesTotal + 60);
+if ($initEndMinutesTotal <= $initStartMinutesTotal) {
+    $initEndMinutesTotal = min(23 * 60 + 50, $initStartMinutesTotal + 10);
+}
+$initEndHour = (int) floor($initEndMinutesTotal / 60);
+$initEndMinute = $initEndMinutesTotal % 60;
+$initEndTime = sprintf('%02d:%02d', $initEndHour, $initEndMinute);
+$initDurationMinutes = $initEndMinutesTotal - $initStartMinutesTotal;
+
 // Standardwerte für neues Lernziel
 $defaultStartDate = date('Y-m-d');
 $defaultEndDate = date('Y-m-d', strtotime('+6 months'));
@@ -1816,7 +1839,7 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 </div>
 
-<!-- Modal: Lern-Timeslot planen -->
+<!-- Modal: Lernzeit planen -->
 <div class="modal fade" id="createSlotModal" tabindex="-1" aria-labelledby="createSlotModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -1824,7 +1847,7 @@ require_once __DIR__ . '/includes/header.php';
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
                 <input type="hidden" name="action" value="create_learning_slot">
                 <div class="modal-header">
-                    <h5 class="modal-title fw-bold" id="createSlotModalLabel">Lern-Timeslot planen</h5>
+                    <h5 class="modal-title fw-bold" id="createSlotModalLabel">Lernzeit planen</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
                 </div>
                 <div class="modal-body">
@@ -1862,60 +1885,101 @@ require_once __DIR__ . '/includes/header.php';
                         >
                     </div>
 
-                    <div class="row g-2 mb-3">
+                    <div class="row g-2 mb-2">
                         <div class="col-sm-6">
-                            <label for="create_slot_start_time" class="form-label fw-semibold">Startzeit <span class="text-danger">*</span></label>
-                            <input
-                                type="time"
-                                class="form-control"
-                                id="create_slot_start_time"
-                                name="start_time"
-                                value="18:00"
-                                data-default="18:00"
-                                required
-                            >
-                        </div>
-                        <div class="col-sm-6">
-                            <label for="create_slot_end_time" class="form-label fw-semibold">Endzeit <span class="text-danger">*</span></label>
-                            <input
-                                type="time"
-                                class="form-control"
-                                id="create_slot_end_time"
-                                name="end_time"
-                                value="20:00"
-                                data-default="20:00"
-                                required
-                            >
-                        </div>
-                        <div class="col-12">
-                            <div class="form-text" id="create_slot_duration_hint">
-                                Geplante Dauer: <strong>2,0 Stunden</strong> (Mindestdauer: 15 Min.)
+                            <label class="form-label fw-semibold">Startzeit <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <select
+                                    class="form-select text-center slot-hour-select"
+                                    id="create_slot_start_hour"
+                                    aria-label="Startzeit Stunden"
+                                    required
+                                >
+                                    <?php for ($h = 0; $h < 24; $h++): ?>
+                                        <option value="<?= sprintf('%02d', $h) ?>" <?= $h === $initStartHour ? 'selected' : '' ?>>
+                                            <?= sprintf('%02d', $h) ?>
+                                        </option>
+                                    <?php endfor; ?>
+                                </select>
+                                <span class="input-group-text fw-bold px-2">:</span>
+                                <select
+                                    class="form-select text-center slot-minute-select"
+                                    id="create_slot_start_minute"
+                                    aria-label="Startzeit Minuten"
+                                    required
+                                >
+                                    <?php for ($m = 0; $m < 60; $m += 10): ?>
+                                        <option value="<?= sprintf('%02d', $m) ?>" <?= $m === $initStartMinute ? 'selected' : '' ?>>
+                                            <?= sprintf('%02d', $m) ?>
+                                        </option>
+                                    <?php endfor; ?>
+                                </select>
+                                <span class="input-group-text text-muted small">Uhr</span>
                             </div>
+                            <input type="hidden" name="start_time" id="create_slot_start_time" value="<?= $initStartTime ?>" data-default="<?= $initStartTime ?>">
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold">Endzeit <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <select
+                                    class="form-select text-center slot-hour-select"
+                                    id="create_slot_end_hour"
+                                    aria-label="Endzeit Stunden"
+                                    required
+                                >
+                                    <?php for ($h = 0; $h < 24; $h++): ?>
+                                        <option value="<?= sprintf('%02d', $h) ?>" <?= $h === $initEndHour ? 'selected' : '' ?>>
+                                            <?= sprintf('%02d', $h) ?>
+                                        </option>
+                                    <?php endfor; ?>
+                                </select>
+                                <span class="input-group-text fw-bold px-2">:</span>
+                                <select
+                                    class="form-select text-center slot-minute-select"
+                                    id="create_slot_end_minute"
+                                    aria-label="Endzeit Minuten"
+                                    required
+                                >
+                                    <?php for ($m = 0; $m < 60; $m += 10): ?>
+                                        <option value="<?= sprintf('%02d', $m) ?>" <?= $m === $initEndMinute ? 'selected' : '' ?>>
+                                            <?= sprintf('%02d', $m) ?>
+                                        </option>
+                                    <?php endfor; ?>
+                                </select>
+                                <span class="input-group-text text-muted small">Uhr</span>
+                            </div>
+                            <input type="hidden" name="end_time" id="create_slot_end_time" value="<?= $initEndTime ?>" data-default="<?= $initEndTime ?>">
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="create_slot_notes" class="form-label fw-semibold">Konkrete Lernaufgabe / Notiz</label>
+                        <div class="form-text" id="create_slot_duration_hint">
+                            Geplante Dauer: <strong><?= $initDurationMinutes ?> Minuten</strong>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="create_slot_notes" class="form-label fw-semibold">Notiz</label>
                         <input
                             type="text"
                             class="form-control"
                             id="create_slot_notes"
                             name="notes"
                             maxlength="255"
-                            placeholder="z. B. Skript S. 25–40 zusammenfassen oder Übungsaufgaben lösen"
+                            placeholder="z. B. Kapitel 3 wiederholen"
                         >
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Abbrechen</button>
-                    <button type="submit" class="btn btn-primary">Timeslot einplanen</button>
+                    <button type="submit" class="btn btn-primary">Lernzeit planen</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Modal: Lern-Timeslot bearbeiten -->
+<!-- Modal: Lernzeit bearbeiten -->
 <div class="modal fade" id="editSlotModal" tabindex="-1" aria-labelledby="editSlotModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -1924,7 +1988,7 @@ require_once __DIR__ . '/includes/header.php';
                 <input type="hidden" name="action" value="update_learning_slot">
                 <input type="hidden" name="slot_id" id="edit_slot_id" value="">
                 <div class="modal-header">
-                    <h5 class="modal-title fw-bold" id="editSlotModalLabel">Lern-Timeslot bearbeiten</h5>
+                    <h5 class="modal-title fw-bold" id="editSlotModalLabel">Lernzeit bearbeiten</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
                 </div>
                 <div class="modal-body">
@@ -1957,40 +2021,78 @@ require_once __DIR__ . '/includes/header.php';
                         >
                     </div>
 
-                    <div class="row g-2 mb-3">
+                    <div class="row g-2 mb-2">
                         <div class="col-sm-6">
-                            <label for="edit_slot_start_time" class="form-label fw-semibold">Startzeit <span class="text-danger">*</span></label>
-                            <input
-                                type="time"
-                                class="form-control"
-                                id="edit_slot_start_time"
-                                name="start_time"
-                                required
-                            >
+                            <label class="form-label fw-semibold">Startzeit <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <select
+                                    class="form-select text-center slot-hour-select"
+                                    id="edit_slot_start_hour"
+                                    aria-label="Startzeit Stunden"
+                                    required
+                                >
+                                    <?php for ($h = 0; $h < 24; $h++): ?>
+                                        <option value="<?= sprintf('%02d', $h) ?>"><?= sprintf('%02d', $h) ?></option>
+                                    <?php endfor; ?>
+                                </select>
+                                <span class="input-group-text fw-bold px-2">:</span>
+                                <select
+                                    class="form-select text-center slot-minute-select"
+                                    id="edit_slot_start_minute"
+                                    aria-label="Startzeit Minuten"
+                                    required
+                                >
+                                    <?php for ($m = 0; $m < 60; $m += 10): ?>
+                                        <option value="<?= sprintf('%02d', $m) ?>"><?= sprintf('%02d', $m) ?></option>
+                                    <?php endfor; ?>
+                                </select>
+                                <span class="input-group-text text-muted small">Uhr</span>
+                            </div>
+                            <input type="hidden" name="start_time" id="edit_slot_start_time" value="">
                         </div>
                         <div class="col-sm-6">
-                            <label for="edit_slot_end_time" class="form-label fw-semibold">Endzeit <span class="text-danger">*</span></label>
-                            <input
-                                type="time"
-                                class="form-control"
-                                id="edit_slot_end_time"
-                                name="end_time"
-                                required
-                            >
-                        </div>
-                        <div class="col-12">
-                            <div class="form-text" id="edit_slot_duration_hint"></div>
+                            <label class="form-label fw-semibold">Endzeit <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <select
+                                    class="form-select text-center slot-hour-select"
+                                    id="edit_slot_end_hour"
+                                    aria-label="Endzeit Stunden"
+                                    required
+                                >
+                                    <?php for ($h = 0; $h < 24; $h++): ?>
+                                        <option value="<?= sprintf('%02d', $h) ?>"><?= sprintf('%02d', $h) ?></option>
+                                    <?php endfor; ?>
+                                </select>
+                                <span class="input-group-text fw-bold px-2">:</span>
+                                <select
+                                    class="form-select text-center slot-minute-select"
+                                    id="edit_slot_end_minute"
+                                    aria-label="Endzeit Minuten"
+                                    required
+                                >
+                                    <?php for ($m = 0; $m < 60; $m += 10): ?>
+                                        <option value="<?= sprintf('%02d', $m) ?>"><?= sprintf('%02d', $m) ?></option>
+                                    <?php endfor; ?>
+                                </select>
+                                <span class="input-group-text text-muted small">Uhr</span>
+                            </div>
+                            <input type="hidden" name="end_time" id="edit_slot_end_time" value="">
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="edit_slot_notes" class="form-label fw-semibold">Konkrete Lernaufgabe / Notiz</label>
+                        <div class="form-text" id="edit_slot_duration_hint"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="edit_slot_notes" class="form-label fw-semibold">Notiz</label>
                         <input
                             type="text"
                             class="form-control"
                             id="edit_slot_notes"
                             name="notes"
                             maxlength="255"
+                            placeholder="z. B. Kapitel 3 wiederholen"
                         >
                     </div>
                 </div>
@@ -2003,7 +2105,7 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 </div>
 
-<!-- Modal: Lern-Timeslot löschen -->
+<!-- Modal: Lernzeit löschen -->
 <div class="modal fade" id="deleteSlotModal" tabindex="-1" aria-labelledby="deleteSlotModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -2012,19 +2114,19 @@ require_once __DIR__ . '/includes/header.php';
                 <input type="hidden" name="action" value="delete_learning_slot">
                 <input type="hidden" name="slot_id" id="delete_slot_id" value="">
                 <div class="modal-header">
-                    <h5 class="modal-title fw-bold text-danger" id="deleteSlotModalLabel">Lern-Timeslot löschen?</h5>
+                    <h5 class="modal-title fw-bold text-danger" id="deleteSlotModalLabel">Lernzeit löschen?</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
                 </div>
                 <div class="modal-body">
                     <div id="delete-slot-alert" class="alert alert-danger d-none" role="alert"></div>
                     <p class="mb-2">
-                        Möchtest du den folgenden eingeplanten Lern-Timeslot wirklich löschen?
+                        Möchtest du diese geplante Lernzeit wirklich löschen?
                     </p>
                     <p class="fw-bold text-dark mb-0" id="delete_slot_summary"></p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Abbrechen</button>
-                    <button type="submit" class="btn btn-danger">Timeslot löschen</button>
+                    <button type="submit" class="btn btn-danger">Lernzeit löschen</button>
                 </div>
             </form>
         </div>
