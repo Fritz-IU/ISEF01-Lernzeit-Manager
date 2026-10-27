@@ -713,6 +713,7 @@ class GoalController
 
         return [
             'slot_id'    => $slotId,
+            'slot_date'  => $validated['slot_date'],
             'iso_week'   => $validated['iso_week'],
             'year_month' => $validated['year_month'],
         ];
@@ -724,7 +725,7 @@ class GoalController
      * @param int $slotId ID des Timeslots
      * @param int $userId ID des Nutzers
      * @param array<string, mixed> $input Rohdaten
-     * @return array{slot_id: int, iso_week: string, year_month: string}
+     * @return array{slot_id: int, slot_date: string, iso_week: string, year_month: string}
      * @throws ValidationException Bei ungültigen Eingaben oder fremdem Datensatz
      */
     public function updateLearningSlot(int $slotId, int $userId, array $input): array
@@ -748,6 +749,7 @@ class GoalController
 
         return [
             'slot_id'    => $slotId,
+            'slot_date'  => $validated['slot_date'],
             'iso_week'   => $validated['iso_week'],
             'year_month' => $validated['year_month'],
         ];
@@ -758,7 +760,7 @@ class GoalController
      *
      * @param int $slotId ID des Timeslots
      * @param int $userId ID des Nutzers
-     * @return array{iso_week: string, year_month: string}
+     * @return array{slot_date: string, iso_week: string, year_month: string}
      * @throws ValidationException Wenn Timeslot nicht existiert
      */
     public function deleteLearningSlot(int $slotId, int $userId): array
@@ -774,6 +776,7 @@ class GoalController
         $this->goalDAO->deleteLearningSlot($slotId, $userId);
 
         return [
+            'slot_date'  => $slotDate,
             'iso_week'   => $slotDt->format('o-\WW'),
             'year_month' => (string) $existing['plan_month'],
         ];
@@ -784,7 +787,7 @@ class GoalController
      *
      * @param int $slotId ID des Timeslots
      * @param int $userId ID des Nutzers
-     * @return array{iso_week: string, year_month: string, is_completed: bool}
+     * @return array{slot_date: string, iso_week: string, year_month: string, is_completed: bool}
      * @throws ValidationException Wenn Timeslot nicht existiert
      */
     public function toggleLearningSlotCompleted(int $slotId, int $userId): array
@@ -801,6 +804,7 @@ class GoalController
         $slotDt = DateTimeImmutable::createFromFormat('Y-m-d', $slotDate) ?: new DateTimeImmutable('today');
 
         return [
+            'slot_date'    => $slotDate,
             'iso_week'     => $slotDt->format('o-\WW'),
             'year_month'   => (string) $existing['plan_month'],
             'is_completed' => $newStatus,
@@ -995,10 +999,15 @@ class GoalController
      * @param int $userId ID des Nutzers
      * @param array<string, mixed> $monthlyPlanning Ergebnis aus buildMonthlyPlanningData()
      * @param string|null $requestedWeek Vom Nutzer gewählte Kalenderwoche (Format YYYY-Www)
+     * @param string|null $requestedDay Optional ausgewählter Tag im Wochenband (Format YYYY-MM-DD)
      * @return array<string, mixed>
      */
-    public function buildWeeklyPlanningData(int $userId, array $monthlyPlanning, ?string $requestedWeek = null): array
-    {
+    public function buildWeeklyPlanningData(
+        int $userId,
+        array $monthlyPlanning,
+        ?string $requestedWeek = null,
+        ?string $requestedDay = null
+    ): array {
         $selectedMonth = (string) $monthlyPlanning['selected_month'];
         $selectedMonthData = $monthlyPlanning['selected_month_data'];
         $monthlyGoals = $monthlyPlanning['monthly_goals'];
@@ -1156,10 +1165,30 @@ class GoalController
             ];
         }
 
-        // Standard-Datum für das "Timeslot planen"-Modal in der gewählten Woche
-        $defaultSlotDate = ($todayStr >= $selectedWeekMonday->format('Y-m-d') && $todayStr <= $selectedWeekSunday->format('Y-m-d'))
-            ? $todayStr
-            : $selectedWeekMonday->format('Y-m-d');
+        // Aktiv fokussierten Tag für das Wochenband und das "Timeslot planen"-Modal ermitteln
+        $weekMinDate = $selectedWeekMonday->format('Y-m-d');
+        $weekMaxDate = $selectedWeekSunday->format('Y-m-d');
+        $trimmedReqDay = is_string($requestedDay) ? trim($requestedDay) : '';
+
+        if ($trimmedReqDay !== '' && $trimmedReqDay >= $weekMinDate && $trimmedReqDay <= $weekMaxDate) {
+            $defaultSlotDate = $trimmedReqDay;
+        } elseif ($todayStr >= $weekMinDate && $todayStr <= $weekMaxDate) {
+            $defaultSlotDate = $todayStr;
+        } else {
+            $firstDayWithSlots = null;
+            foreach ($days as $dCheck) {
+                if ((int) $dCheck['slot_count'] > 0) {
+                    $firstDayWithSlots = (string) $dCheck['date'];
+                    break;
+                }
+            }
+            $defaultSlotDate = $firstDayWithSlots ?? $weekMinDate;
+        }
+
+        foreach ($days as &$dEntry) {
+            $dEntry['is_selected'] = ((string) $dEntry['date'] === $defaultSlotDate);
+        }
+        unset($dEntry);
 
         // Vorherige und nächste Kalenderwoche samt passendem Zielmonat berechnen
         $prevMonday = $selectedWeekMonday->modify('-7 days');

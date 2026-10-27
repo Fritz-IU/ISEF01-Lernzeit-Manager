@@ -310,7 +310,136 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Event-Delegation für alle Modal-Buttons sowie den asynchronen Monats- und Wochenwechsel
+  /**
+   * Setzt den Ein-/Ausklapp-Zustand einer einzelnen Tages-Kachel synchron auf Header-Toggle und Collapse-Container.
+   *
+   * @param {HTMLElement} cardEl
+   * @param {boolean} expanded
+   */
+  function setDayCardExpanded(cardEl, expanded) {
+    const headerToggles = cardEl.querySelectorAll('.week-day-header-toggle');
+    const collapseEl = cardEl.querySelector('.collapse');
+    headerToggles.forEach((headerToggle) => {
+      headerToggle.classList.toggle('collapsed', !expanded);
+      headerToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    });
+    if (collapseEl) {
+      if (typeof bootstrap !== 'undefined' && bootstrap.Collapse) {
+        const instance = bootstrap.Collapse.getInstance(collapseEl);
+        if (instance) {
+          instance.dispose();
+        }
+      }
+      collapseEl.classList.remove('collapsing');
+      collapseEl.style.height = '';
+      collapseEl.classList.toggle('show', expanded);
+    }
+  }
+
+  /**
+   * Wendet den gewählten Darstellungsmodus ("day" = Tagesfokus, "week" = Ganze Woche)
+   * auf die Wochenplanung an und speichert die Präferenz in der sessionStorage.
+   *
+   * @param {string} mode "day" oder "week"
+   */
+  function applyWeekViewMode(mode) {
+    const validMode = mode === 'week' ? 'week' : 'day';
+    sessionStorage.setItem('goals_week_view_mode', validMode);
+
+    const weekSection = document.getElementById('wochenplanung');
+    if (!weekSection) return;
+
+    weekSection.setAttribute('data-week-view-mode', validMode);
+
+    weekSection.querySelectorAll('[data-week-view-mode-btn]').forEach((btn) => {
+      const isTarget = btn.getAttribute('data-week-view-mode-btn') === validMode;
+      btn.classList.toggle('active', isTarget);
+    });
+
+    // Wochenband (Mo–So) nur im Tagesfokus einblenden, in "Ganze Woche" ausblenden
+    const dayStrip = weekSection.querySelector('.week-day-strip');
+    if (dayStrip) {
+      dayStrip.classList.toggle('d-none', validMode === 'week');
+    }
+
+    const selectedDate = weekSection.getAttribute('data-default-slot-date') || '';
+    const dayCards = weekSection.querySelectorAll('[data-day-card]');
+
+    dayCards.forEach((cardEl) => {
+      const cardDate = cardEl.getAttribute('data-day-card') || '';
+      const hasSlots = cardEl.getAttribute('data-has-slots') === 'true';
+
+      if (validMode === 'day') {
+        const isSelected = cardDate === selectedDate;
+        cardEl.classList.toggle('d-none', !isSelected);
+        if (isSelected) {
+          setDayCardExpanded(cardEl, true);
+        }
+      } else {
+        cardEl.classList.remove('d-none');
+        // In der Übersicht "Ganze Woche": Tage mit Timeslots aufgeklappt, Tage ohne Timeslots eingeklappt
+        setDayCardExpanded(cardEl, hasSlots);
+      }
+    });
+  }
+
+  /**
+   * Wählt im Wochenband einen bestimmten Wochentag aus, aktualisiert den primären
+   * "+ Timeslot planen"-Button und zeigt im Tagesfokus diesen Tag an (bzw. klappt ihn in der Wochenansicht auf).
+   *
+   * @param {string} targetDate Datum im Format YYYY-MM-DD
+   */
+  function selectWeekDay(targetDate) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) return;
+
+    const weekSection = document.getElementById('wochenplanung');
+    if (!weekSection) return;
+
+    weekSection.setAttribute('data-default-slot-date', targetDate);
+
+    const primaryCreateSlotBtn = document.getElementById('primary-create-slot-btn');
+    if (primaryCreateSlotBtn) {
+      primaryCreateSlotBtn.setAttribute('data-date', targetDate);
+    }
+
+    weekSection.querySelectorAll('[data-day-select]').forEach((btn) => {
+      const isSelected = btn.getAttribute('data-day-select') === targetDate;
+      btn.classList.toggle('active', isSelected);
+      btn.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+    });
+
+    const currentMode = weekSection.getAttribute('data-week-view-mode') || 'day';
+    const dayCards = weekSection.querySelectorAll('[data-day-card]');
+
+    dayCards.forEach((cardEl) => {
+      const isSelected = cardEl.getAttribute('data-day-card') === targetDate;
+      if (currentMode === 'day') {
+        cardEl.classList.toggle('d-none', !isSelected);
+        if (isSelected) {
+          setDayCardExpanded(cardEl, true);
+        }
+      } else if (isSelected) {
+        setDayCardExpanded(cardEl, true);
+        cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    });
+
+    // URL mit dem gewählten Tag synchronisieren
+    const currentMonth = weekSection.getAttribute('data-selected-month') || '';
+    const currentWeek = weekSection.getAttribute('data-selected-week') || '';
+    const params = new URLSearchParams();
+    params.set('tab', 'week');
+    if (currentMonth) params.set('month', currentMonth);
+    if (currentWeek) params.set('week', currentWeek);
+    params.set('day', targetDate);
+    window.history.replaceState(null, '', `goals.php?${params.toString()}`);
+  }
+
+  // Gespeicherten Darstellungsmodus der Wochenplanung beim Laden wiederherstellen
+  const initialWeekMode = sessionStorage.getItem('goals_week_view_mode') || 'day';
+  applyWeekViewMode(initialWeekMode);
+
+  // Event-Delegation für alle Modal-Buttons sowie den asynchronen Monats-, Wochen- und Tageswechsel
   document.addEventListener('click', async (event) => {
     const target = event.target instanceof Element ? event.target : null;
     if (!target) return;
@@ -338,14 +467,23 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // 1c. Schnellwechsel aus der Monatsplanung in den Tab "Wochenplanung"
-    const openWeekTabBtn = target.closest('[data-open-week-tab]');
-    if (openWeekTabBtn) {
-      const weekTabBtn = document.getElementById('tab-week-btn');
-      if (weekTabBtn && typeof bootstrap !== 'undefined' && bootstrap.Tab) {
+    // 1c. Tageswechsel über das Wochenband (Mo–So)
+    const daySelectBtn = target.closest('[data-day-select]');
+    if (daySelectBtn) {
+      const targetDate = daySelectBtn.getAttribute('data-day-select') || '';
+      if (targetDate) {
         event.preventDefault();
-        bootstrap.Tab.getOrCreateInstance(weekTabBtn).show();
+        selectWeekDay(targetDate);
       }
+      return;
+    }
+
+    // 1d. Darstellungsmodus-Umschalter ("Tagesfokus" vs. "Ganze Woche")
+    const weekViewModeBtn = target.closest('[data-week-view-mode-btn]');
+    if (weekViewModeBtn) {
+      const targetMode = weekViewModeBtn.getAttribute('data-week-view-mode-btn') || 'day';
+      event.preventDefault();
+      applyWeekViewMode(targetMode);
       return;
     }
 
@@ -511,6 +649,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const weekSection = document.getElementById('wochenplanung');
       const currentMonth = monthSection ? monthSection.getAttribute('data-selected-month') : '';
       const currentWeek = weekSection ? weekSection.getAttribute('data-selected-week') : '';
+      const currentDay = weekSection ? weekSection.getAttribute('data-default-slot-date') : '';
       const params = new URLSearchParams();
       params.set('tab', viewTab);
       if (currentMonth) {
@@ -518,6 +657,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (viewTab === 'week' && currentWeek) {
         params.set('week', currentWeek);
+        if (currentDay) {
+          params.set('day', currentDay);
+        }
       }
       window.history.replaceState(null, '', `goals.php?${params.toString()}`);
     });
@@ -571,6 +713,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Neu eingefügte Toggle-Formulare innerhalb der Wochenplanung für Fetch aktivieren
       weekSection.querySelectorAll('form[data-ajax-form]').forEach(setupAjaxForm);
+      applyWeekViewMode(sessionStorage.getItem('goals_week_view_mode') || 'day');
     }
 
     // Auswahlfelder für Zwischenziele in den Timeslot-Modals aktualisieren

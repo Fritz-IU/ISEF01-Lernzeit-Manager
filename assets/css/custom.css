@@ -96,10 +96,146 @@ main {
   transition: box-shadow 0.15s ease;
 }
 
+/*
+ * Wochenband (Mo bis So) in der Wochenplanung:
+ * Kompaktes 7-Tage-Band für den schnellen Wechsel im Tagesfokus.
+ */
+.week-day-strip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+@media (max-width: 575.98px) {
+  .week-day-strip {
+    gap: 0.25rem;
+  }
+
+  .week-day-strip-btn {
+    padding: 0.35rem 0.2rem !important;
+  }
+}
+
+.week-day-strip-btn {
+  background-color: #f8fafc;
+  border-color: #e2e8f0 !important;
+  color: #334155;
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    transform 0.12s ease;
+}
+
+.week-day-strip-btn:hover {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1 !important;
+  transform: translateY(-1px);
+}
+
+.week-day-strip-btn.is-today:not(.active) {
+  border-color: var(--bs-primary) !important;
+  background-color: rgba(13, 110, 253, 0.04);
+}
+
+.week-day-strip-btn.active {
+  background-color: var(--bs-primary) !important;
+  border-color: var(--bs-primary) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(13, 110, 253, 0.22);
+}
+
+.week-day-strip-date {
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.week-day-strip-btn.active .week-day-strip-date,
+.week-day-strip-btn.active .week-day-strip-empty {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.week-day-strip-empty {
+  color: #94a3b8;
+  font-size: 0.72rem;
+}
+
+.week-day-strip-badge {
+  font-size: 0.68rem;
+  background-color: rgba(13, 110, 253, 0.12);
+  color: var(--bs-primary);
+  font-weight: 600;
+}
+
+.week-day-strip-btn.active .week-day-strip-badge:not(.text-bg-warning) {
+  background-color: #ffffff;
+  color: var(--bs-primary);
+}
+
+.week-day-today-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--bs-primary);
+  display: inline-block;
+}
+
+.week-day-strip-btn.active .week-day-today-dot {
+  background-color: #ffffff;
+}
+
+/*
+ * Einklappbare Bereiche & ruhige Timeslot-Karten in der Wochenplanung:
+ */
+.week-day-header-toggle {
+  cursor: pointer;
+  user-select: none;
+}
+
+.week-collapse-chevron {
+  transition: transform 0.18s ease;
+}
+
+.week-collapse-toggle:not(.collapsed) .week-collapse-chevron,
+.week-day-header-toggle:not(.collapsed) .week-collapse-chevron {
+  transform: rotate(180deg);
+}
+
 .slot-item-card {
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease;
+}
+
+.slot-check-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid #cbd5e1;
+  background-color: #ffffff;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.slot-check-btn:hover {
+  border-color: var(--bs-success);
+}
+
+.slot-check-btn.is-completed {
+  background-color: var(--bs-success);
+  border-color: var(--bs-success);
+}
+
+.slot-action-menu-btn:hover {
+  color: var(--bs-dark) !important;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 0.25rem;
 }
 
 /*
