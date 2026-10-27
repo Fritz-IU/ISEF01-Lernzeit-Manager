@@ -10,9 +10,13 @@ Ein Issue ist erst fertig, wenn die QS es getestet und geschlossen hat.
 1. Issue auf **In Progress** ziehen und sich unter **Assignees** eintragen.
 2. Branch von `main` anlegen und dort arbeiten. Nie direkt auf `main` committen.
    - In Commit-Nachrichten auf das Issue mit `Refs #<Nummer>` verweisen, nie mit `Closes #`, `Fixes #` oder `Resolves #`.
-3. Pull Request öffnen (siehe [Abschnitt 3](#3-pull-request-ausfüllen)).
-4. Unter **Reviewers** eine zweite Person anfordern.
-5. Issue-Karte auf **In Review / QA** ziehen und **Aufwand Ist (h)** eintragen.
+3. Unit-Tests lokal ausführen, neue Validierungs- oder Geschäftslogik mit Tests abdecken (siehe [docs/unit-tests.md](docs/unit-tests.md)):
+   ```bash
+   /Applications/XAMPP/xamppfiles/bin/php tools/phpunit.phar
+   ```
+4. Pull Request öffnen (siehe [Abschnitt 3](#3-pull-request-ausfüllen)).
+5. Unter **Reviewers** eine zweite Person anfordern.
+6. Issue-Karte auf **In Review / QA** ziehen und **Aufwand Ist (h)** eintragen.
 
 ## 3. Pull Request ausfüllen
 1. **Was wurde geändert?** – kurz beschreiben.
@@ -46,9 +50,10 @@ Testaccount: test1@test.local
 
 ## 4. Review (Reviewer*in)
 1. Code lesen, Häkchen der Definition of Done prüfen.
-2. **Approve** oder **Request changes**.
-3. Nach Freigabe **Merge**. Das Issue bleibt offen.
-4. Review-Zeit zu **Aufwand Ist (h)** des Issues addieren.
+2. Checks im Pull Request müssen grün sein (**Unit-Tests**, bei Datenbankänderungen **Datenbank**). Bei Rot kein Merge.
+3. **Approve** oder **Request changes**.
+4. Nach Freigabe **Merge**. Das Issue bleibt offen.
+5. Review-Zeit zu **Aufwand Ist (h)** des Issues addieren.
 
 ## 5. Testen (QS)
 1. Aktuellen Stand von `main` holen und die Testfälle der Story ausführen.

@@ -28,5 +28,7 @@ Refs #
 
 ### Tests
 - [ ] Akzeptanzkriterien lokal (XAMPP) selbst geprüft
+- [ ] Unit-Tests laufen lokal grün (`php tools/phpunit.phar`)
+- [ ] Neue oder geänderte Validierungs- bzw. Geschäftslogik hat Unit-Tests (siehe `docs/unit-tests.md`)
 
 ## Hinweise für Review und QS
