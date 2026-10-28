@@ -12,6 +12,14 @@ Repo für das Modul Projekt: Software Engineering (ISEF01). Entwicklung eines Le
 
 Nach jedem `git pull` mit Änderungen in `sql/` den Reset erneut ausführen. Details und Teamregeln: [docs/datenbank.md](docs/datenbank.md)
 
+## ✅ Unit-Tests ausführen
+
+```bash
+/Applications/XAMPP/xamppfiles/bin/php tools/phpunit.phar
+```
+
+Windows: `C:\xampp\php\php.exe tools\phpunit.phar`. Vorgehen und Konventionen: [docs/unit-tests.md](docs/unit-tests.md)
+
 ## 📜 Ordnerstruktur & Entwicklungsrichtlinien – Lernzeit-Manager
 
 Diese Dokumentation beschreibt die festgelegte Verzeichnisstruktur des Repositories für den **Lernzeit-Manager** (Projekt Software Engineering). Sie dient allen Teammitgliedern als verbindliche Orientierung für das Ablegen von Quellcode, Skripten, Layout-Elementen und Dokumenten im Rahmen von Meilenstein MS 4.
@@ -36,12 +44,17 @@ lernzeit-manager/
 │   ├── Controllers/         # Controller für Anwendungslogik & Eingabevalidierung (z. B. GoalController)
 │   ├── DAO/                 # Data Access Objects für Datenbankoperationen via PDO (z. B. GoalDAO)
 │   └── Database/            # Datenbank-Hilfsklassen / PDO-Wrapper
+├── tests/                   # Unit-Tests (PHPUnit), Ordner spiegeln src/
+│   ├── bootstrap.php        # Autoloader für src/, wird von PHPUnit geladen
+│   └── Unit/                # Testklassen (z. B. Controllers/GoalControllerTest.php)
+├── tools/                   # Entwicklungswerkzeuge (phpunit.phar)
 ├── .gitignore               # Ausschluss von lokalen Temp- und Systemdateien aus Git
 ├── .htaccess                # Apache: Startseite, keine Verzeichnislisten, versteckte Dateien gesperrt
 ├── goals.php                # 6-Monats-Lernzielplanung (Grobplanung)
 ├── index.php                # Zentraler Einstiegspunkt / Dashboard
 ├── login.php                # Login- & Registrierungsseite
 ├── logout.php               # Abmelden (nur per POST)
+├── phpunit.xml              # PHPUnit-Konfiguration
 ├── profile.php              # Profilverwaltung (Studiengang, Semester, Name)
 └── README.md                # Projektbeschreibung & Schnellstartanleitung
 ```
@@ -97,6 +110,14 @@ Der Kern der objektorientierten PHP 8 Backend-Entwicklung (OOP), aufgeteilt nach
 - `src/Controllers/`: Controller zur Koordination von Benutzeranfragen, Formularen und Validierungsregeln vor dem Persistieren (z. B. `GoalController`).
 - `src/DAO/`: Data Access Objects zur Kapselung aller Datenbankzugriffe mittels PDO Prepared Statements und Mandantenisolation (z. B. `GoalDAO`).
 - `src/Database/`: Hilfsklassen für Datenbank-Aktionen und Query-Building.
+
+#### `tests/` und `tools/`
+
+Unit-Tests mit PHPUnit, siehe [docs/unit-tests.md](docs/unit-tests.md).
+
+- `tests/Unit/`: Eine Testklasse je Klasse aus `src/`, gleiche Ordnerstruktur (`tests/Unit/Controllers/GoalControllerTest.php`).
+- `tools/phpunit.phar`: PHPUnit als einzelne Datei, läuft mit dem PHP aus XAMPP ohne Installation.
+- Beide Ordner sind per `.htaccess` für den Browser gesperrt.
 
 ---
 

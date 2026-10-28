@@ -1,0 +1,27 @@
+# Qualitätssicherung Code: führt die Unit-Tests (PHPUnit) aus.
+# Schlägt ein Test fehl, wird der Pull Request rot und kann nicht gemergt werden.
+# Vorgehen und Konventionen: docs/unit-tests.md
+name: Unit-Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  phpunit:
+    name: PHPUnit ausführen
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          # Gleiche Version wie in XAMPP (PHP 8.2)
+          php-version: "8.2"
+          extensions: mbstring, pdo_mysql
+          coverage: none
+
+      - name: Unit-Tests ausführen
+        run: php tools/phpunit.phar
