@@ -7,15 +7,17 @@ Dieses Dokument beschreibt die Architektur, Datenhaltung und Funktionsweise der 
 ## 1. Ziel und Zweck (Warum & Wofür)
 
 ### Wofür wurde es implementiert?
-* **Langfristige Semester- und Modulplanung (6 Monate):** Studierende können für einen Zeitraum von 6 Monaten ihre Module und Lernziele mit geplanten Zielstunden (z. B. 150 Stunden für ein 5-ECTS-Modul), Startdatum und Enddatum erfassen, überblicken, anpassen und löschen.
-* **Monatliche Detailplanung & Zwischenziele (1 Monat):** Die übergeordneten 6-Monats-Lernziele lassen sich in konkrete monatliche Zwischenziele mit eigenem Stundenkontingent herunterbrechen. Zusätzlich kann je Monat ein persönliches Soll-Zeitbudget hinterlegt werden.
-* **Wöchentliche Detailplanung & verfügbare Timeslots (1 Woche):** Innerhalb jedes Kalendermonats können die monatlichen Zwischenziele auf Kalenderwochen (KW) und konkrete Wochentage (Montag bis Sonntag) heruntergebrochen werden. Studierende tragen ihre tatsächlich verfügbaren Lern-Timeslots mit freier Start- und Endzeit (`HH:MM`) ein, ordnen sie einem Zwischenziel zu und können absolvierte Einheiten als erledigt markieren.
-* **Prozentuale Workload-Verteilung, Überplanungs- & Kollisions-Warnung:** Das System berechnet die Auslastung auf Semester-, Monats- und Wochenebene. Überschreitungen eines 6-Monats-Ziels, eines Monatsbudgets, eines Zwischenziels oder zeitliche Überschneidungen zweier Timeslots am selben Tag werden farblich (Gelb/Warnhinweis) hervorgehoben.
+
+- **Langfristige Semester- und Modulplanung (6 Monate):** Studierende können für einen Zeitraum von 6 Monaten ihre Module und Lernziele mit geplanten Zielstunden (z. B. 150 Stunden für ein 5-ECTS-Modul), Startdatum und Enddatum erfassen, überblicken, anpassen und löschen.
+- **Monatliche Detailplanung & Zwischenziele (1 Monat):** Die übergeordneten 6-Monats-Lernziele lassen sich in konkrete monatliche Zwischenziele mit eigenem Stundenkontingent herunterbrechen. Zusätzlich kann je Monat ein persönliches Soll-Zeitbudget hinterlegt werden.
+- **Wöchentliche Detailplanung & verfügbare Timeslots (1 Woche):** Innerhalb jedes Kalendermonats können die monatlichen Zwischenziele auf Kalenderwochen (KW) und konkrete Wochentage (Montag bis Sonntag) heruntergebrochen werden. Studierende tragen ihre tatsächlich verfügbaren Lern-Timeslots mit freier Start- und Endzeit (`HH:MM`) ein, ordnen sie einem Zwischenziel zu und können absolvierte Einheiten als erledigt markieren.
+- **Prozentuale Workload-Verteilung, Überplanungs- & Kollisions-Warnung:** Das System berechnet die Auslastung auf Semester-, Monats- und Wochenebene. Überschreitungen eines 6-Monats-Ziels, eines Monatsbudgets, eines Zwischenziels oder zeitliche Überschneidungen zweier Timeslots am selben Tag werden farblich (Gelb/Warnhinweis) hervorgehoben.
 
 ### Warum wurde es so implementiert? (Entwurfsprinzipien)
-* **Separation of Concerns (SoC) & MVC/DAO-Muster:** Klare Trennung zwischen Benutzeroberfläche ([`goals.php`](../goals.php)), Controller-/Geschäftslogik ([`src/Controllers/GoalController.php`](../src/Controllers/GoalController.php)), Datenzugriffsschicht ([`src/DAO/GoalDAO.php`](../src/DAO/GoalDAO.php)) und MariaDB-Datenbank ([`sql/schema.sql`](../sql/schema.sql)).
-* **Mandantenisolation (Sicherheit):** Alle Lese-, Aktualisierungs- und Löschoperationen erzwingen die `user_id` der aktiven Benutzersitzung (`$_SESSION['user_id']`). Studierende können ausschließlich ihre eigenen Lernziele verwalten.
-* **Progressive Enhancement & Asynchrone Formularverarbeitung:** Alle Formulare zum Anlegen und Bearbeiten (Lernziele, Monatsbudget, Zwischenziele) werden per Fetch-API an [`api/goals.php`](../api/goals.php) übermittelt, sodass das Modal bei Validierungsfehlern geöffnet bleibt, Nutzereingaben nicht verloren gehen und fehlerhafte Eingabefelder direkt mit `is-invalid` rot markiert werden. Ergänzt durch einen serverseitigen POST-Fallback in [`goals.php`](../goals.php); Löschungen laufen direkt über diesen POST-Weg.
+
+- **Separation of Concerns (SoC) & MVC/DAO-Muster:** Klare Trennung zwischen Benutzeroberfläche ([`goals.php`](../goals.php)), Controller-/Geschäftslogik ([`src/Controllers/GoalController.php`](../src/Controllers/GoalController.php)), Datenzugriffsschicht ([`src/DAO/GoalDAO.php`](../src/DAO/GoalDAO.php)) und MariaDB-Datenbank ([`sql/schema.sql`](../sql/schema.sql)).
+- **Mandantenisolation (Sicherheit):** Alle Lese-, Aktualisierungs- und Löschoperationen erzwingen die `user_id` der aktiven Benutzersitzung (`$_SESSION['user_id']`). Studierende können ausschließlich ihre eigenen Lernziele verwalten.
+- **Progressive Enhancement & Asynchrone Formularverarbeitung:** Alle Formulare zum Anlegen und Bearbeiten (Lernziele, Monatsbudget, Zwischenziele) werden per Fetch-API an [`api/goals.php`](../api/goals.php) übermittelt, sodass das Modal bei Validierungsfehlern geöffnet bleibt, Nutzereingaben nicht verloren gehen und fehlerhafte Eingabefelder direkt mit `is-invalid` rot markiert werden. Ergänzt durch einen serverseitigen POST-Fallback in [`goals.php`](../goals.php); Löschungen laufen direkt über diesen POST-Weg.
 
 ---
 
@@ -71,10 +73,10 @@ CREATE TABLE learning_goals (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
-* `target_hours`: Geplante Stunden als Dezimalwert (z. B. `150.00`).
-* `start_date` / `end_date`: Definieren das Planungszeitfenster (6-Monats-Horizont).
-* `chk_learning_goals_dates`: Stellt auf Datenbankebene sicher, dass das Enddatum nicht vor dem Startdatum liegt.
-* `fk_learning_goals_user`: Löscht bei Entfernung eines Benutzerkontos kaskadierend alle zugeordneten Lernziele (`ON DELETE CASCADE`).
+- `target_hours`: Geplante Stunden als Dezimalwert (z. B. `150.00`).
+- `start_date` / `end_date`: Definieren das Planungszeitfenster (6-Monats-Horizont).
+- `chk_learning_goals_dates`: Stellt auf Datenbankebene sicher, dass das Enddatum nicht vor dem Startdatum liegt.
+- `fk_learning_goals_user`: Löscht bei Entfernung eines Benutzerkontos kaskadierend alle zugeordneten Lernziele (`ON DELETE CASCADE`).
 
 Für die monatliche Detailplanung und die Zuordnung der Lernziele zu einzelnen Monaten ergänzen zwei weitere Tabellen das Schema:
 
@@ -112,8 +114,8 @@ CREATE TABLE monthly_goals (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
-* `monthly_budgets`: Speichert das persönliche Soll-Zeitbudget (`budget_hours`) je Studierendem und Kalendermonat (`plan_month` im Format `YYYY-MM`).
-* `monthly_goals`: Speichert die heruntergebrochenen monatlichen Zwischenziele (`title`, `planned_hours`, `description`), verknüpft mit dem übergeordneten 6-Monats-Lernziel (`goal_id`). Wird ein 6-Monats-Lernziel gelöscht, werden dessen Zwischenziele per `ON DELETE CASCADE` automatisch mitentfernt.
+- `monthly_budgets`: Speichert das persönliche Soll-Zeitbudget (`budget_hours`) je Studierendem und Kalendermonat (`plan_month` im Format `YYYY-MM`).
+- `monthly_goals`: Speichert die heruntergebrochenen monatlichen Zwischenziele (`title`, `planned_hours`, `description`), verknüpft mit dem übergeordneten 6-Monats-Lernziel (`goal_id`). Wird ein 6-Monats-Lernziel gelöscht, werden dessen Zwischenziele per `ON DELETE CASCADE` automatisch mitentfernt.
 
 Für die wöchentliche Detailplanung und die Einteilung tatsächlicher Lern-Timeslots ergänzt die Tabelle `learning_slots` das Schema:
 
@@ -139,35 +141,62 @@ CREATE TABLE learning_slots (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
-* `learning_slots`: Speichert die konkret eingeplanten Lern-Timeslots an einem Datum (`slot_date`) mit freier Start- und Endzeit (`start_time`, `end_time`), optionaler Lernnotiz (`notes`) und Erledigt-Status (`is_completed`), verknüpft mit einem monatlichen Zwischenziel (`monthly_goal_id`).
+- `learning_slots`: Speichert die konkret eingeplanten Lern-Timeslots an einem Datum (`slot_date`) mit freier Start- und Endzeit (`start_time`, `end_time`), optionaler Lernnotiz (`notes`) und Erledigt-Status (`is_completed`), verknüpft mit einem monatlichen Zwischenziel (`monthly_goal_id`).
 
 ### 3.2 Validierungsregeln in [`Controllers\GoalController`](../src/Controllers/GoalController.php)
 
-* **Modul / Lernzielname (`title`):** Pflichtfeld, nicht leer, maximal 150 Zeichen (`GoalController::MAX_TITLE_LENGTH`).
-* **Zielstunden (`target_hours`):** Pflichtfeld, numerisch, zwischen 0,5 und 1500,0 Stunden. Unterstützt sowohl Komma (`120,5`) als auch Punkt (`120.5`) als Dezimaltrennzeichen.
-* **Startdatum (`start_date`):** Pflichtfeld im ISO-Format `JJJJ-MM-TT` (`Y-m-d`).
-* **Enddatum (`end_date`):** Pflichtfeld im ISO-Format `JJJJ-MM-TT` (`Y-m-d`). Muss zeitlich am oder nach dem Startdatum liegen (`end_date >= start_date`).
-* **Beschreibung (`description`):** Optional, maximal 2000 Zeichen. Leere Zeichenketten werden in der Datenbank als `NULL` abgelegt.
-* **Monat (`year_month`):** Pflichtfeld im Format `JJJJ-MM` (`^\d{4}-(0[1-9]|1[0-2])$`).
-* **Monatliches Soll-Zeitbudget (`budget_hours`):** Numerisch zwischen 0,0 und 744,0 Stunden (`GoalController::MAX_MONTHLY_HOURS`). Bei leerem Wert oder `0` wird das hinterlegte Monatsbudget zurückgesetzt.
-* **Zwischenziel-Monat (`year_month`):** Pflichtfeld im Format JJJJ-MM. Der Monat muss im Zeitraum des zugehörigen Lernziels liegen (Vergleich auf Monatsebene zwischen `start_date` und `end_date`).
-* **Zwischenziel-Stunden (`planned_hours`):** Pflichtfeld, numerisch zwischen 0,5 und 744,0 Stunden. Überschreitet die Summe der Zwischenziele die Zielstunden des 6-Monats-Ziels oder das Monatsbudget, bleibt das Speichern erlaubt und die Oberfläche hebt die Überschreitung farblich hervor.
-* **Timeslot-Datum (`slot_date`):** Pflichtfeld im Format `JJJJ-MM-TT`. Muss im Zeitraum des übergeordneten Lernziels sowie im Monat des zugeordneten Zwischenziels (inkl. überlappender Kalenderwochen an den Monatsrändern) liegen.
-* **Timeslot-Uhrzeit (`start_time`, `end_time`):** Pflichtfelder im Format `HH:MM`. `end_time` muss zeitlich nach `start_time` liegen, mit einer Mindestdauer von 15 Minuten (`GoalController::MIN_SLOT_MINUTES`). Zeitliche Überschneidungen am selben Tag werden erkannt und in der Wochenansicht als Kollision hervorgehoben.
-* **Timeslot-Notiz (`notes`):** Optional, maximal 255 Zeichen (`GoalController::MAX_SLOT_NOTES_LENGTH`).
+- **Modul / Lernzielname (`title`):** Pflichtfeld, nicht leer, maximal 150 Zeichen (`GoalController::MAX_TITLE_LENGTH`).
+- **Zielstunden (`target_hours`):** Pflichtfeld, numerisch, zwischen 0,5 und 1500,0 Stunden. Unterstützt sowohl Komma (`120,5`) als auch Punkt (`120.5`) als Dezimaltrennzeichen.
+- **Startdatum (`start_date`):** Pflichtfeld im ISO-Format `JJJJ-MM-TT` (`Y-m-d`).
+- **Enddatum (`end_date`):** Pflichtfeld im ISO-Format `JJJJ-MM-TT` (`Y-m-d`). Muss zeitlich am oder nach dem Startdatum liegen (`end_date >= start_date`).
+- **Beschreibung (`description`):** Optional, maximal 2000 Zeichen. Leere Zeichenketten werden in der Datenbank als `NULL` abgelegt.
+- **Monat (`year_month`):** Pflichtfeld im Format `JJJJ-MM` (`^\d{4}-(0[1-9]|1[0-2])$`).
+- **Monatliches Soll-Zeitbudget (`budget_hours`):** Numerisch zwischen 0,0 und 744,0 Stunden (`GoalController::MAX_MONTHLY_HOURS`). Bei leerem Wert oder `0` wird das hinterlegte Monatsbudget zurückgesetzt.
+- **Zwischenziel-Monat (`year_month`):** Pflichtfeld im Format JJJJ-MM. Der Monat muss im Zeitraum des zugehörigen Lernziels liegen (Vergleich auf Monatsebene zwischen `start_date` und `end_date`).
+- **Zwischenziel-Stunden (`planned_hours`):** Pflichtfeld, numerisch zwischen 0,5 und 744,0 Stunden. Überschreitet die Summe der Zwischenziele die Zielstunden des 6-Monats-Ziels oder das Monatsbudget, bleibt das Speichern erlaubt und die Oberfläche hebt die Überschreitung farblich hervor.
+- **Timeslot-Datum (`slot_date`):** Pflichtfeld im Format `JJJJ-MM-TT`. Muss im Zeitraum des übergeordneten Lernziels sowie im Monat des zugeordneten Zwischenziels (inkl. überlappender Kalenderwochen an den Monatsrändern) liegen.
+- **Timeslot-Uhrzeit (`start_time`, `end_time`):** Pflichtfelder im Format `HH:MM`. Die Minuten müssen in 10-Minuten-Schritten (`00`, `10`, `20`, `30`, `40`, `50`) angegeben werden. `end_time` muss zeitlich nach `start_time` liegen, mit einer Mindestdauer von 10 Minuten (`GoalController::MIN_SLOT_MINUTES`). Zeitliche Überschneidungen am selben Tag werden erkannt und in der Wochenansicht als Kollision hervorgehoben.
+- **Timeslot-Notiz (`notes`):** Optional, maximal 255 Zeichen (`GoalController::MAX_SLOT_NOTES_LENGTH`).
+- **Kalenderwochen-Monatszuordnung (4-Tage-Regel):** Eine Kalenderwoche (Montag bis Sonntag) gehört genau dann zu einem Monat, wenn mindestens 4 Tage in diesem Monat liegen (`GoalController::doesWeekBelongToMonth`). Dies entspricht nach ISO-8601 der Lage des Donnerstags der Woche und verhindert redundante oder doppelte Wochen an Monatsgrenzen.
+- **Dynamische Timeslot-Initialisierung:** Beim Öffnen des Modals wird die Startzeit unabhängig vom gewählten Wochentag stets auf den nächsten vollen 10-Minuten-Zeitslot bezogen auf die aktuelle Uhrzeit vorbefüllt (z. B. `08:28` -> `08:30`), und die Standard-Endzeit auf $+60$ Minuten (maximal `23:50` Uhr) gesetzt.
 
 ---
 
 ## 4. Schichtenarchitektur & Ablauf
 
 ### 4.1 Data Access Object ([`src/DAO/GoalDAO.php`](../src/DAO/GoalDAO.php))
+
 Kapselt sämtliche Datenbankinteraktionen und stellt atomare Methoden bereit:
-* `create(int $userId, string $title, ?string $description, float $targetHours, string $startDate, string $endDate): int`
-* `findAllByUserId(int $userId): array`
-* `findByIdAndUserId(int $goalId, int $userId): ?array`
-* `update(int $goalId, int $userId, string $title, ?string $description, float $targetHours, string $startDate, string $endDate): bool`
-* `delete(int $goalId, int $userId): bool`
-* `getTotalTargetHours(int $userId): float`
+
+**6-Monats-Lernziele:**
+
+- `create(int $userId, string $title, ?string $description, float $targetHours, string $startDate, string $endDate): int`
+- `findAllByUserId(int $userId): array`
+- `findByIdAndUserId(int $goalId, int $userId): ?array`
+- `update(int $goalId, int $userId, string $title, ?string $description, float $targetHours, string $startDate, string $endDate): bool`
+- `delete(int $goalId, int $userId): bool`
+- `getTotalTargetHours(int $userId): float`
+
+**Monatliche Budgets & Zwischenziele:**
+
+- `saveMonthlyBudget(int $userId, string $planMonth, float $budgetHours): bool`
+- `findAllMonthlyBudgetsByUserId(int $userId): array`
+- `findMonthlyBudgetByUserIdAndMonth(int $userId, string $planMonth): ?array`
+- `createMonthlyGoal(int $userId, int $goalId, string $planMonth, string $title, ?string $description, float $plannedHours): int`
+- `findMonthlyGoalsByUserId(int $userId, ?string $planMonth = null): array`
+- `findMonthlyGoalByIdAndUserId(int $id, int $userId): ?array`
+- `updateMonthlyGoal(int $id, int $userId, int $goalId, string $planMonth, string $title, ?string $description, float $plannedHours): bool`
+- `deleteMonthlyGoal(int $id, int $userId): bool`
+- `getMonthlyPlannedHoursByUserId(int $userId): array`
+
+**Wöchentliche Lern-Timeslots:**
+
+- `createLearningSlot(int $userId, int $monthlyGoalId, string $slotDate, string $startTime, string $endTime, ?string $notes = null): int`
+- `findLearningSlotByIdAndUserId(int $slotId, int $userId): ?array`
+- `findLearningSlotsByDateRange(int $userId, string $startDate, string $endDate): array`
+- `updateLearningSlot(int $slotId, int $userId, int $monthlyGoalId, string $slotDate, string $startTime, string $endTime, ?string $notes = null): bool`
+- `deleteLearningSlot(int $slotId, int $userId): bool`
+- `setLearningSlotCompleted(int $slotId, int $userId, bool $isCompleted): bool`
 
 ### 4.2 Ablauf eines Erstellvorgangs (Sequenzdiagramm)
 
@@ -186,7 +215,7 @@ sequenceDiagram
     API->>API: Prüfe User::isLoggedIn()
     API->>Controller: createGoal(userId, input)
     Controller->>Controller: validateAndParseInput()
-    
+
     alt Validierung fehlgeschlagen
         Controller-->>API: throw ValidationException(message, field)
         API-->>JS: HTTP 422 JSON {success: false, message, field}
@@ -208,7 +237,34 @@ sequenceDiagram
 
 1. **Schutz vor SQL-Injection:** Sämtliche Datenbankabfragen in `GoalDAO` werden ausnahmslos mit Prepared Statements (`PDO::ATTR_EMULATE_PREPARES => false`) und streng typisierten Bind-Parametern (`:user_id`, `:title`, `:description`, etc.) ausgeführt.
 2. **Schutz vor Cross-Site-Scripting (XSS):** Alle dynamischen Inhalte in `goals.php` (z. B. Modultitel, Notizen, Datumsangaben) werden bei der Ausgabe konsequent mit `htmlspecialchars()` maskiert; im JavaScript (`assets/js/goals.js`) werden Modalfelder über `.value` und `.textContent` befüllt.
-3. **Mandantenisolation & IDOR-Schutz:** Sämtliche CRUD-Operationen (`SELECT`, `UPDATE`, `DELETE`) sowie das Zuordnen eines Zwischenziels zu einem übergeordneten Lernziel (`goal_id`) binden zwingend die aktuelle `user_id` aus `$_SESSION['user_id']`. Ein Manipulieren von IDs in POST-Anfragen kann keine fremden Datensätze lesen, zuordnen oder verändern.
+3. **Mandantenisolation & IDOR-Schutz:** Sämtliche CRUD-Operationen (`SELECT`, `UPDATE`, `DELETE`) sowie das Zuordnen eines Zwischenziels zu einem übergeordneten Lernziel (`goal_id`) oder eines Timeslots zu einem Zwischenziel binden zwingend die aktuelle `user_id` aus `$_SESSION['user_id']`. Ein Manipulieren von IDs in POST-Anfragen kann keine fremden Datensätze lesen, zuordnen oder verändern.
 4. **CSRF-Schutz (Cross-Site Request Forgery):** Jedes schreibende Formular auf `goals.php` überträgt ein kryptografisch sicheres Session-Token (`csrf_token` via `random_bytes(32)`), das serverseitig zeitkonstant mittels `hash_equals()` geprüft wird – sowohl im POST-Fallback von `goals.php` als auch in `api/goals.php` (dort HTTP 403 bei fehlendem oder falschem Token).
 5. **Sichere Löschoperationen:** Löschungen erfolgen ausschließlich per HTTP POST mit CSRF-Token und Bestätigungs-Modal (keine manipulierbaren GET-Links).
 
+---
+
+## 6. Technische Highlights & Architekturdetails (Projektbericht-Vorbereitung)
+
+Die Umsetzung von Issue #3 (Wöchentliche Detailplanung) zeichnet sich durch mehrere architektonische und softwaretechnische Highlights aus, die sich besonders für die Darstellung im Projektbericht eignen:
+
+1. **Bidirektionale Zeit-Synchronisation & Abwärtskompatibilität:**
+    - Statt fehleranfälliger nativer HTML5-Time-Picker (die auf Mobil- und Desktopbrowsern stark divergieren) wurde die Zeitauswahl in intuitive Dropdowns für Stunden (`00`–`23`) und Minuten im 10-Minuten-Raster (`00`, `10`, `20`, `30`, `40`, `50`) aufgeteilt.
+    - Eine JavaScript-Synchronisationsschicht spiegelt Eingaben live in ein verstecktes `start_time`- bzw. `end_time`-Feld im ISO-Format `HH:MM`. Dadurch bleiben REST-Endpunkte, Controller, DAO und Datenbankschema zu 100 % abwärtskompatibel.
+
+2. **Dynamische Slot-Initialisierung relativ zur Echtzeit:**
+    - Beim Öffnen des Planungs-Modals berechnet das Frontend (unterstützt durch einen serverseitigen Fallback) live den nächsten anstehenden 10-Minuten-Schritt bezogen auf `new Date()` (z. B. um `14:23` wird `14:30` gewählt) und setzt die Endzeit auf $+60$ Minuten.
+
+3. **Exakte Monatssegmentierung nach ISO-8601 (4-Tage-Regel):**
+    - Kalenderwochen werden nach der 4-Tage-Regel segmentiert: Eine Woche gehört genau dann zu einem Monat, wenn mindestens 4 Tage der Woche in diesen Monat fallen (mathematisch äquivalent zur Lage des Donnerstags).
+    - Verhindert redundante Randwochen (z. B. gehört `KW 40` eindeutig zum Oktober, während der November exakt aus `KW 45` bis `KW 48` besteht).
+
+4. **Flackerfreie asynchrone DOM-Teilaktualisierung & History-Synchronisation:**
+    - Monats- und Wochenwechsel erfolgen über Fetch-Requests, deren Antwort durch `DOMParser` geparst und mittels `replaceChildren()` zielgenau in die Container `#monatsplanung` und `#wochenplanung` eingehängt wird.
+    - Der aktive Tab (`tab=week` bzw. `tab=month`), der gewählte Monat und die Woche werden ohne störende Seiten-Reloads und ohne Scroll-Sprünge in der Adresszeile (`history.replaceState`) synchronisiert.
+
+5. **Hybrides UX-Konzept (Tagesfokus vs. Ganze Woche):**
+    - Das Frontend bietet einen schnellen Umschalter zwischen dem konzentrierten „Tagesfokus“ (inklusive interaktivem Wochenband Mo–So) und der Übersicht „Ganze Woche“.
+    - Im Modus „Ganze Woche“ wird das redundante Tagesband automatisch ausgeblendet und leere Tage werden standardmäßig eingeklappt dargestellt, um kognitive Überlastung zu minimieren.
+
+6. **Echtzeit-Kollisionserkennung:**
+    - Überschneiden sich zwei Lern-Timeslots desselben Nutzers an einem Kalendertag zeitlich, werden sie sowohl serverseitig in `GoalController` als auch visuell in der Oberfläche mit einem Warnhinweis hervorgehoben.
