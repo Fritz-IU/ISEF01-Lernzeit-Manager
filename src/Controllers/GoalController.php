@@ -772,13 +772,15 @@ class GoalController
 
         $slotDate = (string) $existing['slot_date'];
         $slotDt = DateTimeImmutable::createFromFormat('Y-m-d', $slotDate) ?: new DateTimeImmutable('today');
+        $isoWeek = $slotDt->format('o-\WW');
+        $weekMonth = self::resolveMonthForWeek((string) $existing['plan_month'], $isoWeek) ?? (string) $existing['plan_month'];
 
         $this->goalDAO->deleteLearningSlot($slotId, $userId);
 
         return [
             'slot_date'  => $slotDate,
-            'iso_week'   => $slotDt->format('o-\WW'),
-            'year_month' => (string) $existing['plan_month'],
+            'iso_week'   => $isoWeek,
+            'year_month' => $weekMonth,
         ];
     }
 
@@ -802,11 +804,13 @@ class GoalController
 
         $slotDate = (string) $existing['slot_date'];
         $slotDt = DateTimeImmutable::createFromFormat('Y-m-d', $slotDate) ?: new DateTimeImmutable('today');
+        $isoWeek = $slotDt->format('o-\WW');
+        $weekMonth = self::resolveMonthForWeek((string) $existing['plan_month'], $isoWeek) ?? (string) $existing['plan_month'];
 
         return [
             'slot_date'    => $slotDate,
-            'iso_week'     => $slotDt->format('o-\WW'),
-            'year_month'   => (string) $existing['plan_month'],
+            'iso_week'     => $isoWeek,
+            'year_month'   => $weekMonth,
             'is_completed' => $newStatus,
         ];
     }
@@ -936,11 +940,14 @@ class GoalController
             }
         }
 
+        $isoWeek = $slotDt->format('o-\WW');
+        $weekMonth = self::resolveMonthForWeek($planMonth, $isoWeek) ?? $planMonth;
+
         return [
             'monthly_goal_id' => $monthlyGoalId,
-            'year_month'      => $planMonth,
+            'year_month'      => $weekMonth,
             'slot_date'       => $slotDate,
-            'iso_week'        => $slotDt->format('o-\WW'),
+            'iso_week'        => $isoWeek,
             'start_time'      => $startTimeNormalized,
             'end_time'        => $endTimeNormalized,
             'notes'           => $notes,
@@ -972,8 +979,25 @@ class GoalController
     }
 
     /**
-     * Bestimmt den passenden Planungsmonat (YYYY-MM) für eine angeforderte Kalenderwoche,
-     * falls kein expliziter Monat übergeben wurde oder die Woche außerhalb des Monats liegt.
+     * Prüft, ob eine Kalenderwoche (beginnend am übergebenen Montag) zu einem bestimmten Monat (YYYY-MM) gehört.
+     * Eine Woche gehört genau dann zu einem Monat, wenn mindestens 4 ihrer 7 Tage (Montag bis Sonntag)
+     * in diesem Monat liegen (entspricht nach ISO-8601 der Woche, deren Donnerstag in diesem Monat liegt).
+     */
+    public static function doesWeekBelongToMonth(DateTimeImmutable $weekMonday, string $yearMonth): bool
+    {
+        $daysInMonth = 0;
+        for ($d = 0; $d < 7; $d++) {
+            if ($weekMonday->modify("+{$d} days")->format('Y-m') === $yearMonth) {
+                $daysInMonth++;
+            }
+        }
+
+        return $daysInMonth >= 4;
+    }
+
+    /**
+     * Bestimmt den passenden Planungsmonat (YYYY-MM) für eine angeforderte Kalenderwoche.
+     * Eine Woche gehört eindeutig zu dem Monat, in dem mindestens 4 ihrer Tage (bzw. ihr Donnerstag) liegen.
      */
     public static function resolveMonthForWeek(?string $requestedMonth, ?string $requestedWeek): ?string
     {
@@ -986,16 +1010,8 @@ class GoalController
             return $validMonth;
         }
 
-        $weekSunday = $weekMonday->modify('+6 days');
-        $mondayMonth = $weekMonday->format('Y-m');
-        $sundayMonth = $weekSunday->format('Y-m');
-
-        // Wenn ein gültiger Monat übergeben wurde und die Woche diesen Monat berührt, Monat beibehalten
-        if ($validMonth !== null && ($validMonth === $mondayMonth || $validMonth === $sundayMonth)) {
-            return $validMonth;
-        }
-
-        // Sonst den Monat des Donnerstags (ISO-8601-Mehrheitsmonat der Woche) verwenden
+        // Eine Woche (Montag bis Sonntag) hat genau in dem Monat mindestens 4 Tage,
+        // in dem ihr Donnerstag (+3 Tage ab Montag) liegt.
         return $weekMonday->modify('+3 days')->format('Y-m');
     }
 
@@ -1022,19 +1038,24 @@ class GoalController
         $todayStr = $todayDt->format('Y-m-d');
         $currentIsoWeek = $todayDt->format('o-\WW');
 
-        // 1. Alle Kalenderwochen ermitteln, die den ausgewählten Monat berühren
+        // 1. Alle Kalenderwochen ermitteln, die zum ausgewählten Monat gehören (mindestens 4 Tage im Monat)
         $monthFirstDay = DateTimeImmutable::createFromFormat('Y-m-d', $selectedMonth . '-01') ?: $todayDt->modify('first day of this month');
         $monthLastDay = $monthFirstDay->modify('last day of this month');
 
-        $firstWeekMonday = $monthFirstDay->modify('monday this week');
-        $lastWeekMonday = $monthLastDay->modify('monday this week');
+        $firstCandidateMonday = $monthFirstDay->modify('monday this week');
+        $lastCandidateMonday = $monthLastDay->modify('monday this week');
 
         $monthWeekMondays = [];
-        $cursor = $firstWeekMonday;
-        while ($cursor <= $lastWeekMonday) {
-            $monthWeekMondays[$cursor->format('o-\WW')] = $cursor;
+        $cursor = $firstCandidateMonday;
+        while ($cursor <= $lastCandidateMonday) {
+            if (self::doesWeekBelongToMonth($cursor, $selectedMonth)) {
+                $monthWeekMondays[$cursor->format('o-\WW')] = $cursor;
+            }
             $cursor = $cursor->modify('+7 days');
         }
+
+        $firstWeekMonday = reset($monthWeekMondays) ?: $firstCandidateMonday;
+        $lastWeekMonday = end($monthWeekMondays) ?: $lastCandidateMonday;
 
         // 2. Ausgewählte Kalenderwoche bestimmen
         $requestedMonday = self::parseIsoWeek($requestedWeek);
@@ -1237,6 +1258,10 @@ class GoalController
             'prev_week_month'          => $prevWeekMonth,
             'next_week'                => $nextIsoWeek,
             'next_week_month'          => $nextWeekMonth,
+            'prev_month'               => (string) $monthlyPlanning['prev_month'],
+            'next_month'               => (string) $monthlyPlanning['next_month'],
+            'selected_month'           => $selectedMonth,
+            'selected_month_data'      => $selectedMonthData,
             'weeks_window'             => $weeksWindow,
             'days'                     => $days,
             'default_slot_date'        => $defaultSlotDate,

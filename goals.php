@@ -235,7 +235,7 @@ require_once __DIR__ . '/includes/header.php';
     <div class="col-md-5 text-md-end mt-3 mt-md-0">
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createGoalModal">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-plus-lg me-1 align-text-bottom" viewBox="0 0 16 16">
-                <path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2"/>
+                <path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2" />
             </svg>
             Neues Lernziel planen
         </button>
@@ -299,8 +299,7 @@ require_once __DIR__ . '/includes/header.php';
             type="button"
             role="tab"
             aria-controls="pane-semester"
-            aria-selected="<?= $activeViewTab === 'semester' ? 'true' : 'false' ?>"
-        >
+            aria-selected="<?= $activeViewTab === 'semester' ? 'true' : 'false' ?>">
             Semesterübersicht
             <span class="badge rounded-pill bg-secondary-subtle text-secondary ms-1"><?= count($goals) ?></span>
         </button>
@@ -315,8 +314,7 @@ require_once __DIR__ . '/includes/header.php';
             type="button"
             role="tab"
             aria-controls="pane-month"
-            aria-selected="<?= $activeViewTab === 'month' ? 'true' : 'false' ?>"
-        >
+            aria-selected="<?= $activeViewTab === 'month' ? 'true' : 'false' ?>">
             Monatsplanung
             <span class="badge rounded-pill bg-secondary-subtle text-secondary ms-1" id="tab-month-badge"><?= htmlspecialchars((string) $selectedMonthData['label_short']) ?></span>
         </button>
@@ -331,8 +329,7 @@ require_once __DIR__ . '/includes/header.php';
             type="button"
             role="tab"
             aria-controls="pane-week"
-            aria-selected="<?= $activeViewTab === 'week' ? 'true' : 'false' ?>"
-        >
+            aria-selected="<?= $activeViewTab === 'week' ? 'true' : 'false' ?>">
             Wochenplanung
             <span class="badge rounded-pill bg-secondary-subtle text-secondary ms-1" id="tab-week-badge"><?= htmlspecialchars((string) $selectedWeekData['label_short']) ?></span>
         </button>
@@ -348,16 +345,15 @@ require_once __DIR__ . '/includes/header.php';
         id="pane-semester"
         role="tabpanel"
         aria-labelledby="tab-semester-btn"
-        tabindex="0"
-    >
+        tabindex="0">
         <?php if (empty($goals)): ?>
             <div class="card shadow-sm border-0 text-center py-5 mb-4">
                 <div class="card-body">
                     <div class="mb-3 text-muted">
                         <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="bi bi-calendar2-check text-primary" viewBox="0 0 16 16">
-                            <path d="M10.854 8.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 0 1 .708-.708L7.5 10.793l2.646-2.647a.5.5 0 0 1 .708 0"/>
-                            <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5M2 2a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1z"/>
-                            <path d="M2.5 4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5H3a.5.5 0 0 1-.5-.5z"/>
+                            <path d="M10.854 8.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 0 1 .708-.708L7.5 10.793l2.646-2.647a.5.5 0 0 1 .708 0" />
+                            <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5M2 2a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1z" />
+                            <path d="M2.5 4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5H3a.5.5 0 0 1-.5-.5z" />
                         </svg>
                     </div>
                     <h2 class="h5 fw-bold">Noch keine Lernziele geplant</h2>
@@ -385,30 +381,30 @@ require_once __DIR__ . '/includes/header.php';
                         <tbody>
                             <?php foreach ($goals as $goal): ?>
                                 <?php
-                                    $startFormatted = date('d.m.Y', strtotime((string) $goal['start_date']));
-                                    $endFormatted = date('d.m.Y', strtotime((string) $goal['end_date']));
-                                    $startDateObj = new DateTimeImmutable((string) $goal['start_date']);
-                                    $endDateObj = new DateTimeImmutable((string) $goal['end_date']);
-                                    $durationDays = $startDateObj->diff($endDateObj)->days;
-                                    $durationWeeks = (int) ceil($durationDays / 7);
+                                $startFormatted = date('d.m.Y', strtotime((string) $goal['start_date']));
+                                $endFormatted = date('d.m.Y', strtotime((string) $goal['end_date']));
+                                $startDateObj = new DateTimeImmutable((string) $goal['start_date']);
+                                $endDateObj = new DateTimeImmutable((string) $goal['end_date']);
+                                $durationDays = $startDateObj->diff($endDateObj)->days;
+                                $durationWeeks = (int) ceil($durationDays / 7);
 
-                                    $targetHoursRow = (float) $goal['target_hours'];
-                                    $allocatedHoursRow = (float) ($goal['allocated_hours'] ?? 0.0);
-                                    $monthlyGoalCount = (int) ($goal['monthly_goal_count'] ?? 0);
-                                    $isGoalOverAllocated = $allocatedHoursRow > $targetHoursRow;
-                                    $allocPercent = $targetHoursRow > 0 ? round(($allocatedHoursRow / $targetHoursRow) * 100, 1) : 0.0;
-                                    $allocBarWidth = min(100.0, $allocPercent);
+                                $targetHoursRow = (float) $goal['target_hours'];
+                                $allocatedHoursRow = (float) ($goal['allocated_hours'] ?? 0.0);
+                                $monthlyGoalCount = (int) ($goal['monthly_goal_count'] ?? 0);
+                                $isGoalOverAllocated = $allocatedHoursRow > $targetHoursRow;
+                                $allocPercent = $targetHoursRow > 0 ? round(($allocatedHoursRow / $targetHoursRow) * 100, 1) : 0.0;
+                                $allocBarWidth = min(100.0, $allocPercent);
 
-                                    if ($isGoalOverAllocated) {
-                                        $allocBarClass = 'bg-warning';
-                                        $allocTextClass = 'text-warning-emphasis fw-bold';
-                                    } elseif ($allocPercent >= 100.0) {
-                                        $allocBarClass = 'bg-success';
-                                        $allocTextClass = 'text-success fw-semibold';
-                                    } else {
-                                        $allocBarClass = 'bg-primary';
-                                        $allocTextClass = 'text-dark fw-semibold';
-                                    }
+                                if ($isGoalOverAllocated) {
+                                    $allocBarClass = 'bg-warning';
+                                    $allocTextClass = 'text-warning-emphasis fw-bold';
+                                } elseif ($allocPercent >= 100.0) {
+                                    $allocBarClass = 'bg-success';
+                                    $allocTextClass = 'text-success fw-semibold';
+                                } else {
+                                    $allocBarClass = 'bg-primary';
+                                    $allocTextClass = 'text-dark fw-semibold';
+                                }
                                 ?>
                                 <tr class="<?= $isGoalOverAllocated ? 'table-warning' : '' ?>">
                                     <td class="td-mobile-header" data-label="Lernziel">
@@ -464,8 +460,7 @@ require_once __DIR__ . '/includes/header.php';
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#createMonthlyGoalModal"
                                                 data-goal-id="<?= (int) $goal['id'] ?>"
-                                                data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>"
-                                            >
+                                                data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>">
                                                 + Zwischenziel
                                             </button>
                                             <button
@@ -479,8 +474,7 @@ require_once __DIR__ . '/includes/header.php';
                                                 data-hours="<?= htmlspecialchars((string) $goal['target_hours'], ENT_QUOTES) ?>"
                                                 data-start="<?= htmlspecialchars((string) $goal['start_date'], ENT_QUOTES) ?>"
                                                 data-end="<?= htmlspecialchars((string) $goal['end_date'], ENT_QUOTES) ?>"
-                                                data-description="<?= htmlspecialchars((string) ($goal['description'] ?? ''), ENT_QUOTES) ?>"
-                                            >
+                                                data-description="<?= htmlspecialchars((string) ($goal['description'] ?? ''), ENT_QUOTES) ?>">
                                                 Bearbeiten
                                             </button>
                                             <button
@@ -490,8 +484,7 @@ require_once __DIR__ . '/includes/header.php';
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#deleteGoalModal"
                                                 data-id="<?= (int) $goal['id'] ?>"
-                                                data-title="<?= htmlspecialchars((string) $goal['title'], ENT_QUOTES) ?>"
-                                            >
+                                                data-title="<?= htmlspecialchars((string) $goal['title'], ENT_QUOTES) ?>">
                                                 Löschen
                                             </button>
                                         </div>
@@ -513,8 +506,7 @@ require_once __DIR__ . '/includes/header.php';
         id="pane-month"
         role="tabpanel"
         aria-labelledby="tab-month-btn"
-        tabindex="0"
-    >
+        tabindex="0">
         <section id="monatsplanung" class="mb-4" data-selected-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>" data-selected-month-short="<?= htmlspecialchars((string) $selectedMonthData['label_short'], ENT_QUOTES) ?>">
             <!-- Monats-Tab-Leiste -->
             <div class="card shadow-sm border-0 mb-3">
@@ -523,8 +515,7 @@ require_once __DIR__ . '/includes/header.php';
                         <a
                             href="goals.php?tab=month&month=<?= urlencode((string) $monthlyPlanning['prev_month']) ?>"
                             data-month-switch="<?= htmlspecialchars((string) $monthlyPlanning['prev_month'], ENT_QUOTES) ?>"
-                            class="btn btn-sm btn-outline-secondary"
-                        >
+                            class="btn btn-sm btn-outline-secondary">
                             <span class="d-sm-none">&lsaquo; <?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['prev_month'], true)) ?></span>
                             <span class="d-none d-sm-inline">&lsaquo; <?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['prev_month'], false)) ?></span>
                         </a>
@@ -534,8 +525,7 @@ require_once __DIR__ . '/includes/header.php';
                         <a
                             href="goals.php?tab=month&month=<?= urlencode((string) $monthlyPlanning['next_month']) ?>"
                             data-month-switch="<?= htmlspecialchars((string) $monthlyPlanning['next_month'], ENT_QUOTES) ?>"
-                            class="btn btn-sm btn-outline-secondary"
-                        >
+                            class="btn btn-sm btn-outline-secondary">
                             <span class="d-sm-none"><?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['next_month'], true)) ?> &rsaquo;</span>
                             <span class="d-none d-sm-inline"><?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['next_month'], false)) ?> &rsaquo;</span>
                         </a>
@@ -544,21 +534,21 @@ require_once __DIR__ . '/includes/header.php';
                     <div class="row g-2" role="tablist" aria-label="Monatsauswahl">
                         <?php foreach ($monthsWindow as $ym => $mTab): ?>
                             <?php
-                                $isTabSelected = (bool) $mTab['is_selected'];
-                                $isTabOverBudget = (bool) $mTab['is_over_budget'];
-                                $tabPlanned = (float) $mTab['planned_hours'];
-                                $tabBudget = $mTab['budget_hours'];
-                                $tabWorkloadShare = (float) $mTab['workload_share_percent'];
+                            $isTabSelected = (bool) $mTab['is_selected'];
+                            $isTabOverBudget = (bool) $mTab['is_over_budget'];
+                            $tabPlanned = (float) $mTab['planned_hours'];
+                            $tabBudget = $mTab['budget_hours'];
+                            $tabWorkloadShare = (float) $mTab['workload_share_percent'];
 
-                                if ($isTabSelected) {
-                                    $tabCardClasses = $isTabOverBudget
-                                        ? 'border-warning bg-warning-subtle text-dark shadow-sm active'
-                                        : 'border-primary bg-primary text-white shadow-sm active';
-                                } else {
-                                    $tabCardClasses = $isTabOverBudget
-                                        ? 'border-warning bg-warning-subtle text-dark'
-                                        : 'border-light-subtle bg-light text-dark';
-                                }
+                            if ($isTabSelected) {
+                                $tabCardClasses = $isTabOverBudget
+                                    ? 'border-warning bg-warning-subtle text-dark shadow-sm active'
+                                    : 'border-primary bg-primary text-white shadow-sm active';
+                            } else {
+                                $tabCardClasses = $isTabOverBudget
+                                    ? 'border-warning bg-warning-subtle text-dark'
+                                    : 'border-light-subtle bg-light text-dark';
+                            }
                             ?>
                             <div class="col-4 col-lg-2">
                                 <a
@@ -566,8 +556,7 @@ require_once __DIR__ . '/includes/header.php';
                                     data-month-switch="<?= htmlspecialchars((string) $ym, ENT_QUOTES) ?>"
                                     class="card h-100 text-decoration-none border month-tab-link <?= $tabCardClasses ?>"
                                     role="tab"
-                                    aria-selected="<?= $isTabSelected ? 'true' : 'false' ?>"
-                                >
+                                    aria-selected="<?= $isTabSelected ? 'true' : 'false' ?>">
                                     <div class="card-body p-2 text-center">
                                         <div class="d-flex flex-wrap justify-content-center align-items-center gap-1 mb-1">
                                             <span class="fw-bold small"><?= htmlspecialchars((string) $mTab['label_short']) ?></span>
@@ -598,12 +587,12 @@ require_once __DIR__ . '/includes/header.php';
 
             <!-- Detailansicht des aktiv ausgewählten Monats -->
             <?php
-                $selBudget = $selectedMonthData['budget_hours'];
-                $selPlanned = (float) $selectedMonthData['planned_hours'];
-                $selRemaining = $selectedMonthData['remaining_budget_hours'];
-                $selUtilPercent = $selectedMonthData['budget_utilization_percent'];
-                $selIsOverBudget = (bool) $selectedMonthData['is_over_budget'];
-                $selWorkloadShare = (float) $selectedMonthData['workload_share_percent'];
+            $selBudget = $selectedMonthData['budget_hours'];
+            $selPlanned = (float) $selectedMonthData['planned_hours'];
+            $selRemaining = $selectedMonthData['remaining_budget_hours'];
+            $selUtilPercent = $selectedMonthData['budget_utilization_percent'];
+            $selIsOverBudget = (bool) $selectedMonthData['is_over_budget'];
+            $selWorkloadShare = (float) $selectedMonthData['workload_share_percent'];
             ?>
             <div class="card shadow-sm border mb-4">
                 <div class="card-header bg-white py-3 px-4 border-bottom">
@@ -628,8 +617,7 @@ require_once __DIR__ . '/includes/header.php';
                                     class="btn btn-primary"
                                     data-bs-toggle="modal"
                                     data-bs-target="#createMonthlyGoalModal"
-                                    data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>"
-                                >
+                                    data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>">
                                     + Zwischenziel planen
                                 </button>
                             <?php endif; ?>
@@ -653,8 +641,7 @@ require_once __DIR__ . '/includes/header.php';
                                             data-bs-target="#monthlyBudgetModal"
                                             data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>"
                                             data-month-label="<?= htmlspecialchars((string) $selectedMonthData['label_long'], ENT_QUOTES) ?>"
-                                            data-budget="<?= htmlspecialchars((string) $selBudget, ENT_QUOTES) ?>"
-                                        >
+                                            data-budget="<?= htmlspecialchars((string) $selBudget, ENT_QUOTES) ?>">
                                             Bearbeiten
                                         </button>
                                     <?php endif; ?>
@@ -681,8 +668,7 @@ require_once __DIR__ . '/includes/header.php';
                                         data-bs-target="#monthlyBudgetModal"
                                         data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>"
                                         data-month-label="<?= htmlspecialchars((string) $selectedMonthData['label_long'], ENT_QUOTES) ?>"
-                                        data-budget=""
-                                    >
+                                        data-budget="">
                                         Zeitbudget festlegen
                                     </button>
                                 <?php endif; ?>
@@ -704,8 +690,8 @@ require_once __DIR__ . '/includes/header.php';
                                     <?php endif; ?>
                                 </div>
                                 <?php
-                                    $utilBarWidth = $selUtilPercent !== null ? min(100.0, (float) $selUtilPercent) : ($selPlanned > 0 ? 100.0 : 0.0);
-                                    $utilBarClass = $selIsOverBudget ? 'bg-warning' : ($selUtilPercent !== null && $selUtilPercent >= 90.0 ? 'bg-success' : 'bg-primary');
+                                $utilBarWidth = $selUtilPercent !== null ? min(100.0, (float) $selUtilPercent) : ($selPlanned > 0 ? 100.0 : 0.0);
+                                $utilBarClass = $selIsOverBudget ? 'bg-warning' : ($selUtilPercent !== null && $selUtilPercent >= 90.0 ? 'bg-success' : 'bg-primary');
                                 ?>
                                 <div class="progress" style="height: 8px;" role="progressbar" aria-label="Auslastung des Zeitbudgets" aria-valuenow="<?= (int) $utilBarWidth ?>" aria-valuemin="0" aria-valuemax="100">
                                     <div class="progress-bar <?= $utilBarClass ?>" style="width: <?= $utilBarWidth ?>%"></div>
@@ -754,8 +740,7 @@ require_once __DIR__ . '/includes/header.php';
                                     class="btn btn-sm btn-primary"
                                     data-bs-toggle="modal"
                                     data-bs-target="#createMonthlyGoalModal"
-                                    data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>"
-                                >
+                                    data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>">
                                     Erstes Zwischenziel für <?= htmlspecialchars((string) $selectedMonthData['label_long']) ?> anlegen
                                 </button>
                             <?php endif; ?>
@@ -774,15 +759,15 @@ require_once __DIR__ . '/includes/header.php';
                                 <tbody>
                                     <?php foreach ($monthlyGoals as $mGoal): ?>
                                         <?php
-                                            $mgHours = (float) $mGoal['planned_hours'];
-                                            $parentTarget = (float) $mGoal['parent_target_hours'];
-                                            $parentAlloc = (float) $mGoal['parent_allocated_hours'];
-                                            $isParentOver = (bool) $mGoal['is_parent_over_allocated'];
-                                            $shareOfBudget = $mGoal['share_of_month_budget_percent'];
-                                            $shareOfPlanned = (float) $mGoal['share_of_month_planned_percent'];
-                                            $mgScheduled = (float) ($mGoal['scheduled_hours'] ?? 0.0);
-                                            $mgSlotCount = (int) ($mGoal['slot_count'] ?? 0);
-                                            $isMgOverScheduled = (bool) ($mGoal['is_over_scheduled'] ?? false);
+                                        $mgHours = (float) $mGoal['planned_hours'];
+                                        $parentTarget = (float) $mGoal['parent_target_hours'];
+                                        $parentAlloc = (float) $mGoal['parent_allocated_hours'];
+                                        $isParentOver = (bool) $mGoal['is_parent_over_allocated'];
+                                        $shareOfBudget = $mGoal['share_of_month_budget_percent'];
+                                        $shareOfPlanned = (float) $mGoal['share_of_month_planned_percent'];
+                                        $mgScheduled = (float) ($mGoal['scheduled_hours'] ?? 0.0);
+                                        $mgSlotCount = (int) ($mGoal['slot_count'] ?? 0);
+                                        $isMgOverScheduled = (bool) ($mGoal['is_over_scheduled'] ?? false);
                                         ?>
                                         <tr class="<?= ($isParentOver || $isMgOverScheduled) ? 'table-warning' : '' ?>">
                                             <td class="td-mobile-header" data-label="Zwischenziel">
@@ -832,8 +817,7 @@ require_once __DIR__ . '/includes/header.php';
                                                         data-month="<?= htmlspecialchars((string) $mGoal['year_month'], ENT_QUOTES) ?>"
                                                         data-title="<?= htmlspecialchars((string) $mGoal['title'], ENT_QUOTES) ?>"
                                                         data-hours="<?= htmlspecialchars((string) $mGoal['planned_hours'], ENT_QUOTES) ?>"
-                                                        data-description="<?= htmlspecialchars((string) ($mGoal['description'] ?? ''), ENT_QUOTES) ?>"
-                                                    >
+                                                        data-description="<?= htmlspecialchars((string) ($mGoal['description'] ?? ''), ENT_QUOTES) ?>">
                                                         Bearbeiten
                                                     </button>
                                                     <button
@@ -844,8 +828,7 @@ require_once __DIR__ . '/includes/header.php';
                                                         data-bs-target="#deleteMonthlyGoalModal"
                                                         data-id="<?= (int) $mGoal['id'] ?>"
                                                         data-title="<?= htmlspecialchars((string) $mGoal['title'], ENT_QUOTES) ?>"
-                                                        data-month="<?= htmlspecialchars((string) $mGoal['year_month'], ENT_QUOTES) ?>"
-                                                    >
+                                                        data-month="<?= htmlspecialchars((string) $mGoal['year_month'], ENT_QUOTES) ?>">
                                                         Löschen
                                                     </button>
                                                 </div>
@@ -869,8 +852,7 @@ require_once __DIR__ . '/includes/header.php';
         id="pane-week"
         role="tabpanel"
         aria-labelledby="tab-week-btn"
-        tabindex="0"
-    >
+        tabindex="0">
         <section
             id="wochenplanung"
             class="mb-4"
@@ -879,47 +861,46 @@ require_once __DIR__ . '/includes/header.php';
             data-selected-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>"
             data-selected-month-short="<?= htmlspecialchars((string) $selectedMonthData['label_short'], ENT_QUOTES) ?>"
             data-default-slot-date="<?= htmlspecialchars($defaultSlotDate, ENT_QUOTES) ?>"
-            data-week-view-mode="day"
-        >
+            data-week-view-mode="day">
             <!-- Kalenderwochen-Auswahl-Leiste -->
             <div class="card shadow-sm border-0 mb-3">
                 <div class="card-body p-2 p-sm-3">
                     <div class="d-flex justify-content-between align-items-center mb-2 gap-2">
                         <a
-                            href="goals.php?tab=week&month=<?= urlencode((string) $weeklyPlanning['prev_week_month']) ?>&week=<?= urlencode((string) $weeklyPlanning['prev_week']) ?>"
-                            data-week-switch="<?= htmlspecialchars((string) $weeklyPlanning['prev_week'], ENT_QUOTES) ?>"
-                            data-week-month="<?= htmlspecialchars((string) $weeklyPlanning['prev_week_month'], ENT_QUOTES) ?>"
+                            href="goals.php?tab=week&month=<?= urlencode((string) $weeklyPlanning['prev_month']) ?>"
+                            data-month-switch="<?= htmlspecialchars((string) $weeklyPlanning['prev_month'], ENT_QUOTES) ?>"
                             class="btn btn-sm btn-outline-secondary"
-                        >
-                            &lsaquo; KW <?= (int) substr((string) $weeklyPlanning['prev_week'], -2) ?>
+                            title="Vorheriger Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['prev_month'], false)) ?>">
+                            <span class="d-sm-none">&lsaquo; <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['prev_month'], true)) ?></span>
+                            <span class="d-none d-sm-inline">&lsaquo; <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['prev_month'], false)) ?></span>
                         </a>
                         <div class="text-center">
                             <span class="text-muted small fw-semibold d-block">
-                                Kalenderwochen in <?= htmlspecialchars((string) $selectedMonthData['label_long']) ?>
+                                <?= htmlspecialchars((string) $selectedMonthData['label_long']) ?>
                             </span>
                         </div>
                         <a
-                            href="goals.php?tab=week&month=<?= urlencode((string) $weeklyPlanning['next_week_month']) ?>&week=<?= urlencode((string) $weeklyPlanning['next_week']) ?>"
-                            data-week-switch="<?= htmlspecialchars((string) $weeklyPlanning['next_week'], ENT_QUOTES) ?>"
-                            data-week-month="<?= htmlspecialchars((string) $weeklyPlanning['next_week_month'], ENT_QUOTES) ?>"
+                            href="goals.php?tab=week&month=<?= urlencode((string) $weeklyPlanning['next_month']) ?>"
+                            data-month-switch="<?= htmlspecialchars((string) $weeklyPlanning['next_month'], ENT_QUOTES) ?>"
                             class="btn btn-sm btn-outline-secondary"
-                        >
-                            KW <?= (int) substr((string) $weeklyPlanning['next_week'], -2) ?> &rsaquo;
+                            title="Nächster Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['next_month'], false)) ?>">
+                            <span class="d-sm-none"><?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['next_month'], true)) ?> &rsaquo;</span>
+                            <span class="d-none d-sm-inline"><?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['next_month'], false)) ?> &rsaquo;</span>
                         </a>
                     </div>
 
                     <div class="row g-2" role="tablist" aria-label="Kalenderwochenauswahl">
                         <?php foreach ($weeksWindow as $isoW => $wTab): ?>
                             <?php
-                                $isWSelected = (bool) $wTab['is_selected'];
-                                $wScheduled = (float) $wTab['scheduled_hours'];
-                                $wSlots = (int) $wTab['slot_count'];
+                            $isWSelected = (bool) $wTab['is_selected'];
+                            $wScheduled = (float) $wTab['scheduled_hours'];
+                            $wSlots = (int) $wTab['slot_count'];
 
-                                if ($isWSelected) {
-                                    $wCardClasses = 'border-primary bg-primary text-white shadow-sm active';
-                                } else {
-                                    $wCardClasses = 'border-light-subtle bg-light text-dark';
-                                }
+                            if ($isWSelected) {
+                                $wCardClasses = 'border-primary bg-primary text-white shadow-sm active';
+                            } else {
+                                $wCardClasses = 'border-light-subtle bg-light text-dark';
+                            }
                             ?>
                             <div class="col-6 col-sm-4 col-lg">
                                 <a
@@ -928,8 +909,7 @@ require_once __DIR__ . '/includes/header.php';
                                     data-week-month="<?= htmlspecialchars((string) $selectedMonth, ENT_QUOTES) ?>"
                                     class="card h-100 text-decoration-none border week-tab-link <?= $wCardClasses ?>"
                                     role="tab"
-                                    aria-selected="<?= $isWSelected ? 'true' : 'false' ?>"
-                                >
+                                    aria-selected="<?= $isWSelected ? 'true' : 'false' ?>">
                                     <div class="card-body p-2 text-center">
                                         <div class="d-flex flex-wrap justify-content-center align-items-center gap-1">
                                             <span class="fw-bold small"><?= htmlspecialchars((string) $wTab['label_short']) ?></span>
@@ -955,14 +935,14 @@ require_once __DIR__ . '/includes/header.php';
 
             <!-- Detailansicht der aktiv ausgewählten Kalenderwoche -->
             <?php
-                $wSumScheduled = (float) $weekSummary['scheduled_hours'];
-                $wSumCompleted = (float) $weekSummary['completed_hours'];
-                $wSumSlots = (int) $weekSummary['slot_count'];
-                $wSumCompletedSlots = (int) $weekSummary['completed_slot_count'];
-                $wHasOverlaps = (bool) $weekSummary['has_overlaps'];
-                $monthTotalScheduled = (float) ($selectedMonthData['scheduled_hours'] ?? 0.0);
-                $monthTotalPlanned = (float) $selectedMonthData['planned_hours'];
-                $isMonthOverScheduled = $monthTotalPlanned > 0 && $monthTotalScheduled > $monthTotalPlanned;
+            $wSumScheduled = (float) $weekSummary['scheduled_hours'];
+            $wSumCompleted = (float) $weekSummary['completed_hours'];
+            $wSumSlots = (int) $weekSummary['slot_count'];
+            $wSumCompletedSlots = (int) $weekSummary['completed_slot_count'];
+            $wHasOverlaps = (bool) $weekSummary['has_overlaps'];
+            $monthTotalScheduled = (float) ($selectedMonthData['scheduled_hours'] ?? 0.0);
+            $monthTotalPlanned = (float) $selectedMonthData['planned_hours'];
+            $isMonthOverScheduled = $monthTotalPlanned > 0 && $monthTotalScheduled > $monthTotalPlanned;
             ?>
             <div class="card shadow-sm border mb-4">
                 <div class="card-header bg-white py-3 px-4 border-bottom">
@@ -1001,15 +981,13 @@ require_once __DIR__ . '/includes/header.php';
                                 <button
                                     type="button"
                                     class="btn btn-outline-secondary active"
-                                    data-week-view-mode-btn="day"
-                                >
+                                    data-week-view-mode-btn="day">
                                     Tagesfokus
                                 </button>
                                 <button
                                     type="button"
                                     class="btn btn-outline-secondary"
-                                    data-week-view-mode-btn="week"
-                                >
+                                    data-week-view-mode-btn="week">
                                     Ganze Woche
                                 </button>
                             </div>
@@ -1020,8 +998,7 @@ require_once __DIR__ . '/includes/header.php';
                                     class="btn btn-primary btn-sm px-3 py-1"
                                     data-bs-toggle="modal"
                                     data-bs-target="#createMonthlyGoalModal"
-                                    data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>"
-                                >
+                                    data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>">
                                     + Zwischenziel für <?= htmlspecialchars((string) $selectedMonthData['label_short']) ?> anlegen
                                 </button>
                             <?php endif; ?>
@@ -1048,8 +1025,7 @@ require_once __DIR__ . '/includes/header.php';
                                 data-bs-toggle="collapse"
                                 data-bs-target="#weekMonthlyGoalsCollapse"
                                 aria-expanded="false"
-                                aria-controls="weekMonthlyGoalsCollapse"
-                            >
+                                aria-controls="weekMonthlyGoalsCollapse">
                                 <span class="small fw-semibold">
                                     Zwischenziele im <?= htmlspecialchars((string) $selectedMonthData['label_long']) ?>
                                     <span class="text-muted fw-normal ms-1">
@@ -1059,7 +1035,7 @@ require_once __DIR__ . '/includes/header.php';
                                 <span class="text-muted small d-flex align-items-center gap-1">
                                     <span class="d-none d-sm-inline">Details</span>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-chevron-down week-collapse-chevron" viewBox="0 0 16 16">
-                                        <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708"/>
+                                        <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708" />
                                     </svg>
                                 </span>
                             </button>
@@ -1068,11 +1044,11 @@ require_once __DIR__ . '/includes/header.php';
                                     <div class="row g-2 mt-1">
                                         <?php foreach ($monthlyGoals as $mgItem): ?>
                                             <?php
-                                                $mgItemPlanned = (float) $mgItem['planned_hours'];
-                                                $mgItemSched = (float) ($mgItem['scheduled_hours'] ?? 0.0);
-                                                $mgItemRem = round($mgItemPlanned - $mgItemSched, 2);
-                                                $mgItemOver = $mgItemSched > $mgItemPlanned;
-                                                $mgItemPct = $mgItemPlanned > 0 ? min(100.0, round(($mgItemSched / $mgItemPlanned) * 100, 1)) : 0.0;
+                                            $mgItemPlanned = (float) $mgItem['planned_hours'];
+                                            $mgItemSched = (float) ($mgItem['scheduled_hours'] ?? 0.0);
+                                            $mgItemRem = round($mgItemPlanned - $mgItemSched, 2);
+                                            $mgItemOver = $mgItemSched > $mgItemPlanned;
+                                            $mgItemPct = $mgItemPlanned > 0 ? min(100.0, round(($mgItemSched / $mgItemPlanned) * 100, 1)) : 0.0;
                                             ?>
                                             <div class="col-md-6 col-xl-4">
                                                 <div class="p-2 px-3 border rounded h-100 d-flex flex-column justify-content-between <?= $mgItemOver ? 'bg-warning-subtle border-warning' : 'bg-white' ?>">
@@ -1112,20 +1088,19 @@ require_once __DIR__ . '/includes/header.php';
                     <div class="week-day-strip mb-3" role="tablist" aria-label="Wochentagsauswahl">
                         <?php foreach ($weekDays as $day): ?>
                             <?php
-                                $dayDate = (string) $day['date'];
-                                $daySelected = (bool) ($day['is_selected'] ?? ($dayDate === $defaultSlotDate));
-                                $dayToday = (bool) $day['is_today'];
-                                $dayHours = (float) $day['scheduled_hours'];
-                                $daySlotCount = (int) $day['slot_count'];
-                                $dayOverlap = (bool) $day['has_overlap'];
+                            $dayDate = (string) $day['date'];
+                            $daySelected = (bool) ($day['is_selected'] ?? ($dayDate === $defaultSlotDate));
+                            $dayToday = (bool) $day['is_today'];
+                            $dayHours = (float) $day['scheduled_hours'];
+                            $daySlotCount = (int) $day['slot_count'];
+                            $dayOverlap = (bool) $day['has_overlap'];
                             ?>
                             <button
                                 type="button"
                                 class="week-day-strip-btn btn text-center p-2 border rounded <?= $daySelected ? 'active' : '' ?> <?= $dayToday ? 'is-today' : '' ?>"
                                 data-day-select="<?= htmlspecialchars($dayDate, ENT_QUOTES) ?>"
                                 role="tab"
-                                aria-selected="<?= $daySelected ? 'true' : 'false' ?>"
-                            >
+                                aria-selected="<?= $daySelected ? 'true' : 'false' ?>">
                                 <div class="d-flex justify-content-center align-items-center gap-1">
                                     <span class="fw-bold small"><?= htmlspecialchars((string) $day['day_name_short']) ?></span>
                                     <?php if ($dayToday): ?>
@@ -1150,25 +1125,24 @@ require_once __DIR__ . '/includes/header.php';
                     <div class="d-flex flex-column gap-2" id="week-days-container">
                         <?php foreach ($weekDays as $day): ?>
                             <?php
-                                $dayDate = (string) $day['date'];
-                                $isSelectedDay = (bool) ($day['is_selected'] ?? ($dayDate === $defaultSlotDate));
-                                $isToday = (bool) $day['is_today'];
-                                $inMonth = (bool) $day['is_in_selected_month'];
-                                $dayHours = (float) $day['scheduled_hours'];
-                                $daySlotCount = (int) $day['slot_count'];
-                                $dayHasOverlap = (bool) $day['has_overlap'];
-                                $daySlots = $day['slots'];
-                                $hasSlots = !empty($daySlots);
-                                $collapseId = 'day-collapse-' . $dayDate;
-                                // Im Standardmodus "Tagesfokus" ist der aktive Tag aufgeklappt;
-                                // für die übrigen Tage sind nur Tage mit Slots standardmäßig aufgeklappt, leere Tage eingeklappt.
-                                $isInitiallyExpanded = $isSelectedDay || $hasSlots;
+                            $dayDate = (string) $day['date'];
+                            $isSelectedDay = (bool) ($day['is_selected'] ?? ($dayDate === $defaultSlotDate));
+                            $isToday = (bool) $day['is_today'];
+                            $inMonth = (bool) $day['is_in_selected_month'];
+                            $dayHours = (float) $day['scheduled_hours'];
+                            $daySlotCount = (int) $day['slot_count'];
+                            $dayHasOverlap = (bool) $day['has_overlap'];
+                            $daySlots = $day['slots'];
+                            $hasSlots = !empty($daySlots);
+                            $collapseId = 'day-collapse-' . $dayDate;
+                            // Im Standardmodus "Tagesfokus" ist der aktive Tag aufgeklappt;
+                            // für die übrigen Tage sind nur Tage mit Slots standardmäßig aufgeklappt, leere Tage eingeklappt.
+                            $isInitiallyExpanded = $isSelectedDay || $hasSlots;
                             ?>
                             <div
                                 class="card week-day-card <?= $isToday ? 'border-primary-subtle' : ($dayHasOverlap ? 'border-warning' : 'border') ?> <?= !$inMonth ? 'bg-light-subtle' : 'bg-white' ?> <?= $isSelectedDay ? '' : 'd-none' ?>"
                                 data-day-card="<?= htmlspecialchars($dayDate, ENT_QUOTES) ?>"
-                                data-has-slots="<?= $hasSlots ? 'true' : 'false' ?>"
-                            >
+                                data-has-slots="<?= $hasSlots ? 'true' : 'false' ?>">
                                 <div class="card-header py-2 px-3 d-flex justify-content-between align-items-center <?= $isToday ? 'bg-primary-subtle border-primary-subtle' : 'bg-light-subtle' ?>">
                                     <div
                                         class="d-flex align-items-center flex-wrap gap-2 flex-grow-1 week-day-header-toggle <?= $isInitiallyExpanded ? '' : 'collapsed' ?>"
@@ -1176,8 +1150,7 @@ require_once __DIR__ . '/includes/header.php';
                                         data-bs-toggle="collapse"
                                         data-bs-target="#<?= htmlspecialchars($collapseId, ENT_QUOTES) ?>"
                                         aria-expanded="<?= $isInitiallyExpanded ? 'true' : 'false' ?>"
-                                        aria-controls="<?= htmlspecialchars($collapseId, ENT_QUOTES) ?>"
-                                    >
+                                        aria-controls="<?= htmlspecialchars($collapseId, ENT_QUOTES) ?>">
                                         <span class="fw-bold text-dark"><?= htmlspecialchars((string) $day['day_name_long']) ?></span>
                                         <span class="text-muted small"><?= htmlspecialchars((string) $day['date_full_formatted']) ?></span>
                                         <?php if ($isToday): ?>
@@ -1205,8 +1178,7 @@ require_once __DIR__ . '/includes/header.php';
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#createSlotModal"
                                                 data-date="<?= htmlspecialchars($dayDate, ENT_QUOTES) ?>"
-                                                title="Lernzeit für <?= htmlspecialchars((string) $day['day_name_long']) ?> (<?= htmlspecialchars((string) $day['date_full_formatted']) ?>) planen"
-                                            >
+                                                title="Lernzeit für <?= htmlspecialchars((string) $day['day_name_long']) ?> (<?= htmlspecialchars((string) $day['date_full_formatted']) ?>) planen">
                                                 Lernzeit planen
                                             </button>
                                         <?php endif; ?>
@@ -1217,10 +1189,9 @@ require_once __DIR__ . '/includes/header.php';
                                             data-bs-target="#<?= htmlspecialchars($collapseId, ENT_QUOTES) ?>"
                                             aria-expanded="<?= $isInitiallyExpanded ? 'true' : 'false' ?>"
                                             aria-controls="<?= htmlspecialchars($collapseId, ENT_QUOTES) ?>"
-                                            aria-label="Details für <?= htmlspecialchars((string) $day['day_name_long']) ?> ein- oder ausklappen"
-                                        >
+                                            aria-label="Details für <?= htmlspecialchars((string) $day['day_name_long']) ?> ein- oder ausklappen">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-chevron-down week-collapse-chevron" viewBox="0 0 16 16">
-                                                <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1 0-.708"/>
+                                                <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1 0-.708" />
                                             </svg>
                                         </button>
                                     </div>
@@ -1235,10 +1206,10 @@ require_once __DIR__ . '/includes/header.php';
                                         <?php else: ?>
                                             <?php foreach ($daySlots as $slot): ?>
                                                 <?php
-                                                    $slotCompleted = (int) $slot['is_completed'] === 1;
-                                                    $slotOverlap = (bool) $slot['has_overlap'];
-                                                    $slotDur = (float) $slot['duration_hours'];
-                                                    $slotTimeRange = $slot['start_time_formatted'] . ' – ' . $slot['end_time_formatted'] . ' Uhr';
+                                                $slotCompleted = (int) $slot['is_completed'] === 1;
+                                                $slotOverlap = (bool) $slot['has_overlap'];
+                                                $slotDur = (float) $slot['duration_hours'];
+                                                $slotTimeRange = $slot['start_time_formatted'] . ' – ' . $slot['end_time_formatted'] . ' Uhr';
                                                 ?>
                                                 <div class="p-2 px-3 border rounded slot-item-card d-flex align-items-start justify-content-between gap-3 <?= $slotOverlap ? 'bg-warning-subtle border-warning' : ($slotCompleted ? 'bg-light text-muted' : 'bg-white') ?>">
                                                     <div class="d-flex align-items-start gap-3 flex-grow-1 min-w-0">
@@ -1251,11 +1222,10 @@ require_once __DIR__ . '/includes/header.php';
                                                                 type="submit"
                                                                 class="slot-check-btn <?= $slotCompleted ? 'is-completed' : '' ?>"
                                                                 title="<?= $slotCompleted ? 'Als offen markieren' : 'Als erledigt abhaken' ?>"
-                                                                aria-label="<?= $slotCompleted ? 'Als offen markieren' : 'Als erledigt abhaken' ?>"
-                                                            >
+                                                                aria-label="<?= $slotCompleted ? 'Als offen markieren' : 'Als erledigt abhaken' ?>">
                                                                 <?php if ($slotCompleted): ?>
                                                                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16">
-                                                                        <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z"/>
+                                                                        <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z" />
                                                                     </svg>
                                                                 <?php endif; ?>
                                                             </button>
@@ -1299,10 +1269,9 @@ require_once __DIR__ . '/includes/header.php';
                                                             data-bs-toggle="dropdown"
                                                             aria-expanded="false"
                                                             title="Aktionen für Timeslot"
-                                                            aria-label="Aktionen für Timeslot"
-                                                        >
+                                                            aria-label="Aktionen für Timeslot">
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                                                                <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0"/>
+                                                                <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0" />
                                                             </svg>
                                                         </button>
                                                         <ul class="dropdown-menu dropdown-menu-end shadow-sm">
@@ -1317,8 +1286,7 @@ require_once __DIR__ . '/includes/header.php';
                                                                     data-date="<?= htmlspecialchars((string) $slot['slot_date'], ENT_QUOTES) ?>"
                                                                     data-start="<?= htmlspecialchars((string) $slot['start_time_formatted'], ENT_QUOTES) ?>"
                                                                     data-end="<?= htmlspecialchars((string) $slot['end_time_formatted'], ENT_QUOTES) ?>"
-                                                                    data-notes="<?= htmlspecialchars((string) ($slot['notes'] ?? ''), ENT_QUOTES) ?>"
-                                                                >
+                                                                    data-notes="<?= htmlspecialchars((string) ($slot['notes'] ?? ''), ENT_QUOTES) ?>">
                                                                     Bearbeiten
                                                                 </button>
                                                             </li>
@@ -1329,8 +1297,7 @@ require_once __DIR__ . '/includes/header.php';
                                                                     data-bs-toggle="modal"
                                                                     data-bs-target="#deleteSlotModal"
                                                                     data-id="<?= (int) $slot['id'] ?>"
-                                                                    data-summary="<?= htmlspecialchars((string) $day['day_name_long'] . ', ' . (string) $day['date_full_formatted'] . ' (' . $slotTimeRange . ') – ' . (string) $slot['monthly_goal_title'], ENT_QUOTES) ?>"
-                                                                >
+                                                                    data-summary="<?= htmlspecialchars((string) $day['day_name_long'] . ', ' . (string) $day['date_full_formatted'] . ' (' . $slotTimeRange . ') – ' . (string) $slot['monthly_goal_title'], ENT_QUOTES) ?>">
                                                                     Löschen
                                                                 </button>
                                                             </li>
@@ -1351,7 +1318,7 @@ require_once __DIR__ . '/includes/header.php';
 </div>
 
 <!-- Modal: Lernziel erstellen -->
-<div class="modal fade" id="createGoalModal" tabindex="-1" aria-labelledby="createGoalModalLabel" aria-hidden="true"<?= $failedAction === 'create' ? ' data-auto-open="true"' : '' ?>>
+<div class="modal fade" id="createGoalModal" tabindex="-1" aria-labelledby="createGoalModalLabel" aria-hidden="true" <?= $failedAction === 'create' ? ' data-auto-open="true"' : '' ?>>
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form action="goals.php" method="POST" id="createGoalForm" data-ajax-form>
@@ -1379,8 +1346,7 @@ require_once __DIR__ . '/includes/header.php';
                             maxlength="150"
                             placeholder="z. B. Software Engineering"
                             value="<?= htmlspecialchars($createTitleVal) ?>"
-                            required
-                        >
+                            required>
                     </div>
 
                     <div class="mb-3">
@@ -1396,8 +1362,7 @@ require_once __DIR__ . '/includes/header.php';
                                 max="1500"
                                 placeholder="z. B. 150"
                                 value="<?= htmlspecialchars($createHoursVal) ?>"
-                                required
-                            >
+                                required>
                             <span class="input-group-text">Stunden</span>
                         </div>
                         <div class="form-text">Empfehlung für 5 ECTS: ca. 125 &ndash; 150 Stunden.</div>
@@ -1413,8 +1378,7 @@ require_once __DIR__ . '/includes/header.php';
                                 name="start_date"
                                 value="<?= htmlspecialchars($createStartVal) ?>"
                                 data-default="<?= htmlspecialchars($defaultStartDate) ?>"
-                                required
-                            >
+                                required>
                         </div>
                         <div class="col-sm-6">
                             <label for="create_end_date" class="form-label fw-semibold">Enddatum <span class="text-danger">*</span></label>
@@ -1425,8 +1389,7 @@ require_once __DIR__ . '/includes/header.php';
                                 name="end_date"
                                 value="<?= htmlspecialchars($createEndVal) ?>"
                                 data-default="<?= htmlspecialchars($defaultEndDate) ?>"
-                                required
-                            >
+                                required>
                         </div>
                     </div>
 
@@ -1438,8 +1401,7 @@ require_once __DIR__ . '/includes/header.php';
                             name="description"
                             rows="3"
                             maxlength="2000"
-                            placeholder="Optionale Notizen, Themenblöcke oder Klausurtermin..."
-                        ><?= htmlspecialchars($createDescVal) ?></textarea>
+                            placeholder="Optionale Notizen, Themenblöcke oder Klausurtermin..."><?= htmlspecialchars($createDescVal) ?></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -1452,7 +1414,7 @@ require_once __DIR__ . '/includes/header.php';
 </div>
 
 <!-- Modal: Lernziel bearbeiten -->
-<div class="modal fade" id="editGoalModal" tabindex="-1" aria-labelledby="editGoalModalLabel" aria-hidden="true"<?= $failedAction === 'update' ? ' data-auto-open="true"' : '' ?>>
+<div class="modal fade" id="editGoalModal" tabindex="-1" aria-labelledby="editGoalModalLabel" aria-hidden="true" <?= $failedAction === 'update' ? ' data-auto-open="true"' : '' ?>>
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form action="goals.php" method="POST" id="editGoalForm" data-ajax-form>
@@ -1480,8 +1442,7 @@ require_once __DIR__ . '/includes/header.php';
                             name="title"
                             maxlength="150"
                             value="<?= htmlspecialchars($editTitleVal) ?>"
-                            required
-                        >
+                            required>
                     </div>
 
                     <div class="mb-3">
@@ -1496,8 +1457,7 @@ require_once __DIR__ . '/includes/header.php';
                                 min="0.5"
                                 max="1500"
                                 value="<?= htmlspecialchars($editHoursVal) ?>"
-                                required
-                            >
+                                required>
                             <span class="input-group-text">Stunden</span>
                         </div>
                     </div>
@@ -1511,8 +1471,7 @@ require_once __DIR__ . '/includes/header.php';
                                 id="edit_start_date"
                                 name="start_date"
                                 value="<?= htmlspecialchars($editStartVal) ?>"
-                                required
-                            >
+                                required>
                         </div>
                         <div class="col-sm-6">
                             <label for="edit_end_date" class="form-label fw-semibold">Enddatum <span class="text-danger">*</span></label>
@@ -1522,8 +1481,7 @@ require_once __DIR__ . '/includes/header.php';
                                 id="edit_end_date"
                                 name="end_date"
                                 value="<?= htmlspecialchars($editEndVal) ?>"
-                                required
-                            >
+                                required>
                         </div>
                     </div>
 
@@ -1534,8 +1492,7 @@ require_once __DIR__ . '/includes/header.php';
                             id="edit_description"
                             name="description"
                             rows="3"
-                            maxlength="2000"
-                        ><?= htmlspecialchars($editDescVal) ?></textarea>
+                            maxlength="2000"><?= htmlspecialchars($editDescVal) ?></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -1597,8 +1554,7 @@ require_once __DIR__ . '/includes/header.php';
                             id="budget_year_month"
                             name="year_month"
                             value="<?= htmlspecialchars($selectedMonth) ?>"
-                            required
-                        >
+                            required>
                     </div>
                     <div class="mb-3">
                         <label for="budget_hours_input" class="form-label fw-semibold">Verfügbares Zeitbudget im Monat</label>
@@ -1612,8 +1568,7 @@ require_once __DIR__ . '/includes/header.php';
                                 min="0"
                                 max="744"
                                 value="<?= $selectedMonthData['budget_hours'] !== null ? htmlspecialchars((string) $selectedMonthData['budget_hours']) : '' ?>"
-                                placeholder="z. B. 40"
-                            >
+                                placeholder="z. B. 40">
                             <span class="input-group-text">Stunden</span>
                         </div>
                         <div class="form-text">
@@ -1650,8 +1605,8 @@ require_once __DIR__ . '/includes/header.php';
                             <option value="" disabled selected>Bitte Lernziel wählen…</option>
                             <?php foreach ($goals as $gOption): ?>
                                 <?php
-                                    $optAlloc = (float) ($gOption['allocated_hours'] ?? 0.0);
-                                    $optTarget = (float) $gOption['target_hours'];
+                                $optAlloc = (float) ($gOption['allocated_hours'] ?? 0.0);
+                                $optTarget = (float) $gOption['target_hours'];
                                 ?>
                                 <option value="<?= (int) $gOption['id'] ?>">
                                     <?= htmlspecialchars((string) $gOption['title']) ?> &ndash; <?= number_format($optAlloc, 1, ',', '.') ?> von <?= number_format($optTarget, 1, ',', '.') ?> h verplant
@@ -1669,8 +1624,7 @@ require_once __DIR__ . '/includes/header.php';
                                 id="create_mg_year_month"
                                 name="year_month"
                                 value="<?= htmlspecialchars($selectedMonth) ?>"
-                                required
-                            >
+                                required>
                         </div>
                         <div class="col-sm-6">
                             <label for="create_mg_planned_hours" class="form-label fw-semibold">Lernzeit im Monat <span class="text-danger">*</span></label>
@@ -1684,8 +1638,7 @@ require_once __DIR__ . '/includes/header.php';
                                     min="0.5"
                                     max="744"
                                     placeholder="z. B. 15"
-                                    required
-                                >
+                                    required>
                                 <span class="input-group-text">Std.</span>
                             </div>
                         </div>
@@ -1700,8 +1653,7 @@ require_once __DIR__ . '/includes/header.php';
                             name="title"
                             maxlength="150"
                             placeholder="z. B. Skript Kapitel 1 bis 3 durcharbeiten"
-                            required
-                        >
+                            required>
                     </div>
 
                     <div class="mb-3">
@@ -1712,8 +1664,7 @@ require_once __DIR__ . '/includes/header.php';
                             name="description"
                             rows="2"
                             maxlength="2000"
-                            placeholder="Optionale Notizen für diesen Monat..."
-                        ></textarea>
+                            placeholder="Optionale Notizen für diesen Monat..."></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -1759,8 +1710,7 @@ require_once __DIR__ . '/includes/header.php';
                                 class="form-control"
                                 id="edit_mg_year_month"
                                 name="year_month"
-                                required
-                            >
+                                required>
                         </div>
                         <div class="col-sm-6">
                             <label for="edit_mg_planned_hours" class="form-label fw-semibold">Lernzeit im Monat <span class="text-danger">*</span></label>
@@ -1773,8 +1723,7 @@ require_once __DIR__ . '/includes/header.php';
                                     step="0.5"
                                     min="0.5"
                                     max="744"
-                                    required
-                                >
+                                    required>
                                 <span class="input-group-text">Std.</span>
                             </div>
                         </div>
@@ -1788,8 +1737,7 @@ require_once __DIR__ . '/includes/header.php';
                             id="edit_mg_title"
                             name="title"
                             maxlength="150"
-                            required
-                        >
+                            required>
                     </div>
 
                     <div class="mb-3">
@@ -1799,8 +1747,7 @@ require_once __DIR__ . '/includes/header.php';
                             id="edit_mg_description"
                             name="description"
                             rows="2"
-                            maxlength="2000"
-                        ></textarea>
+                            maxlength="2000"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -1859,11 +1806,11 @@ require_once __DIR__ . '/includes/header.php';
                             <option value="" disabled selected>Bitte Zwischenziel wählen…</option>
                             <?php foreach ($selectableMonthlyGoals as $mgOpt): ?>
                                 <?php
-                                    $mgOptSched = (float) ($mgOpt['scheduled_hours'] ?? 0.0);
-                                    $mgOptPlan = (float) $mgOpt['planned_hours'];
-                                    $mgOptMonthPrefix = ((string) $mgOpt['plan_month'] !== $selectedMonth)
-                                        ? '[' . GoalController::formatYearMonth((string) $mgOpt['plan_month'], true) . '] '
-                                        : '';
+                                $mgOptSched = (float) ($mgOpt['scheduled_hours'] ?? 0.0);
+                                $mgOptPlan = (float) $mgOpt['planned_hours'];
+                                $mgOptMonthPrefix = ((string) $mgOpt['plan_month'] !== $selectedMonth)
+                                    ? '[' . GoalController::formatYearMonth((string) $mgOpt['plan_month'], true) . '] '
+                                    : '';
                                 ?>
                                 <option value="<?= (int) $mgOpt['id'] ?>">
                                     <?= htmlspecialchars($mgOptMonthPrefix . (string) $mgOpt['title'] . ' (' . (string) $mgOpt['parent_goal_title'] . ')') ?> &ndash; <?= number_format($mgOptSched, 1, ',', '.') ?> / <?= number_format($mgOptPlan, 1, ',', '.') ?> h
@@ -1881,8 +1828,7 @@ require_once __DIR__ . '/includes/header.php';
                             name="slot_date"
                             value="<?= htmlspecialchars($defaultSlotDate) ?>"
                             data-default="<?= htmlspecialchars($defaultSlotDate) ?>"
-                            required
-                        >
+                            required>
                     </div>
 
                     <div class="row g-2 mb-2">
@@ -1893,8 +1839,7 @@ require_once __DIR__ . '/includes/header.php';
                                     class="form-select text-center slot-hour-select"
                                     id="create_slot_start_hour"
                                     aria-label="Startzeit Stunden"
-                                    required
-                                >
+                                    required>
                                     <?php for ($h = 0; $h < 24; $h++): ?>
                                         <option value="<?= sprintf('%02d', $h) ?>" <?= $h === $initStartHour ? 'selected' : '' ?>>
                                             <?= sprintf('%02d', $h) ?>
@@ -1906,8 +1851,7 @@ require_once __DIR__ . '/includes/header.php';
                                     class="form-select text-center slot-minute-select"
                                     id="create_slot_start_minute"
                                     aria-label="Startzeit Minuten"
-                                    required
-                                >
+                                    required>
                                     <?php for ($m = 0; $m < 60; $m += 10): ?>
                                         <option value="<?= sprintf('%02d', $m) ?>" <?= $m === $initStartMinute ? 'selected' : '' ?>>
                                             <?= sprintf('%02d', $m) ?>
@@ -1925,8 +1869,7 @@ require_once __DIR__ . '/includes/header.php';
                                     class="form-select text-center slot-hour-select"
                                     id="create_slot_end_hour"
                                     aria-label="Endzeit Stunden"
-                                    required
-                                >
+                                    required>
                                     <?php for ($h = 0; $h < 24; $h++): ?>
                                         <option value="<?= sprintf('%02d', $h) ?>" <?= $h === $initEndHour ? 'selected' : '' ?>>
                                             <?= sprintf('%02d', $h) ?>
@@ -1938,8 +1881,7 @@ require_once __DIR__ . '/includes/header.php';
                                     class="form-select text-center slot-minute-select"
                                     id="create_slot_end_minute"
                                     aria-label="Endzeit Minuten"
-                                    required
-                                >
+                                    required>
                                     <?php for ($m = 0; $m < 60; $m += 10): ?>
                                         <option value="<?= sprintf('%02d', $m) ?>" <?= $m === $initEndMinute ? 'selected' : '' ?>>
                                             <?= sprintf('%02d', $m) ?>
@@ -1966,8 +1908,7 @@ require_once __DIR__ . '/includes/header.php';
                             id="create_slot_notes"
                             name="notes"
                             maxlength="255"
-                            placeholder="z. B. Kapitel 3 wiederholen"
-                        >
+                            placeholder="z. B. Kapitel 3 wiederholen">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -1999,9 +1940,9 @@ require_once __DIR__ . '/includes/header.php';
                         <select class="form-select" id="edit_slot_monthly_goal_id" name="monthly_goal_id" required>
                             <?php foreach ($selectableMonthlyGoals as $mgOpt): ?>
                                 <?php
-                                    $mgOptMonthPrefix = ((string) $mgOpt['plan_month'] !== $selectedMonth)
-                                        ? '[' . GoalController::formatYearMonth((string) $mgOpt['plan_month'], true) . '] '
-                                        : '';
+                                $mgOptMonthPrefix = ((string) $mgOpt['plan_month'] !== $selectedMonth)
+                                    ? '[' . GoalController::formatYearMonth((string) $mgOpt['plan_month'], true) . '] '
+                                    : '';
                                 ?>
                                 <option value="<?= (int) $mgOpt['id'] ?>">
                                     <?= htmlspecialchars($mgOptMonthPrefix . (string) $mgOpt['title'] . ' (' . (string) $mgOpt['parent_goal_title'] . ')') ?>
@@ -2017,8 +1958,7 @@ require_once __DIR__ . '/includes/header.php';
                             class="form-control"
                             id="edit_slot_date"
                             name="slot_date"
-                            required
-                        >
+                            required>
                     </div>
 
                     <div class="row g-2 mb-2">
@@ -2029,8 +1969,7 @@ require_once __DIR__ . '/includes/header.php';
                                     class="form-select text-center slot-hour-select"
                                     id="edit_slot_start_hour"
                                     aria-label="Startzeit Stunden"
-                                    required
-                                >
+                                    required>
                                     <?php for ($h = 0; $h < 24; $h++): ?>
                                         <option value="<?= sprintf('%02d', $h) ?>"><?= sprintf('%02d', $h) ?></option>
                                     <?php endfor; ?>
@@ -2040,8 +1979,7 @@ require_once __DIR__ . '/includes/header.php';
                                     class="form-select text-center slot-minute-select"
                                     id="edit_slot_start_minute"
                                     aria-label="Startzeit Minuten"
-                                    required
-                                >
+                                    required>
                                     <?php for ($m = 0; $m < 60; $m += 10): ?>
                                         <option value="<?= sprintf('%02d', $m) ?>"><?= sprintf('%02d', $m) ?></option>
                                     <?php endfor; ?>
@@ -2057,8 +1995,7 @@ require_once __DIR__ . '/includes/header.php';
                                     class="form-select text-center slot-hour-select"
                                     id="edit_slot_end_hour"
                                     aria-label="Endzeit Stunden"
-                                    required
-                                >
+                                    required>
                                     <?php for ($h = 0; $h < 24; $h++): ?>
                                         <option value="<?= sprintf('%02d', $h) ?>"><?= sprintf('%02d', $h) ?></option>
                                     <?php endfor; ?>
@@ -2068,8 +2005,7 @@ require_once __DIR__ . '/includes/header.php';
                                     class="form-select text-center slot-minute-select"
                                     id="edit_slot_end_minute"
                                     aria-label="Endzeit Minuten"
-                                    required
-                                >
+                                    required>
                                     <?php for ($m = 0; $m < 60; $m += 10): ?>
                                         <option value="<?= sprintf('%02d', $m) ?>"><?= sprintf('%02d', $m) ?></option>
                                     <?php endfor; ?>
@@ -2092,8 +2028,7 @@ require_once __DIR__ . '/includes/header.php';
                             id="edit_slot_notes"
                             name="notes"
                             maxlength="255"
-                            placeholder="z. B. Kapitel 3 wiederholen"
-                        >
+                            placeholder="z. B. Kapitel 3 wiederholen">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -2137,4 +2072,3 @@ require_once __DIR__ . '/includes/header.php';
 $extraScripts = '<script src="assets/js/goals.js?v=' . filemtime(__DIR__ . '/assets/js/goals.js') . '"></script>';
 require_once __DIR__ . '/includes/footer.php';
 ?>
-

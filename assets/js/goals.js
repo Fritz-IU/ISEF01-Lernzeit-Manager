@@ -539,9 +539,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const monthSwitchLink = target.closest('[data-month-switch]');
     if (monthSwitchLink) {
       const targetMonth = monthSwitchLink.getAttribute('data-month-switch');
+      const inWeekTab = Boolean(monthSwitchLink.closest('#wochenplanung'));
       if (targetMonth) {
         event.preventDefault();
-        await switchMonthWithoutReload(targetMonth);
+        await switchMonthWithoutReload(targetMonth, inWeekTab ? 'week' : 'month');
       }
       return;
     }
@@ -807,6 +808,14 @@ document.addEventListener('DOMContentLoaded', () => {
           tabWeekBadge.textContent = newWeekShort;
         }
       }
+      const newSelectedMonth = newWeekSection.getAttribute('data-selected-month') || '';
+      const newSelectedMonthShort = newWeekSection.getAttribute('data-selected-month-short') || '';
+      if (newSelectedMonth) {
+        weekSection.setAttribute('data-selected-month', newSelectedMonth);
+      }
+      if (newSelectedMonthShort) {
+        weekSection.setAttribute('data-selected-month-short', newSelectedMonthShort);
+      }
       if (newDefaultDate) {
         weekSection.setAttribute('data-default-slot-date', newDefaultDate);
       }
@@ -827,18 +836,23 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * Lädt den Bereich #monatsplanung (und #wochenplanung) für den gewählten Monat im Hintergrund nach
-   * und tauscht ihn ohne Seiten-Reload und ohne Scroll-Sprung aus.
+   * Lädt die Monats- und Wochenplanung für den gewählten Zielmonat im Hintergrund nach
+   * und tauscht die Abschnitte ohne Seiten-Reload und ohne Scroll-Sprung aus.
    *
    * @param {string} targetMonth Monat im Format YYYY-MM
+   * @param {'month'|'week'} [targetTab='month'] Aktiver Ansichts-Tab
    */
-  async function switchMonthWithoutReload(targetMonth) {
+  async function switchMonthWithoutReload(targetMonth, targetTab = 'month') {
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(targetMonth)) return;
 
-    const section = document.getElementById('monatsplanung');
+    const targetSectionId = targetTab === 'week' ? 'wochenplanung' : 'monatsplanung';
+    const section = document.getElementById(targetSectionId);
     if (!section) return;
 
-    const url = `goals.php?tab=month&month=${encodeURIComponent(targetMonth)}`;
+    const params = new URLSearchParams();
+    params.set('tab', targetTab);
+    params.set('month', targetMonth);
+    const url = `goals.php?${params.toString()}`;
 
     try {
       const response = await fetch(url, {
@@ -855,7 +869,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const htmlText = await response.text();
       const parser = new DOMParser();
       const doc = parser.parseFromString(htmlText, 'text/html');
-      const newSection = doc.getElementById('monatsplanung');
+      const newSection = doc.getElementById(targetSectionId);
 
       if (!newSection) {
         window.location.href = url;
@@ -865,7 +879,20 @@ document.addEventListener('DOMContentLoaded', () => {
       applyPlanningSectionsFromDocument(doc);
 
       // URL in der Adresszeile aktualisieren, ohne zu scrollen
-      window.history.replaceState(null, '', url);
+      const weekSection = document.getElementById('wochenplanung');
+      const newWeek = weekSection ? weekSection.getAttribute('data-selected-week') : '';
+      const newDay = weekSection ? weekSection.getAttribute('data-default-slot-date') : '';
+
+      const updatedParams = new URLSearchParams();
+      updatedParams.set('tab', targetTab);
+      updatedParams.set('month', targetMonth);
+      if (targetTab === 'week' && newWeek) {
+        updatedParams.set('week', newWeek);
+        if (newDay) {
+          updatedParams.set('day', newDay);
+        }
+      }
+      window.history.replaceState(null, '', `goals.php?${updatedParams.toString()}`);
 
       // Vorausgewählten Monat in den Formularen und Schnell-Buttons synchronisieren
       document.querySelectorAll('input[name="redirect_month"]').forEach((input) => {
@@ -929,7 +956,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       applyPlanningSectionsFromDocument(doc);
-      window.history.replaceState(null, '', url);
+
+      const newDay = newWeekSection.getAttribute('data-default-slot-date') || '';
+      if (newDay) {
+        params.set('day', newDay);
+      }
+      window.history.replaceState(null, '', `goals.php?${params.toString()}`);
     } catch (error) {
       window.location.href = url;
     }
