@@ -8,6 +8,7 @@
 SET NAMES utf8mb4;
 
 DROP TABLE IF EXISTS time_entries;
+DROP TABLE IF EXISTS learning_slots;
 DROP TABLE IF EXISTS monthly_goals;
 DROP TABLE IF EXISTS monthly_budgets;
 DROP TABLE IF EXISTS learning_goals;
@@ -71,6 +72,26 @@ CREATE TABLE monthly_goals (
     CONSTRAINT fk_monthly_goals_goal FOREIGN KEY (goal_id)
         REFERENCES learning_goals (id) ON DELETE CASCADE,
     CONSTRAINT chk_monthly_goals_hours CHECK (planned_hours > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE learning_slots (
+    id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id         INT UNSIGNED NOT NULL,
+    monthly_goal_id INT UNSIGNED NOT NULL,
+    slot_date       DATE         NOT NULL,
+    start_time      TIME         NOT NULL,
+    end_time        TIME         NOT NULL,
+    notes           VARCHAR(255) NULL     DEFAULT NULL,
+    is_completed    TINYINT(1)   NOT NULL DEFAULT 0,
+    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_learning_slots_user_date (user_id, slot_date),
+    KEY idx_learning_slots_monthly_goal (monthly_goal_id),
+    CONSTRAINT fk_learning_slots_user FOREIGN KEY (user_id)
+        REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT fk_learning_slots_monthly_goal FOREIGN KEY (monthly_goal_id)
+        REFERENCES monthly_goals (id) ON DELETE CASCADE,
+    CONSTRAINT chk_learning_slots_time CHECK (end_time > start_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE time_entries (

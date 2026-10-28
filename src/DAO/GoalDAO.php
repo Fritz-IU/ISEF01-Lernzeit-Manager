@@ -297,7 +297,8 @@ class GoalDAO
 
     /**
      * Liefert die Zwischenziele eines Nutzers (optional gefiltert auf einen Monat),
-     * inklusive der Angaben des übergeordneten 6-Monats-Lernziels.
+     * inklusive der Angaben des übergeordneten 6-Monats-Lernziels sowie der bereits
+     * in Wochen-Timeslots eingeplanten Stunden.
      *
      * @param int $userId ID des Nutzers
      * @param string|null $yearMonth Optionaler Filter auf einen Monat (YYYY-MM)
@@ -316,10 +317,15 @@ class GoalDAO
                        lg.title AS parent_goal_title,
                        lg.target_hours AS parent_target_hours,
                        lg.start_date AS parent_start_date,
-                       lg.end_date AS parent_end_date
+                       lg.end_date AS parent_end_date,
+                       COALESCE(ROUND(SUM(TIME_TO_SEC(TIMEDIFF(ls.end_time, ls.start_time))) / 3600.0, 2), 0) AS scheduled_hours,
+                       COALESCE(ROUND(SUM(CASE WHEN ls.is_completed = 1 THEN TIME_TO_SEC(TIMEDIFF(ls.end_time, ls.start_time)) / 3600.0 ELSE 0 END), 2), 0) AS completed_hours,
+                       COUNT(ls.id) AS slot_count
                 FROM monthly_goals mg
                 INNER JOIN learning_goals lg
                     ON lg.id = mg.goal_id AND lg.user_id = mg.user_id
+                LEFT JOIN learning_slots ls
+                    ON ls.monthly_goal_id = mg.id AND ls.user_id = mg.user_id
                 WHERE mg.user_id = :user_id";
 
         $params = [':user_id' => $userId];
@@ -328,7 +334,9 @@ class GoalDAO
             $params[':plan_month'] = $yearMonth;
         }
 
-        $sql .= " ORDER BY mg.plan_month ASC, lg.title ASC, mg.id ASC";
+        $sql .= " GROUP BY mg.id, mg.user_id, mg.goal_id, mg.plan_month, mg.title, mg.description, mg.planned_hours, mg.created_at,
+                           lg.title, lg.target_hours, lg.start_date, lg.end_date
+                  ORDER BY mg.plan_month ASC, lg.title ASC, mg.id ASC";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -457,6 +465,211 @@ class GoalDAO
         }
 
         return $summary;
+    }
+
+    /**
+     * Legt einen neuen Lern-Timeslot für ein monatliches Zwischenziel an.
+     *
+     * @param int $userId ID des Nutzers
+     * @param int $monthlyGoalId ID des zugeordneten Zwischenziels
+     * @param string $slotDate Datum im Format YYYY-MM-DD
+     * @param string $startTime Startzeit im Format HH:MM:SS
+     * @param string $endTime Endzeit im Format HH:MM:SS
+     * @param string|null $notes Optionale Notiz für diesen Lernslot
+     * @return int ID des neu angelegten Timeslots
+     */
+    public function createLearningSlot(
+        int $userId,
+        int $monthlyGoalId,
+        string $slotDate,
+        string $startTime,
+        string $endTime,
+        ?string $notes = null
+    ): int {
+        $sql = "INSERT INTO learning_slots (user_id, monthly_goal_id, slot_date, start_time, end_time, notes, is_completed, created_at)
+                VALUES (:user_id, :monthly_goal_id, :slot_date, :start_time, :end_time, :notes, 0, NOW())";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            ':user_id'         => $userId,
+            ':monthly_goal_id' => $monthlyGoalId,
+            ':slot_date'       => $slotDate,
+            ':start_time'      => $startTime,
+            ':end_time'        => $endTime,
+            ':notes'           => $notes,
+        ]);
+
+        return (int) $this->db->lastInsertId();
+    }
+
+    /**
+     * Lädt einen einzelnen Lern-Timeslot anhand seiner ID und der Benutzer-ID (Mandantenisolation).
+     *
+     * @param int $slotId ID des Timeslots
+     * @param int $userId ID des berechtigten Nutzers
+     * @return array<string, mixed>|null
+     */
+    public function findLearningSlotByIdAndUserId(int $slotId, int $userId): ?array
+    {
+        $sql = "SELECT ls.id,
+                       ls.user_id,
+                       ls.monthly_goal_id,
+                       ls.slot_date,
+                       ls.start_time,
+                       ls.end_time,
+                       ls.notes,
+                       ls.is_completed,
+                       ls.created_at,
+                       ROUND(TIME_TO_SEC(TIMEDIFF(ls.end_time, ls.start_time)) / 3600.0, 2) AS duration_hours,
+                       mg.plan_month,
+                       mg.goal_id
+                FROM learning_slots ls
+                INNER JOIN monthly_goals mg
+                    ON mg.id = ls.monthly_goal_id AND mg.user_id = ls.user_id
+                WHERE ls.id = :id AND ls.user_id = :user_id";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            ':id'      => $slotId,
+            ':user_id' => $userId,
+        ]);
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $row ?: null;
+    }
+
+    /**
+     * Liefert alle Lern-Timeslots eines Nutzers in einem Datumszeitraum,
+     * inklusive der Angaben des Zwischenziels und des übergeordneten 6-Monats-Ziels.
+     *
+     * @param int $userId ID des Nutzers
+     * @param string $startDate Startdatum (inklusiv, YYYY-MM-DD)
+     * @param string $endDate Enddatum (inklusiv, YYYY-MM-DD)
+     * @return list<array<string, mixed>>
+     */
+    public function findLearningSlotsByDateRange(int $userId, string $startDate, string $endDate): array
+    {
+        $sql = "SELECT ls.id,
+                       ls.user_id,
+                       ls.monthly_goal_id,
+                       ls.slot_date,
+                       ls.start_time,
+                       ls.end_time,
+                       ls.notes,
+                       ls.is_completed,
+                       ls.created_at,
+                       ROUND(TIME_TO_SEC(TIMEDIFF(ls.end_time, ls.start_time)) / 3600.0, 2) AS duration_hours,
+                       mg.title AS monthly_goal_title,
+                       mg.plan_month,
+                       mg.planned_hours AS monthly_goal_planned_hours,
+                       mg.goal_id,
+                       lg.title AS parent_goal_title
+                FROM learning_slots ls
+                INNER JOIN monthly_goals mg
+                    ON mg.id = ls.monthly_goal_id AND mg.user_id = ls.user_id
+                INNER JOIN learning_goals lg
+                    ON lg.id = mg.goal_id AND lg.user_id = ls.user_id
+                WHERE ls.user_id = :user_id
+                  AND ls.slot_date BETWEEN :start_date AND :end_date
+                ORDER BY ls.slot_date ASC, ls.start_time ASC, ls.end_time ASC, ls.id ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            ':user_id'    => $userId,
+            ':start_date' => $startDate,
+            ':end_date'   => $endDate,
+        ]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Aktualisiert einen bestehenden Lern-Timeslot unter Berücksichtigung der Benutzer-ID.
+     *
+     * @param int $slotId ID des Timeslots
+     * @param int $userId ID des Nutzers
+     * @param int $monthlyGoalId ID des zugeordneten Zwischenziels
+     * @param string $slotDate Datum im Format YYYY-MM-DD
+     * @param string $startTime Startzeit im Format HH:MM:SS
+     * @param string $endTime Endzeit im Format HH:MM:SS
+     * @param string|null $notes Optionale Notiz
+     * @return bool True bei Erfolg
+     */
+    public function updateLearningSlot(
+        int $slotId,
+        int $userId,
+        int $monthlyGoalId,
+        string $slotDate,
+        string $startTime,
+        string $endTime,
+        ?string $notes = null
+    ): bool {
+        $sql = "UPDATE learning_slots
+                SET monthly_goal_id = :monthly_goal_id,
+                    slot_date = :slot_date,
+                    start_time = :start_time,
+                    end_time = :end_time,
+                    notes = :notes
+                WHERE id = :id AND user_id = :user_id";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            ':monthly_goal_id' => $monthlyGoalId,
+            ':slot_date'       => $slotDate,
+            ':start_time'      => $startTime,
+            ':end_time'        => $endTime,
+            ':notes'           => $notes,
+            ':id'              => $slotId,
+            ':user_id'         => $userId,
+        ]);
+
+        return $stmt->rowCount() >= 0;
+    }
+
+    /**
+     * Löscht einen Lern-Timeslot unter Berücksichtigung der Benutzer-ID.
+     *
+     * @param int $slotId ID des Timeslots
+     * @param int $userId ID des Nutzers
+     * @return bool True, wenn ein Datensatz gelöscht wurde
+     */
+    public function deleteLearningSlot(int $slotId, int $userId): bool
+    {
+        $sql = "DELETE FROM learning_slots
+                WHERE id = :id AND user_id = :user_id";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            ':id'      => $slotId,
+            ':user_id' => $userId,
+        ]);
+
+        return $stmt->rowCount() > 0;
+    }
+
+    /**
+     * Setzt den Erledigt-Status (is_completed) eines Lern-Timeslots unter Berücksichtigung der Benutzer-ID.
+     *
+     * @param int $slotId ID des Timeslots
+     * @param int $userId ID des Nutzers
+     * @param bool $isCompleted Neuer Status
+     * @return bool True bei Erfolg
+     */
+    public function setLearningSlotCompleted(int $slotId, int $userId, bool $isCompleted): bool
+    {
+        $sql = "UPDATE learning_slots
+                SET is_completed = :is_completed
+                WHERE id = :id AND user_id = :user_id";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            ':is_completed' => $isCompleted ? 1 : 0,
+            ':id'           => $slotId,
+            ':user_id'      => $userId,
+        ]);
+
+        return $stmt->rowCount() >= 0;
     }
 }
 
