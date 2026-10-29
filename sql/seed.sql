@@ -6,9 +6,9 @@
 
 SET NAMES utf8mb4;
 
-INSERT INTO users (id, email, password_hash, display_name, study_program, semester, created_at) VALUES
-    (1, 'testuser@iu-demo.de',  '$2y$10$crH3Dq6gADtWjO70Kz8pAuiHFx9jXyAb8jUCaegA9DjAWhEjQRd26', 'Test Nutzer',  'Informatik',            3, '2026-09-01 08:00:00'),
-    (2, 'testuser2@iu-demo.de', '$2y$10$crH3Dq6gADtWjO70Kz8pAuiHFx9jXyAb8jUCaegA9DjAWhEjQRd26', 'Test Nutzerin', 'Wirtschaftsinformatik', 2, '2026-09-02 09:30:00');
+INSERT INTO users (id, email, password_hash, display_name, study_program, semester, last_login_at, created_at) VALUES
+    (1, 'testuser@iu-demo.de',  '$2y$10$crH3Dq6gADtWjO70Kz8pAuiHFx9jXyAb8jUCaegA9DjAWhEjQRd26', 'Test Nutzer',  'Informatik',            3, '2026-10-28 21:05:00', '2026-09-01 08:00:00'),
+    (2, 'testuser2@iu-demo.de', '$2y$10$crH3Dq6gADtWjO70Kz8pAuiHFx9jXyAb8jUCaegA9DjAWhEjQRd26', 'Test Nutzerin', 'Wirtschaftsinformatik', 2, '2026-10-27 10:25:00', '2026-09-02 09:30:00');
 
 INSERT INTO learning_goals (id, user_id, title, description, target_hours, start_date, end_date, created_at) VALUES
     (1, 1, '3. Semester – Informatik (WiSe 2026/27)',             'Module: Software Engineering, Datenbanken, Betriebssysteme', 180.00, '2026-09-01', '2027-02-28', '2026-09-01 08:15:00'),
@@ -38,6 +38,10 @@ INSERT INTO monthly_goals (id, user_id, goal_id, plan_month, title, description,
     (12, 1, 2, '2027-03', 'Modul Web-Programmierung',   'HTML, CSS & JavaScript-Grundlagen',              12.00, '2026-09-03 18:15:00'),
     (13, 2, 3, '2026-10', 'Modul Mathematik',           'Lineare Algebra Grundlagen',                     10.00, '2026-09-05 10:10:00'),
     (14, 2, 3, '2026-10', 'Modul Betriebswirtschaftslehre', 'Kosten- und Leistungsrechnung',              8.00, '2026-09-05 10:15:00');
+
+-- Abgeschlossene Module aus dem September (Erledigt-Status mit Datum).
+UPDATE monthly_goals SET completed_at = '2026-09-29' WHERE id = 1;
+UPDATE monthly_goals SET completed_at = '2026-09-30' WHERE id = 2;
 
 INSERT INTO learning_slots (id, user_id, monthly_goal_id, slot_date, start_time, end_time, notes, is_completed, created_at) VALUES
     (1,  1, 3,  '2026-10-20', '18:00:00', '20:00:00', 'Kapitel 3 lesen und Use-Case-Elemente notieren',      1, '2026-10-18 10:00:00'),

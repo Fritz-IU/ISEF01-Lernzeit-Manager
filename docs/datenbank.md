@@ -88,6 +88,19 @@ Die Datenbank sichert zusätzlich ab:
 - Eine manuelle Buchung hat keine Zeitstempel und `tracked_seconds > 0`.
 - `ended_at` liegt nicht vor `started_at`; `resumed_at` ist nur bei offener Stoppuhr gesetzt.
 
+## Erledigt-Status und Inaktivität
+
+Vorbereitete Spalten für die folgenden Stories:
+
+| Spalte | Story | Bedeutung |
+|---|---|---|
+| `learning_goals.completed_at` | #5 | Datum, an dem das Semester als erledigt markiert wurde; `NULL` = offen |
+| `monthly_goals.completed_at` | #5 | Datum, an dem das Modul als erledigt markiert wurde; `NULL` = offen |
+| `users.last_login_at` | #7, #11 | Zeitpunkt des letzten Logins – Ausgangspunkt für „seit dem letzten Besuch verpasst“ |
+| `users.last_inactivity_mail_at` | #11 | Zeitpunkt der letzten Inaktivitäts-Mail, damit nicht mehrfach erinnert wird |
+
+Verpasste Lernzeiten (#7) brauchen keine eigene Spalte: Es sind vergangene `learning_slots` ohne zugehörigen Eintrag in `time_entries`.
+
 ## Versionen und Zeichensatz
 
 - **MariaDB 10.4** (wie in XAMPP 8.2, z. B. 10.4.28) – die CI testet mit derselben Hauptversion.
