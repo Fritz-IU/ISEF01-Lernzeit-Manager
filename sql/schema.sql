@@ -94,19 +94,40 @@ CREATE TABLE learning_slots (
     CONSTRAINT chk_learning_slots_time CHECK (end_time > start_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Zeiterfassung: gebucht wird immer auf ein Modul (monthly_goals), nie auf das Semester.
+-- Stoppuhr-Status: läuft (ended_at NULL, resumed_at gesetzt), pausiert (beide NULL),
+-- beendet (ended_at gesetzt). tracked_seconds ist die Netto-Lernzeit ohne Pausen.
+-- open_flag erlaubt per UNIQUE-Index höchstens eine offene Stoppuhr je Nutzer.
 CREATE TABLE time_entries (
-    id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    user_id         INT UNSIGNED NOT NULL,
-    goal_id         INT UNSIGNED NULL,
-    started_at      DATETIME     NOT NULL,
-    ended_at        DATETIME     NULL,
-    tracked_seconds INT UNSIGNED NOT NULL DEFAULT 0,
+    id               INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id          INT UNSIGNED NOT NULL,
+    monthly_goal_id  INT UNSIGNED NOT NULL,
+    learning_slot_id INT UNSIGNED NULL     DEFAULT NULL,
+    source           ENUM('stopwatch','manual') NOT NULL,
+    entry_date       DATE         NOT NULL,
+    started_at       DATETIME     NULL     DEFAULT NULL,
+    ended_at         DATETIME     NULL     DEFAULT NULL,
+    resumed_at       DATETIME     NULL     DEFAULT NULL,
+    tracked_seconds  INT UNSIGNED NOT NULL DEFAULT 0,
+    note             VARCHAR(255) NULL     DEFAULT NULL,
+    open_flag        TINYINT(1) AS (IF(source = 'stopwatch' AND ended_at IS NULL, 1, NULL)) PERSISTENT,
+    created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
-    KEY idx_time_entries_user (user_id),
-    KEY idx_time_entries_goal (goal_id),
+    UNIQUE KEY uq_time_entries_open_stopwatch (user_id, open_flag),
+    KEY idx_time_entries_user_date (user_id, entry_date),
+    KEY idx_time_entries_monthly_goal (monthly_goal_id),
+    KEY idx_time_entries_learning_slot (learning_slot_id),
     CONSTRAINT fk_time_entries_user FOREIGN KEY (user_id)
         REFERENCES users (id) ON DELETE CASCADE,
-    CONSTRAINT fk_time_entries_goal FOREIGN KEY (goal_id)
-        REFERENCES learning_goals (id) ON DELETE SET NULL,
-    CONSTRAINT chk_time_entries_range CHECK (ended_at IS NULL OR ended_at >= started_at)
+    CONSTRAINT fk_time_entries_monthly_goal FOREIGN KEY (monthly_goal_id)
+        REFERENCES monthly_goals (id) ON DELETE CASCADE,
+    CONSTRAINT fk_time_entries_learning_slot FOREIGN KEY (learning_slot_id)
+        REFERENCES learning_slots (id) ON DELETE SET NULL,
+    CONSTRAINT chk_time_entries_stopwatch CHECK (source <> 'stopwatch' OR started_at IS NOT NULL),
+    CONSTRAINT chk_time_entries_manual CHECK (
+        source <> 'manual'
+        OR (started_at IS NULL AND ended_at IS NULL AND resumed_at IS NULL AND tracked_seconds > 0)
+    ),
+    CONSTRAINT chk_time_entries_range CHECK (ended_at IS NULL OR ended_at >= started_at),
+    CONSTRAINT chk_time_entries_resumed CHECK (resumed_at IS NULL OR ended_at IS NULL)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
