@@ -402,33 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   /**
-   * Setzt den Ein-/Ausklapp-Zustand einer einzelnen Tages-Kachel synchron auf Header-Toggle und Collapse-Container.
-   *
-   * @param {HTMLElement} cardEl
-   * @param {boolean} expanded
-   */
-  function setDayCardExpanded(cardEl, expanded) {
-    const headerToggles = cardEl.querySelectorAll('.week-day-header-toggle');
-    const collapseEl = cardEl.querySelector('.collapse');
-    headerToggles.forEach((headerToggle) => {
-      headerToggle.classList.toggle('collapsed', !expanded);
-      headerToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-    });
-    if (collapseEl) {
-      if (typeof bootstrap !== 'undefined' && bootstrap.Collapse) {
-        const instance = bootstrap.Collapse.getInstance(collapseEl);
-        if (instance) {
-          instance.dispose();
-        }
-      }
-      collapseEl.classList.remove('collapsing');
-      collapseEl.style.height = '';
-      collapseEl.classList.toggle('show', expanded);
-    }
-  }
-
-  /**
-   * Wendet den gewählten Darstellungsmodus ("day" = Tagesfokus, "week" = Ganze Woche)
+   * Wendet den gewählten Darstellungsmodus ("day" = einzelner Tag, "week" = ganze Woche)
    * auf die Wochenplanung an und speichert die Präferenz in der sessionStorage.
    *
    * @param {string} mode "day" oder "week"
@@ -447,7 +421,7 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.classList.toggle('active', isTarget);
     });
 
-    // Wochenband (Mo–So) nur im Tagesfokus einblenden, in "Ganze Woche" ausblenden
+    // Wochenband (Mo–So) nur in der Tagesansicht einblenden, in der Wochenansicht ausblenden
     const dayStrip = weekSection.querySelector('.week-day-strip');
     if (dayStrip) {
       dayStrip.classList.toggle('d-none', validMode === 'week');
@@ -456,27 +430,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectedDate = weekSection.getAttribute('data-default-slot-date') || '';
     const dayCards = weekSection.querySelectorAll('[data-day-card]');
 
+    // In der Wochenansicht sind alle Tage sichtbar; leere Tage zeigen per CSS nur ihre Kopfzeile
     dayCards.forEach((cardEl) => {
       const cardDate = cardEl.getAttribute('data-day-card') || '';
-      const hasSlots = cardEl.getAttribute('data-has-slots') === 'true';
-
-      if (validMode === 'day') {
-        const isSelected = cardDate === selectedDate;
-        cardEl.classList.toggle('d-none', !isSelected);
-        if (isSelected) {
-          setDayCardExpanded(cardEl, true);
-        }
-      } else {
-        cardEl.classList.remove('d-none');
-        // In der Übersicht "Ganze Woche": Tage mit Timeslots aufgeklappt, Tage ohne Timeslots eingeklappt
-        setDayCardExpanded(cardEl, hasSlots);
-      }
+      cardEl.classList.toggle('d-none', validMode === 'day' && cardDate !== selectedDate);
     });
   }
 
   /**
    * Wählt im Wochenband einen bestimmten Wochentag aus, aktualisiert den primären
-   * "+ Timeslot planen"-Button und zeigt im Tagesfokus diesen Tag an (bzw. klappt ihn in der Wochenansicht auf).
+   * "+ Lernzeit planen"-Button und zeigt in der Tagesansicht diesen Tag an (bzw. scrollt in der Wochenansicht dorthin).
    *
    * @param {string} targetDate Datum im Format YYYY-MM-DD
    */
@@ -506,11 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const isSelected = cardEl.getAttribute('data-day-card') === targetDate;
       if (currentMode === 'day') {
         cardEl.classList.toggle('d-none', !isSelected);
-        if (isSelected) {
-          setDayCardExpanded(cardEl, true);
-        }
       } else if (isSelected) {
-        setDayCardExpanded(cardEl, true);
         cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
     });
@@ -570,7 +529,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // 1d. Darstellungsmodus-Umschalter ("Tagesfokus" vs. "Ganze Woche")
+    // 1d. Darstellungsmodus-Umschalter ("Tag" vs. "Woche")
     const weekViewModeBtn = target.closest('[data-week-view-mode-btn]');
     if (weekViewModeBtn) {
       const targetMode = weekViewModeBtn.getAttribute('data-week-view-mode-btn') || 'day';
@@ -741,7 +700,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Synchronisiert den Wechsel zwischen "Semesterübersicht", "Monatsplanung" und "Wochenplanung"
+  // Synchronisiert den Wechsel zwischen "Semester", "Monat" und "Woche"
   // mit der URL in der Adresszeile, ohne die Seite neu zu laden.
   document.querySelectorAll('[data-view-tab]').forEach((tabBtn) => {
     tabBtn.addEventListener('shown.bs.tab', () => {

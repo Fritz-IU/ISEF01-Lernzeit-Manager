@@ -52,28 +52,17 @@ main {
 }
 
 /*
- * Hauptansicht-Umschalter ("Semesterübersicht" / "Monatsplanung") und
- * kompakte Kennzahlen-Leiste auf goals.php:
+ * Hauptansicht-Umschalter ("Semester" / "Monat" / "Woche") auf goals.php:
  */
 .goals-view-switcher .nav-link.active .badge {
   background-color: rgba(255, 255, 255, 0.9) !important;
   color: var(--bs-primary) !important;
 }
 
-@media (min-width: 576px) {
-  .border-end-sm {
-    border-right: 1px solid var(--bs-border-color, #dee2e6);
-  }
-
-  .border-sm-top-0 {
-    border-top: 0 !important;
-  }
-}
-
 /*
- * Monats- und Wochen-Tab-Leiste auf goals.php:
+ * Monats- und Wochen-Auswahl auf goals.php:
  * Gleichmäßige Kacheln für den 6-Monats-Zeitraum bzw. die Kalenderwochen des Monats,
- * die den aktiv gewählten Zeitraum optisch hervorheben.
+ * die den aktiv gewählten Zeitraum optisch hervorheben. Pfeile blättern um einen Monat.
  */
 .month-tab-link,
 .week-tab-link {
@@ -90,6 +79,65 @@ main {
 .month-tab-link.active,
 .week-tab-link.active {
   border-width: 2px !important;
+}
+
+.period-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: #475569;
+}
+
+.month-tab-link .card-body {
+  white-space: nowrap;
+}
+
+@media (max-width: 575.98px) {
+  .period-nav-btn {
+    min-width: 1.5rem;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .month-tab-link .card-body {
+    padding-left: 0.25rem !important;
+    padding-right: 0.25rem !important;
+    font-size: 0.85rem;
+  }
+}
+
+.period-today-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--bs-primary);
+  display: inline-block;
+}
+
+.active .period-today-dot {
+  background-color: #ffffff;
+}
+
+.period-mini-progress {
+  height: 3px;
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+.month-tab-link.active.bg-primary .period-mini-progress {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.month-tab-link.active.bg-primary .period-mini-progress .progress-bar:not(.bg-warning) {
+  background-color: #ffffff;
+}
+
+@media (min-width: 768px) {
+  .month-share-col {
+    border-left: 1px solid var(--bs-border-color, #dee2e6);
+  }
 }
 
 .week-day-card {
@@ -184,20 +232,19 @@ main {
 }
 
 /*
- * Einklappbare Bereiche & ruhige Timeslot-Karten in der Wochenplanung:
+ * Einklappbare Zwischenziel-Übersicht & ruhige Lerneinheiten-Karten in der Wochenplanung:
  */
-.week-day-header-toggle {
-  cursor: pointer;
-  user-select: none;
-}
-
 .week-collapse-chevron {
   transition: transform 0.18s ease;
 }
 
-.week-collapse-toggle:not(.collapsed) .week-collapse-chevron,
-.week-day-header-toggle:not(.collapsed) .week-collapse-chevron {
+.week-collapse-toggle:not(.collapsed) .week-collapse-chevron {
   transform: rotate(180deg);
+}
+
+/* In der Wochenansicht zeigen leere Tage nur ihre Kopfzeile */
+[data-week-view-mode='week'] .week-day-empty {
+  display: none !important;
 }
 
 .slot-item-card {
@@ -232,7 +279,7 @@ main {
   border-color: var(--bs-success);
 }
 
-.slot-action-menu-btn:hover {
+.row-action-menu-btn:hover {
   color: var(--bs-dark) !important;
   background-color: rgba(0, 0, 0, 0.05);
   border-radius: 0.25rem;
@@ -378,19 +425,9 @@ main {
     padding-top: 0.75rem;
     padding-bottom: 0;
     border-bottom: 0;
-    text-align: stretch !important;
   }
 
   .table-mobile-cards tbody td.td-mobile-actions::before {
     display: none;
-  }
-
-  .table-mobile-cards tbody td.td-mobile-actions .btn-group {
-    display: flex;
-    width: 100%;
-  }
-
-  .table-mobile-cards tbody td.td-mobile-actions .btn-group .btn {
-    flex: 1 1 auto;
   }
 }

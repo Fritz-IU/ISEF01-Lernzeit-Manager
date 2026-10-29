@@ -126,7 +126,7 @@ try {
     } elseif ($action === 'create_learning_slot') {
         $slotResult = $goalController->createLearningSlot($userId, $input);
         $response = [
-            'message'  => 'Der Lern-Timeslot wurde erfolgreich eingeplant.',
+            'message'  => 'Die Lerneinheit wurde erfolgreich eingeplant.',
             'slot_id'  => $slotResult['slot_id'],
             'redirect' => 'goals.php?tab=week&month=' . urlencode($slotResult['year_month']) . '&week=' . urlencode($slotResult['iso_week']) . '&day=' . urlencode($slotResult['slot_date']),
         ];
@@ -134,7 +134,7 @@ try {
         $slotId = isset($input['slot_id']) && is_scalar($input['slot_id']) ? (int) $input['slot_id'] : 0;
         $slotResult = $goalController->updateLearningSlot($slotId, $userId, $input);
         $response = [
-            'message'  => 'Der Lern-Timeslot wurde erfolgreich aktualisiert.',
+            'message'  => 'Die Lerneinheit wurde erfolgreich aktualisiert.',
             'slot_id'  => $slotResult['slot_id'],
             'redirect' => 'goals.php?tab=week&month=' . urlencode($slotResult['year_month']) . '&week=' . urlencode($slotResult['iso_week']) . '&day=' . urlencode($slotResult['slot_date']),
         ];
@@ -142,7 +142,7 @@ try {
         $slotId = isset($input['slot_id']) && is_scalar($input['slot_id']) ? (int) $input['slot_id'] : 0;
         $slotResult = $goalController->deleteLearningSlot($slotId, $userId);
         $response = [
-            'message'  => 'Der Lern-Timeslot wurde erfolgreich gelöscht.',
+            'message'  => 'Die Lerneinheit wurde erfolgreich gelöscht.',
             'redirect' => 'goals.php?tab=week&month=' . urlencode($slotResult['year_month']) . '&week=' . urlencode($slotResult['iso_week']) . '&day=' . urlencode($slotResult['slot_date']),
         ];
     } elseif ($action === 'toggle_learning_slot') {
@@ -150,8 +150,8 @@ try {
         $slotResult = $goalController->toggleLearningSlotCompleted($slotId, $userId);
         $response = [
             'message'      => $slotResult['is_completed']
-                ? 'Der Lern-Timeslot wurde als erledigt markiert.'
-                : 'Der Lern-Timeslot wurde wieder als offen markiert.',
+                ? 'Die Lerneinheit wurde als erledigt markiert.'
+                : 'Die Lerneinheit wurde wieder als offen markiert.',
             'is_completed' => $slotResult['is_completed'],
             'redirect'     => 'goals.php?tab=week&month=' . urlencode($slotResult['year_month']) . '&week=' . urlencode($slotResult['iso_week']) . '&day=' . urlencode($slotResult['slot_date']),
         ];
