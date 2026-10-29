@@ -233,7 +233,8 @@ require_once __DIR__ . '/includes/header.php';
         </p>
     </div>
     <div class="col-md-5 text-md-end mt-3 mt-md-0">
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createGoalModal">
+        <!-- Nur in der Semesterübersicht sichtbar; goals.js blendet ihn beim Tabwechsel ein/aus -->
+        <button type="button" class="btn btn-primary <?= $activeViewTab === 'semester' ? '' : 'd-none' ?>" id="createGoalBtn" data-bs-toggle="modal" data-bs-target="#createGoalModal">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-plus-lg me-1 align-text-bottom" viewBox="0 0 16 16">
                 <path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2" />
             </svg>

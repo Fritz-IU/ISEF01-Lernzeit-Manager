@@ -746,6 +746,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('[data-view-tab]').forEach((tabBtn) => {
     tabBtn.addEventListener('shown.bs.tab', () => {
       const viewTab = tabBtn.getAttribute('data-view-tab') || 'semester';
+      const createGoalBtn = document.getElementById('createGoalBtn');
+      if (createGoalBtn) {
+        createGoalBtn.classList.toggle('d-none', viewTab !== 'semester');
+      }
       const monthSection = document.getElementById('monatsplanung');
       const weekSection = document.getElementById('wochenplanung');
       const currentMonth = monthSection ? monthSection.getAttribute('data-selected-month') : '';
