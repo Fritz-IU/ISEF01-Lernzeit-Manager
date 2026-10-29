@@ -63,6 +63,44 @@ Alle Nutzer aus `seed.sql` (`testuser@iu-demo.de`, `testuser2@iu-demo.de`) haben
 5. **Format der SQL-Dateien:** Jede Anweisung endet mit `;` am Zeilenende, Kommentare beginnen mit `--`. Danach richtet sich `reset.php` beim Zerlegen.
 6. **Kein Datenbankname in den SQL-Dateien.** Den legt `reset.php` aus der `.env` fest.
 
+## Zeiterfassung (`time_entries`)
+
+Grundlage für Stoppuhr (#4), Soll-Ist-Dashboard (#6) und manuelle Nachbuchung (#9).
+
+- **Gebucht wird immer auf ein Modul** (`monthly_goal_id` → `monthly_goals`). Das Semester (`learning_goals`) ist nur eine Organisationseinheit und ergibt sich über den Join.
+- `learning_slot_id` verknüpft optional mit dem geplanten Timeslot. Wird der Slot gelöscht, bleibt die Buchung erhalten (`ON DELETE SET NULL`).
+- `source` unterscheidet `stopwatch` und `manual`. `entry_date` ist der Lerntag, über den das Dashboard summiert.
+- `tracked_seconds` ist immer die **Netto-Lernzeit** ohne Pausen.
+
+Zustände einer Stoppuhr:
+
+| Zustand | `ended_at` | `resumed_at` | `tracked_seconds` |
+|---|---|---|---|
+| läuft | `NULL` | Zeitpunkt des letzten Starts/Weiter | Summe bis zur letzten Pause |
+| pausiert | `NULL` | `NULL` | Summe bis jetzt |
+| beendet | gesetzt | `NULL` | endgültige Netto-Zeit |
+
+Bei **Pause** und **Stopp** addiert das Backend `ended − resumed_at` auf `tracked_seconds` und setzt `resumed_at` auf `NULL`; bei **Weiter** wird `resumed_at` auf jetzt gesetzt.
+
+Die Datenbank sichert zusätzlich ab:
+
+- Pro Nutzer ist höchstens **eine Stoppuhr offen** (läuft oder pausiert) – über die berechnete Spalte `open_flag` und den UNIQUE-Index `uq_time_entries_open_stopwatch`. Ein zweiter Start schlägt mit einem Duplicate-Key-Fehler fehl.
+- Eine manuelle Buchung hat keine Zeitstempel und `tracked_seconds > 0`.
+- `ended_at` liegt nicht vor `started_at`; `resumed_at` ist nur bei offener Stoppuhr gesetzt.
+
+## Erledigt-Status und Inaktivität
+
+Vorbereitete Spalten für die folgenden Stories:
+
+| Spalte | Story | Bedeutung |
+|---|---|---|
+| `learning_goals.completed_at` | #5 | Datum, an dem das Semester als erledigt markiert wurde; `NULL` = offen |
+| `monthly_goals.completed_at` | #5 | Datum, an dem das Modul als erledigt markiert wurde; `NULL` = offen |
+| `users.last_login_at` | #7, #11 | Zeitpunkt des letzten Logins – Ausgangspunkt für „seit dem letzten Besuch verpasst“ |
+| `users.last_inactivity_mail_at` | #11 | Zeitpunkt der letzten Inaktivitäts-Mail, damit nicht mehrfach erinnert wird |
+
+Verpasste Lernzeiten (#7) brauchen keine eigene Spalte: Es sind vergangene `learning_slots` ohne zugehörigen Eintrag in `time_entries`.
+
 ## Versionen und Zeichensatz
 
 - **MariaDB 10.4** (wie in XAMPP 8.2, z. B. 10.4.28) – die CI testet mit derselben Hauptversion.

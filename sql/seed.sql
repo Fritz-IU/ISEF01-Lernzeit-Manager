@@ -6,9 +6,9 @@
 
 SET NAMES utf8mb4;
 
-INSERT INTO users (id, email, password_hash, display_name, study_program, semester, created_at) VALUES
-    (1, 'testuser@iu-demo.de',  '$2y$10$crH3Dq6gADtWjO70Kz8pAuiHFx9jXyAb8jUCaegA9DjAWhEjQRd26', 'Test Nutzer',  'Informatik',            3, '2026-09-01 08:00:00'),
-    (2, 'testuser2@iu-demo.de', '$2y$10$crH3Dq6gADtWjO70Kz8pAuiHFx9jXyAb8jUCaegA9DjAWhEjQRd26', 'Test Nutzerin', 'Wirtschaftsinformatik', 2, '2026-09-02 09:30:00');
+INSERT INTO users (id, email, password_hash, display_name, study_program, semester, last_login_at, created_at) VALUES
+    (1, 'testuser@iu-demo.de',  '$2y$10$crH3Dq6gADtWjO70Kz8pAuiHFx9jXyAb8jUCaegA9DjAWhEjQRd26', 'Test Nutzer',  'Informatik',            3, '2026-10-28 21:05:00', '2026-09-01 08:00:00'),
+    (2, 'testuser2@iu-demo.de', '$2y$10$crH3Dq6gADtWjO70Kz8pAuiHFx9jXyAb8jUCaegA9DjAWhEjQRd26', 'Test Nutzerin', 'Wirtschaftsinformatik', 2, '2026-10-27 10:25:00', '2026-09-02 09:30:00');
 
 INSERT INTO learning_goals (id, user_id, title, description, target_hours, start_date, end_date, created_at) VALUES
     (1, 1, '3. Semester – Informatik (WiSe 2026/27)',             'Module: Software Engineering, Datenbanken, Betriebssysteme', 180.00, '2026-09-01', '2027-02-28', '2026-09-01 08:15:00'),
@@ -39,6 +39,10 @@ INSERT INTO monthly_goals (id, user_id, goal_id, plan_month, title, description,
     (13, 2, 3, '2026-10', 'Modul Mathematik',           'Lineare Algebra Grundlagen',                     10.00, '2026-09-05 10:10:00'),
     (14, 2, 3, '2026-10', 'Modul Betriebswirtschaftslehre', 'Kosten- und Leistungsrechnung',              8.00, '2026-09-05 10:15:00');
 
+-- Abgeschlossene Module aus dem September (Erledigt-Status mit Datum).
+UPDATE monthly_goals SET completed_at = '2026-09-29' WHERE id = 1;
+UPDATE monthly_goals SET completed_at = '2026-09-30' WHERE id = 2;
+
 INSERT INTO learning_slots (id, user_id, monthly_goal_id, slot_date, start_time, end_time, notes, is_completed, created_at) VALUES
     (1,  1, 3,  '2026-10-20', '18:00:00', '20:00:00', 'Kapitel 3 lesen und Use-Case-Elemente notieren',      1, '2026-10-18 10:00:00'),
     (2,  1, 4,  '2026-10-21', '17:30:00', '19:00:00', 'INNER und LEFT JOIN an Beispieltabellen üben',        1, '2026-10-18 10:05:00'),
@@ -54,9 +58,16 @@ INSERT INTO learning_slots (id, user_id, monthly_goal_id, slot_date, start_time,
     (12, 2, 13, '2026-10-27', '09:00:00', '11:00:00', 'Vektorräume und Matrizenmultiplikation',              0, '2026-10-20 12:00:00'),
     (13, 2, 14, '2026-10-29', '14:00:00', '15:30:00', 'Deckungsbeitragsrechnung an Beispielen üben',         0, '2026-10-20 12:05:00');
 
-INSERT INTO time_entries (id, user_id, goal_id, started_at, ended_at, tracked_seconds) VALUES
-    (1, 1, 1,    '2026-10-01 09:00:00', '2026-10-01 10:30:00', 5400),
-    (2, 1, 1,    '2026-10-03 14:00:00', '2026-10-03 14:45:00', 2700),
-    (3, 1, 1,    '2026-10-05 19:00:00', '2026-10-05 20:00:00', 3600),
-    (4, 1, NULL, '2026-10-06 08:00:00', '2026-10-06 08:20:00', 1200),
-    (5, 2, 3,    '2026-10-04 16:00:00', '2026-10-04 17:15:00', 4500);
+-- Stoppuhr-Einträge mit Pause: tracked_seconds ist kleiner als ended_at - started_at.
+INSERT INTO time_entries (id, user_id, monthly_goal_id, learning_slot_id, source, entry_date, started_at, ended_at, tracked_seconds, note, created_at) VALUES
+    (1,  1, 1,  NULL, 'stopwatch', '2026-09-08', '2026-09-08 18:00:00', '2026-09-08 19:30:00', 5400, NULL,                                         '2026-09-08 19:30:00'),
+    (2,  1, 2,  NULL, 'manual',    '2026-09-12', NULL,                  NULL,                  3600, 'Im Zug ER-Diagramme skizziert',              '2026-09-13 08:00:00'),
+    (3,  1, 3,  1,    'stopwatch', '2026-10-20', '2026-10-20 18:05:00', '2026-10-20 20:00:00', 6300, NULL,                                         '2026-10-20 20:00:00'),
+    (4,  1, 4,  2,    'stopwatch', '2026-10-21', '2026-10-21 17:30:00', '2026-10-21 18:55:00', 5100, NULL,                                         '2026-10-21 18:55:00'),
+    (5,  1, 5,  3,    'manual',    '2026-10-23', NULL,                  NULL,                  5400, 'Offline in der Bibliothek gelernt',          '2026-10-24 09:00:00'),
+    (6,  1, 3,  4,    'stopwatch', '2026-10-26', '2026-10-26 18:00:00', '2026-10-26 19:45:00', 5400, NULL,                                         '2026-10-26 19:45:00'),
+    (7,  1, 4,  5,    'stopwatch', '2026-10-27', '2026-10-27 17:00:00', '2026-10-27 18:30:00', 5400, NULL,                                         '2026-10-27 18:30:00'),
+    (8,  1, 5,  6,    'stopwatch', '2026-10-28', '2026-10-28 16:10:00', '2026-10-28 17:40:00', 5400, NULL,                                         '2026-10-28 17:40:00'),
+    (9,  1, 5,  NULL, 'manual',    '2026-10-28', NULL,                  NULL,                  2700, 'Ungeplant: Scheduling-Aufgaben wiederholt',  '2026-10-28 21:00:00'),
+    (10, 2, 13, 12,   'stopwatch', '2026-10-27', '2026-10-27 09:00:00', '2026-10-27 10:20:00', 4800, NULL,                                         '2026-10-27 10:20:00'),
+    (11, 2, 14, NULL, 'manual',    '2026-10-25', NULL,                  NULL,                  1800, 'Karteikarten zur Kostenrechnung',            '2026-10-25 20:00:00');
