@@ -104,27 +104,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         } elseif ($action === 'create_learning_slot') {
             $slotResult = $goalController->createLearningSlot($userId, $_POST);
-            $_SESSION['goals_success'] = 'Der Lern-Timeslot wurde erfolgreich eingeplant.';
+            $_SESSION['goals_success'] = 'Die Lerneinheit wurde erfolgreich eingeplant.';
             header('Location: goals.php?tab=week&month=' . urlencode($slotResult['year_month']) . '&week=' . urlencode($slotResult['iso_week']) . '&day=' . urlencode($slotResult['slot_date']));
             exit;
         } elseif ($action === 'update_learning_slot') {
             $slotId = isset($_POST['slot_id']) && is_scalar($_POST['slot_id']) ? (int) $_POST['slot_id'] : 0;
             $slotResult = $goalController->updateLearningSlot($slotId, $userId, $_POST);
-            $_SESSION['goals_success'] = 'Der Lern-Timeslot wurde erfolgreich aktualisiert.';
+            $_SESSION['goals_success'] = 'Die Lerneinheit wurde erfolgreich aktualisiert.';
             header('Location: goals.php?tab=week&month=' . urlencode($slotResult['year_month']) . '&week=' . urlencode($slotResult['iso_week']) . '&day=' . urlencode($slotResult['slot_date']));
             exit;
         } elseif ($action === 'delete_learning_slot') {
             $slotId = isset($_POST['slot_id']) && is_scalar($_POST['slot_id']) ? (int) $_POST['slot_id'] : 0;
             $slotResult = $goalController->deleteLearningSlot($slotId, $userId);
-            $_SESSION['goals_success'] = 'Der Lern-Timeslot wurde erfolgreich gelöscht.';
+            $_SESSION['goals_success'] = 'Die Lerneinheit wurde erfolgreich gelöscht.';
             header('Location: goals.php?tab=week&month=' . urlencode($slotResult['year_month']) . '&week=' . urlencode($slotResult['iso_week']) . '&day=' . urlencode($slotResult['slot_date']));
             exit;
         } elseif ($action === 'toggle_learning_slot') {
             $slotId = isset($_POST['slot_id']) && is_scalar($_POST['slot_id']) ? (int) $_POST['slot_id'] : 0;
             $slotResult = $goalController->toggleLearningSlotCompleted($slotId, $userId);
             $_SESSION['goals_success'] = $slotResult['is_completed']
-                ? 'Der Lern-Timeslot wurde als erledigt markiert.'
-                : 'Der Lern-Timeslot wurde wieder als offen markiert.';
+                ? 'Die Lerneinheit wurde als erledigt markiert.'
+                : 'Die Lerneinheit wurde wieder als offen markiert.';
             header('Location: goals.php?tab=week&month=' . urlencode($slotResult['year_month']) . '&week=' . urlencode($slotResult['iso_week']) . '&day=' . urlencode($slotResult['slot_date']));
             exit;
         } else {
@@ -225,21 +225,20 @@ $activeNav = 'goals';
 require_once __DIR__ . '/includes/header.php';
 ?>
 
-<div class="row align-items-center mb-3">
-    <div class="col-md-7">
-        <h1 class="h3 fw-bold text-primary mb-1">Lernziele, Monats- und Wochenplanung</h1>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+    <div>
+        <h1 class="h3 fw-bold text-primary mb-1">Planung</h1>
         <p class="text-muted mb-0">
-            Plane deine Lernziele für die nächsten sechs Monate, teile sie in monatliche Zwischenziele auf und plane verfügbare Lern-Timeslots in deiner Woche ein.
+            Setze dir Lernziele, verteile sie auf die Monate und plane deine Lernzeiten in der Woche.
         </p>
     </div>
-    <div class="col-md-5 text-md-end mt-3 mt-md-0">
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createGoalModal">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-plus-lg me-1 align-text-bottom" viewBox="0 0 16 16">
-                <path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2" />
-            </svg>
-            Neues Lernziel planen
-        </button>
-    </div>
+    <!-- Nur in der Semesteransicht sichtbar; goals.js blendet ihn beim Tabwechsel ein/aus -->
+    <button type="button" class="btn btn-primary <?= $activeViewTab === 'semester' ? '' : 'd-none' ?>" id="createGoalBtn" data-bs-toggle="modal" data-bs-target="#createGoalModal">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-plus-lg me-1 align-text-bottom" viewBox="0 0 16 16">
+            <path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2" />
+        </svg>
+        Neues Lernziel
+    </button>
 </div>
 
 <!-- Statusmeldungen -->
@@ -257,37 +256,7 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 <?php endif; ?>
 
-<!-- Kompakte Kennzahlen-Leiste -->
-<div class="card shadow-sm border mb-4">
-    <div class="card-body py-2 px-3">
-        <div class="row align-items-center g-2 text-center text-sm-start">
-            <div class="col-6 col-sm-4 border-end-sm">
-                <span class="text-muted small d-block">Geplante Lernziele</span>
-                <span class="fs-5 fw-bold text-dark"><?= count($goals) ?></span>
-            </div>
-            <div class="col-6 col-sm-4 border-end-sm">
-                <span class="text-muted small d-block">Geplante Gesamtlernzeit</span>
-                <span class="fs-5 fw-bold text-primary"><?= number_format($totalHours, 1, ',', '.') ?> <span class="fs-6 text-muted fw-normal">Stunden</span></span>
-            </div>
-            <div class="col-12 col-sm-4 border-top border-sm-top-0 pt-2 pt-sm-0">
-                <span class="text-muted small d-block">In Zwischenziele aufgeteilt</span>
-                <div class="d-flex align-items-center justify-content-center justify-content-sm-start flex-wrap gap-2">
-                    <span class="fs-5 fw-bold <?= $isTotalOverAllocated ? 'text-warning-emphasis' : 'text-dark' ?>">
-                        <?= number_format($totalPlannedAllMonths, 1, ',', '.') ?>
-                        <span class="fs-6 text-muted fw-normal">von <?= number_format($totalHours, 1, ',', '.') ?> h</span>
-                    </span>
-                    <?php if ($isTotalOverAllocated): ?>
-                        <span class="badge text-bg-warning">
-                            +<?= number_format($totalPlannedAllMonths - $totalHours, 1, ',', '.') ?> h über Zielwert
-                        </span>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Hauptansicht-Umschalter: Semesterübersicht vs. Monatsplanung vs. Wochenplanung -->
+<!-- Hauptansicht-Umschalter: Semester vs. Monat vs. Woche -->
 <ul class="nav nav-pills goals-view-switcher mb-4 p-1 bg-white rounded shadow-sm d-inline-flex flex-wrap gap-1" id="goalsMainTabs" role="tablist">
     <li class="nav-item" role="presentation">
         <button
@@ -300,8 +269,8 @@ require_once __DIR__ . '/includes/header.php';
             role="tab"
             aria-controls="pane-semester"
             aria-selected="<?= $activeViewTab === 'semester' ? 'true' : 'false' ?>">
-            Semesterübersicht
-            <span class="badge rounded-pill bg-secondary-subtle text-secondary ms-1"><?= count($goals) ?></span>
+            Semester
+            <span class="badge rounded-pill bg-secondary-subtle text-secondary ms-1" title="Anzahl Lernziele"><?= count($goals) ?></span>
         </button>
     </li>
     <li class="nav-item" role="presentation">
@@ -315,7 +284,7 @@ require_once __DIR__ . '/includes/header.php';
             role="tab"
             aria-controls="pane-month"
             aria-selected="<?= $activeViewTab === 'month' ? 'true' : 'false' ?>">
-            Monatsplanung
+            Monat
             <span class="badge rounded-pill bg-secondary-subtle text-secondary ms-1" id="tab-month-badge"><?= htmlspecialchars((string) $selectedMonthData['label_short']) ?></span>
         </button>
     </li>
@@ -330,7 +299,7 @@ require_once __DIR__ . '/includes/header.php';
             role="tab"
             aria-controls="pane-week"
             aria-selected="<?= $activeViewTab === 'week' ? 'true' : 'false' ?>">
-            Wochenplanung
+            Woche
             <span class="badge rounded-pill bg-secondary-subtle text-secondary ms-1" id="tab-week-badge"><?= htmlspecialchars((string) $selectedWeekData['label_short']) ?></span>
         </button>
     </li>
@@ -338,7 +307,7 @@ require_once __DIR__ . '/includes/header.php';
 
 <div class="tab-content" id="goalsMainTabContent">
     <!-- ================================================================== -->
-    <!-- ANSICHT 1: Semesterübersicht (Lernziele für 6 Monate)              -->
+    <!-- ANSICHT 1: Semester (Lernziele für 6 Monate)                       -->
     <!-- ================================================================== -->
     <div
         class="tab-pane fade <?= $activeViewTab === 'semester' ? 'show active' : '' ?>"
@@ -366,16 +335,27 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
             </div>
         <?php else: ?>
+            <!-- Kurze Zusammenfassung über alle Lernziele -->
+            <p class="text-muted mb-3">
+                <strong class="text-dark"><?= count($goals) ?> Lernziel<?= count($goals) === 1 ? '' : 'e' ?></strong>
+                mit insgesamt <strong class="text-primary"><?= number_format($totalHours, 1, ',', '.') ?> h</strong> &middot;
+                davon <strong class="<?= $isTotalOverAllocated ? 'text-warning-emphasis' : 'text-dark' ?>"><?= number_format($totalPlannedAllMonths, 1, ',', '.') ?> h</strong> auf Monate verteilt
+                <?php if ($isTotalOverAllocated): ?>
+                    <span class="badge text-bg-warning ms-1">
+                        +<?= number_format($totalPlannedAllMonths - $totalHours, 1, ',', '.') ?> h über Zielwert
+                    </span>
+                <?php endif; ?>
+            </p>
+
             <div class="card shadow-sm border goals-table-card mb-4">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0 table-mobile-cards">
                         <thead class="table-light">
                             <tr>
                                 <th scope="col">Lernziel</th>
-                                <th scope="col" class="text-end">Zielstunden</th>
-                                <th scope="col" style="min-width: 210px;">Aufgeteilte Stunden</th>
+                                <th scope="col" style="min-width: 220px;">Auf Monate verteilt</th>
                                 <th scope="col">Zeitraum</th>
-                                <th scope="col" class="text-end">Aktionen</th>
+                                <th scope="col" class="text-end"><span class="visually-hidden">Aktionen</span></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -415,47 +395,37 @@ require_once __DIR__ . '/includes/header.php';
                                             </p>
                                         <?php endif; ?>
                                     </td>
-                                    <td class="text-end" data-label="Zielstunden">
-                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-6 fw-semibold px-2 py-1">
-                                            <?= number_format($targetHoursRow, 1, ',', '.') ?> h
-                                        </span>
-                                    </td>
-                                    <td class="td-mobile-block" data-label="Aufgeteilte Stunden">
-                                        <div class="d-flex justify-content-between align-items-center small mb-1">
-                                            <span class="<?= $allocTextClass ?>">
-                                                <?= number_format($allocatedHoursRow, 1, ',', '.') ?> von <?= number_format($targetHoursRow, 1, ',', '.') ?> h
+                                    <td class="td-mobile-block" data-label="Auf Monate verteilt">
+                                        <div class="d-flex justify-content-between align-items-baseline small mb-1">
+                                            <span>
+                                                <span class="<?= $allocTextClass ?>"><?= number_format($allocatedHoursRow, 1, ',', '.') ?></span>
+                                                <span class="text-muted">von <?= number_format($targetHoursRow, 1, ',', '.') ?> h</span>
                                             </span>
-                                            <span class="badge <?= $isGoalOverAllocated ? 'text-bg-warning' : 'bg-secondary-subtle text-secondary' ?>">
+                                            <span class="<?= $isGoalOverAllocated ? 'text-warning-emphasis fw-semibold' : 'text-muted' ?>">
                                                 <?= number_format($allocPercent, 0, ',', '.') ?> %
                                             </span>
                                         </div>
-                                        <div class="progress" style="height: 6px;" role="progressbar" aria-label="Verplante Stunden" aria-valuenow="<?= (int) $allocBarWidth ?>" aria-valuemin="0" aria-valuemax="100">
+                                        <div class="progress" style="height: 6px;" role="progressbar" aria-label="Auf Monate verteilte Stunden" aria-valuenow="<?= (int) $allocBarWidth ?>" aria-valuemin="0" aria-valuemax="100">
                                             <div class="progress-bar <?= $allocBarClass ?>" style="width: <?= $allocBarWidth ?>%"></div>
                                         </div>
-                                        <div class="mt-1 d-flex justify-content-between align-items-center">
-                                            <span class="text-muted small"><?= $monthlyGoalCount ?> Zwischenziel<?= $monthlyGoalCount === 1 ? '' : 'e' ?></span>
+                                        <div class="mt-1 small text-muted">
+                                            <?= $monthlyGoalCount ?> Zwischenziel<?= $monthlyGoalCount === 1 ? '' : 'e' ?>
                                             <?php if ($isGoalOverAllocated): ?>
-                                                <span class="text-warning-emphasis small fw-semibold">
-                                                    +<?= number_format($allocatedHoursRow - $targetHoursRow, 1, ',', '.') ?> h über Ziel
-                                                </span>
+                                                &middot; <span class="text-warning-emphasis fw-semibold">+<?= number_format($allocatedHoursRow - $targetHoursRow, 1, ',', '.') ?> h über Ziel</span>
                                             <?php endif; ?>
                                         </div>
                                     </td>
                                     <td data-label="Zeitraum">
-                                        <div>
-                                            <div class="small fw-semibold text-dark">
-                                                <?= $startFormatted ?> &ndash; <?= $endFormatted ?>
-                                            </div>
-                                            <div class="text-muted small">
-                                                Dauer: <?= $durationWeeks ?> Wochen
-                                            </div>
+                                        <div class="small fw-semibold text-dark">
+                                            <?= $startFormatted ?> &ndash; <?= $endFormatted ?>
                                         </div>
+                                        <div class="text-muted small"><?= $durationWeeks ?> Wochen</div>
                                     </td>
                                     <td class="text-end td-mobile-actions" data-label="Aktionen">
-                                        <div class="btn-group btn-group-sm" role="group" aria-label="Aktionen für Lernziel">
+                                        <div class="d-flex justify-content-end align-items-center gap-1">
                                             <button
                                                 type="button"
-                                                class="btn btn-outline-primary quick-add-monthly-goal-btn"
+                                                class="btn btn-sm btn-outline-primary text-nowrap quick-add-monthly-goal-btn"
                                                 title="Zwischenziel für dieses Lernziel anlegen"
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#createMonthlyGoalModal"
@@ -463,30 +433,47 @@ require_once __DIR__ . '/includes/header.php';
                                                 data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>">
                                                 + Zwischenziel
                                             </button>
-                                            <button
-                                                type="button"
-                                                class="btn btn-outline-secondary edit-goal-btn"
-                                                title="Lernziel bearbeiten"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#editGoalModal"
-                                                data-id="<?= (int) $goal['id'] ?>"
-                                                data-title="<?= htmlspecialchars((string) $goal['title'], ENT_QUOTES) ?>"
-                                                data-hours="<?= htmlspecialchars((string) $goal['target_hours'], ENT_QUOTES) ?>"
-                                                data-start="<?= htmlspecialchars((string) $goal['start_date'], ENT_QUOTES) ?>"
-                                                data-end="<?= htmlspecialchars((string) $goal['end_date'], ENT_QUOTES) ?>"
-                                                data-description="<?= htmlspecialchars((string) ($goal['description'] ?? ''), ENT_QUOTES) ?>">
-                                                Bearbeiten
-                                            </button>
-                                            <button
-                                                type="button"
-                                                class="btn btn-outline-danger delete-goal-btn"
-                                                title="Lernziel löschen"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#deleteGoalModal"
-                                                data-id="<?= (int) $goal['id'] ?>"
-                                                data-title="<?= htmlspecialchars((string) $goal['title'], ENT_QUOTES) ?>">
-                                                Löschen
-                                            </button>
+                                            <div class="dropdown">
+                                                <button
+                                                    class="btn btn-sm btn-link text-secondary p-1 text-decoration-none row-action-menu-btn"
+                                                    type="button"
+                                                    data-bs-toggle="dropdown"
+                                                    aria-expanded="false"
+                                                    title="Weitere Aktionen"
+                                                    aria-label="Weitere Aktionen für Lernziel">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                                        <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0" />
+                                                    </svg>
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                                    <li>
+                                                        <button
+                                                            type="button"
+                                                            class="dropdown-item small edit-goal-btn"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#editGoalModal"
+                                                            data-id="<?= (int) $goal['id'] ?>"
+                                                            data-title="<?= htmlspecialchars((string) $goal['title'], ENT_QUOTES) ?>"
+                                                            data-hours="<?= htmlspecialchars((string) $goal['target_hours'], ENT_QUOTES) ?>"
+                                                            data-start="<?= htmlspecialchars((string) $goal['start_date'], ENT_QUOTES) ?>"
+                                                            data-end="<?= htmlspecialchars((string) $goal['end_date'], ENT_QUOTES) ?>"
+                                                            data-description="<?= htmlspecialchars((string) ($goal['description'] ?? ''), ENT_QUOTES) ?>">
+                                                            Bearbeiten
+                                                        </button>
+                                                    </li>
+                                                    <li>
+                                                        <button
+                                                            type="button"
+                                                            class="dropdown-item small text-danger delete-goal-btn"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#deleteGoalModal"
+                                                            data-id="<?= (int) $goal['id'] ?>"
+                                                            data-title="<?= htmlspecialchars((string) $goal['title'], ENT_QUOTES) ?>">
+                                                            Löschen
+                                                        </button>
+                                                    </li>
+                                                </ul>
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>
@@ -499,7 +486,7 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 
     <!-- ================================================================== -->
-    <!-- ANSICHT 2: Monatsplanung (Zeitbudget & Zwischenziele je Monat)     -->
+    <!-- ANSICHT 2: Monat (Zeitbudget & Zwischenziele je Monat)             -->
     <!-- ================================================================== -->
     <div
         class="tab-pane fade <?= $activeViewTab === 'month' ? 'show active' : '' ?>"
@@ -508,81 +495,70 @@ require_once __DIR__ . '/includes/header.php';
         aria-labelledby="tab-month-btn"
         tabindex="0">
         <section id="monatsplanung" class="mb-4" data-selected-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>" data-selected-month-short="<?= htmlspecialchars((string) $selectedMonthData['label_short'], ENT_QUOTES) ?>">
-            <!-- Monats-Tab-Leiste -->
-            <div class="card shadow-sm border-0 mb-3">
-                <div class="card-body p-2 p-sm-3">
-                    <div class="d-flex justify-content-between align-items-center mb-2 gap-2">
-                        <a
-                            href="goals.php?tab=month&month=<?= urlencode((string) $monthlyPlanning['prev_month']) ?>"
-                            data-month-switch="<?= htmlspecialchars((string) $monthlyPlanning['prev_month'], ENT_QUOTES) ?>"
-                            class="btn btn-sm btn-outline-secondary">
-                            <span class="d-sm-none">&lsaquo; <?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['prev_month'], true)) ?></span>
-                            <span class="d-none d-sm-inline">&lsaquo; <?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['prev_month'], false)) ?></span>
-                        </a>
-                        <span class="text-muted small fw-semibold text-center">
-                            Monatsauswahl
-                        </span>
-                        <a
-                            href="goals.php?tab=month&month=<?= urlencode((string) $monthlyPlanning['next_month']) ?>"
-                            data-month-switch="<?= htmlspecialchars((string) $monthlyPlanning['next_month'], ENT_QUOTES) ?>"
-                            class="btn btn-sm btn-outline-secondary">
-                            <span class="d-sm-none"><?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['next_month'], true)) ?> &rsaquo;</span>
-                            <span class="d-none d-sm-inline"><?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['next_month'], false)) ?> &rsaquo;</span>
-                        </a>
-                    </div>
+            <!-- Monatsauswahl: Pfeile links/rechts verschieben den Zeitraum um einen Monat -->
+            <div class="d-flex align-items-stretch gap-2 mb-3">
+                <a
+                    href="goals.php?tab=month&month=<?= urlencode((string) $monthlyPlanning['prev_month']) ?>"
+                    data-month-switch="<?= htmlspecialchars((string) $monthlyPlanning['prev_month'], ENT_QUOTES) ?>"
+                    class="btn btn-light border period-nav-btn"
+                    title="Vorheriger Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['prev_month'], false)) ?>"
+                    aria-label="Vorheriger Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['prev_month'], false)) ?>">
+                    &lsaquo;
+                </a>
+                <div class="row g-2 flex-grow-1" role="tablist" aria-label="Monatsauswahl">
+                    <?php foreach ($monthsWindow as $ym => $mTab): ?>
+                        <?php
+                        $isTabSelected = (bool) $mTab['is_selected'];
+                        $isTabOverBudget = (bool) $mTab['is_over_budget'];
+                        $tabPlanned = (float) $mTab['planned_hours'];
+                        $tabBudget = $mTab['budget_hours'];
+                        $tabWorkloadShare = (float) $mTab['workload_share_percent'];
+                        $tabUtil = ($tabBudget !== null && (float) $tabBudget > 0) ? min(100.0, $tabPlanned / (float) $tabBudget * 100) : 0.0;
 
-                    <div class="row g-2" role="tablist" aria-label="Monatsauswahl">
-                        <?php foreach ($monthsWindow as $ym => $mTab): ?>
-                            <?php
-                            $isTabSelected = (bool) $mTab['is_selected'];
-                            $isTabOverBudget = (bool) $mTab['is_over_budget'];
-                            $tabPlanned = (float) $mTab['planned_hours'];
-                            $tabBudget = $mTab['budget_hours'];
-                            $tabWorkloadShare = (float) $mTab['workload_share_percent'];
-
-                            if ($isTabSelected) {
-                                $tabCardClasses = $isTabOverBudget
-                                    ? 'border-warning bg-warning-subtle text-dark shadow-sm active'
-                                    : 'border-primary bg-primary text-white shadow-sm active';
-                            } else {
-                                $tabCardClasses = $isTabOverBudget
-                                    ? 'border-warning bg-warning-subtle text-dark'
-                                    : 'border-light-subtle bg-light text-dark';
-                            }
-                            ?>
-                            <div class="col-4 col-lg-2">
-                                <a
-                                    href="goals.php?tab=month&month=<?= urlencode((string) $ym) ?>"
-                                    data-month-switch="<?= htmlspecialchars((string) $ym, ENT_QUOTES) ?>"
-                                    class="card h-100 text-decoration-none border month-tab-link <?= $tabCardClasses ?>"
-                                    role="tab"
-                                    aria-selected="<?= $isTabSelected ? 'true' : 'false' ?>">
-                                    <div class="card-body p-2 text-center">
-                                        <div class="d-flex flex-wrap justify-content-center align-items-center gap-1 mb-1">
-                                            <span class="fw-bold small"><?= htmlspecialchars((string) $mTab['label_short']) ?></span>
-                                            <?php if ($mTab['is_current_calendar_month']): ?>
-                                                <span class="badge <?= $isTabSelected && !$isTabOverBudget ? 'bg-light text-primary' : 'bg-primary-subtle text-primary' ?> d-none d-sm-inline-block" style="font-size: 0.65rem;">Aktuell</span>
-                                            <?php endif; ?>
-                                        </div>
-                                        <div class="small <?= $isTabSelected && !$isTabOverBudget ? 'text-white' : ($isTabOverBudget ? 'text-warning-emphasis fw-bold' : 'text-muted') ?>" style="font-size: 0.78rem;">
-                                            <?= number_format($tabPlanned, 1, ',', '.') ?>
-                                            <?php if ($tabBudget !== null): ?>
-                                                / <?= number_format((float) $tabBudget, 1, ',', '.') ?> h
-                                            <?php else: ?>
-                                                h
-                                            <?php endif; ?>
-                                        </div>
-                                        <div class="mt-1">
-                                            <span class="badge <?= $isTabOverBudget ? 'text-bg-warning' : ($isTabSelected ? 'bg-white text-primary' : 'bg-secondary-subtle text-secondary') ?>" style="font-size: 0.68rem;">
-                                                <?= number_format($tabWorkloadShare, 0, ',', '.') ?> % Workload
-                                            </span>
-                                        </div>
+                        if ($isTabSelected) {
+                            $tabCardClasses = $isTabOverBudget
+                                ? 'border-warning bg-warning-subtle text-dark shadow-sm active'
+                                : 'border-primary bg-primary text-white shadow-sm active';
+                        } else {
+                            $tabCardClasses = $isTabOverBudget
+                                ? 'border-warning bg-warning-subtle text-dark'
+                                : 'border-light-subtle bg-white text-dark';
+                        }
+                        ?>
+                        <div class="col-4 col-lg-2">
+                            <a
+                                href="goals.php?tab=month&month=<?= urlencode((string) $ym) ?>"
+                                data-month-switch="<?= htmlspecialchars((string) $ym, ENT_QUOTES) ?>"
+                                class="card h-100 text-decoration-none border month-tab-link <?= $tabCardClasses ?>"
+                                role="tab"
+                                aria-selected="<?= $isTabSelected ? 'true' : 'false' ?>"
+                                title="<?= number_format($tabWorkloadShare, 0, ',', '.') ?> % deiner gesamten Planung">
+                                <div class="card-body p-2 text-center">
+                                    <div class="d-flex justify-content-center align-items-center gap-1">
+                                        <span class="fw-bold small"><?= htmlspecialchars((string) $mTab['label_short']) ?></span>
+                                        <?php if ($mTab['is_current_calendar_month']): ?>
+                                            <span class="period-today-dot" title="Aktueller Monat"></span>
+                                        <?php endif; ?>
                                     </div>
-                                </a>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
+                                    <div class="small <?= $isTabSelected && !$isTabOverBudget ? 'text-white' : ($isTabOverBudget ? 'text-warning-emphasis fw-bold' : 'text-muted') ?>" style="font-size: 0.78rem;">
+                                        <?= number_format($tabPlanned, 1, ',', '.') ?><?= $tabBudget !== null ? ' / ' . number_format((float) $tabBudget, 1, ',', '.') : '' ?> h
+                                    </div>
+                                    <div class="progress period-mini-progress mt-1" role="presentation">
+                                        <div class="progress-bar <?= $isTabOverBudget ? 'bg-warning' : '' ?>" style="width: <?= $isTabOverBudget ? 100 : $tabUtil ?>%"></div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
+                <a
+                    href="goals.php?tab=month&month=<?= urlencode((string) $monthlyPlanning['next_month']) ?>"
+                    data-month-switch="<?= htmlspecialchars((string) $monthlyPlanning['next_month'], ENT_QUOTES) ?>"
+                    class="btn btn-light border period-nav-btn"
+                    title="Nächster Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['next_month'], false)) ?>"
+                    aria-label="Nächster Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['next_month'], false)) ?>">
+                    &rsaquo;
+                </a>
             </div>
 
             <!-- Detailansicht des aktiv ausgewählten Monats -->
@@ -593,139 +569,84 @@ require_once __DIR__ . '/includes/header.php';
             $selUtilPercent = $selectedMonthData['budget_utilization_percent'];
             $selIsOverBudget = (bool) $selectedMonthData['is_over_budget'];
             $selWorkloadShare = (float) $selectedMonthData['workload_share_percent'];
+            $utilBarWidth = $selUtilPercent !== null ? min(100.0, (float) $selUtilPercent) : ($selPlanned > 0 ? 100.0 : 0.0);
+            $utilBarClass = $selIsOverBudget ? 'bg-warning' : ($selUtilPercent !== null && $selUtilPercent >= 90.0 ? 'bg-success' : 'bg-primary');
             ?>
             <div class="card shadow-sm border mb-4">
-                <div class="card-header bg-white py-3 px-4 border-bottom">
+                <div class="card-header bg-white py-3 px-3 px-sm-4 border-bottom">
                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                        <div>
-                            <h2 class="h4 fw-bold mb-0 d-flex align-items-center flex-wrap gap-2">
-                                <span><?= htmlspecialchars((string) $selectedMonthData['label_long']) ?></span>
-                                <?php if ($selectedMonthData['is_current_calendar_month']): ?>
-                                    <span class="badge bg-primary-subtle text-primary fs-6 fw-normal">Aktueller Monat</span>
-                                <?php endif; ?>
-                                <?php if ($selIsOverBudget): ?>
-                                    <span class="badge text-bg-warning fs-6">
-                                        Zeitbudget um <?= number_format(abs((float) $selRemaining), 1, ',', '.') ?> h überschritten
-                                    </span>
-                                <?php endif; ?>
-                            </h2>
-                        </div>
-                        <div class="d-flex flex-wrap gap-2">
-                            <?php if (!empty($goals)): ?>
-                                <button
-                                    type="button"
-                                    class="btn btn-primary"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#createMonthlyGoalModal"
-                                    data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>">
-                                    + Zwischenziel planen
-                                </button>
+                        <h2 class="h4 fw-bold mb-0 d-flex align-items-center flex-wrap gap-2">
+                            <span><?= htmlspecialchars((string) $selectedMonthData['label_long']) ?></span>
+                            <?php if ($selectedMonthData['is_current_calendar_month']): ?>
+                                <span class="badge bg-primary-subtle text-primary fs-6 fw-normal">Aktueller Monat</span>
                             <?php endif; ?>
-                        </div>
+                        </h2>
+                        <?php if (!empty($goals)): ?>
+                            <button
+                                type="button"
+                                class="btn btn-primary"
+                                data-bs-toggle="modal"
+                                data-bs-target="#createMonthlyGoalModal"
+                                data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>">
+                                + Zwischenziel
+                            </button>
+                        <?php endif; ?>
                     </div>
                 </div>
 
                 <div class="card-body p-3 p-sm-4">
-                    <!-- 3 Kennzahlen-Kacheln für den ausgewählten Monat -->
-                    <div class="row g-3 mb-4">
-                        <!-- Kachel 1: Monatliches Zeitbudget -->
-                        <div class="col-md-4">
-                            <div class="p-3 border rounded h-100 <?= $selIsOverBudget ? 'bg-warning-subtle border-warning' : 'bg-light' ?>">
-                                <div class="d-flex justify-content-between align-items-start mb-1">
-                                    <span class="text-muted small text-uppercase fw-semibold">Monatliches Zeitbudget</span>
-                                    <?php if ($selBudget !== null): ?>
-                                        <button
-                                            type="button"
-                                            class="btn btn-link btn-sm p-0 text-decoration-none"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#monthlyBudgetModal"
-                                            data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>"
-                                            data-month-label="<?= htmlspecialchars((string) $selectedMonthData['label_long'], ENT_QUOTES) ?>"
-                                            data-budget="<?= htmlspecialchars((string) $selBudget, ENT_QUOTES) ?>">
-                                            Bearbeiten
-                                        </button>
-                                    <?php endif; ?>
+                    <!-- Zeitbudget, Auslastung und Anteil an der Gesamtplanung in einem Block -->
+                    <div class="row g-3 align-items-center p-3 mb-4 mx-0 border rounded <?= $selIsOverBudget ? 'bg-warning-subtle border-warning' : 'bg-light' ?>">
+                        <div class="col-md-8 ps-0">
+                            <div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2 mb-2">
+                                <div>
+                                    <span class="h4 fw-bold <?= $selIsOverBudget ? 'text-warning-emphasis' : 'text-primary' ?> mb-0"><?= number_format($selPlanned, 1, ',', '.') ?> h</span>
+                                    <span class="text-muted">
+                                        <?php if ($selBudget !== null): ?>
+                                            von <?= number_format((float) $selBudget, 1, ',', '.') ?> h Zeitbudget verplant
+                                        <?php else: ?>
+                                            verplant
+                                        <?php endif; ?>
+                                    </span>
                                 </div>
-                                <?php if ($selBudget !== null): ?>
-                                    <div class="h4 fw-bold text-dark mb-1">
-                                        <?= number_format((float) $selBudget, 1, ',', '.') ?> <span class="fs-6 fw-normal text-muted">Stunden</span>
-                                    </div>
-                                    <?php if ($selIsOverBudget): ?>
-                                        <div class="small text-warning-emphasis fw-semibold">
-                                            Um <?= number_format(abs((float) $selRemaining), 1, ',', '.') ?> h über dem Zeitbudget
-                                        </div>
-                                    <?php else: ?>
-                                        <div class="small text-success fw-semibold">
-                                            Noch <?= number_format((float) $selRemaining, 1, ',', '.') ?> h verfügbar
-                                        </div>
-                                    <?php endif; ?>
-                                <?php else: ?>
-                                    <div class="h5 fw-semibold text-muted mb-2 fst-italic">Kein Budget hinterlegt</div>
-                                    <button
-                                        type="button"
-                                        class="btn btn-outline-primary btn-sm"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#monthlyBudgetModal"
-                                        data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>"
-                                        data-month-label="<?= htmlspecialchars((string) $selectedMonthData['label_long'], ENT_QUOTES) ?>"
-                                        data-budget="">
-                                        Zeitbudget festlegen
-                                    </button>
+                                <?php if ($selUtilPercent !== null): ?>
+                                    <span class="small fw-semibold <?= $selIsOverBudget ? 'text-warning-emphasis' : 'text-muted' ?>">
+                                        <?= number_format((float) $selUtilPercent, 1, ',', '.') ?> %
+                                    </span>
                                 <?php endif; ?>
                             </div>
-                        </div>
-
-                        <!-- Kachel 2: Verplante Lernzeit im Monat -->
-                        <div class="col-md-4">
-                            <div class="p-3 border rounded h-100 <?= $selIsOverBudget ? 'bg-warning-subtle border-warning' : 'bg-light' ?>">
-                                <span class="text-muted small text-uppercase fw-semibold d-block mb-1">Verplante Lernzeit</span>
-                                <div class="d-flex justify-content-between align-items-baseline mb-2">
-                                    <span class="h4 fw-bold <?= $selIsOverBudget ? 'text-warning-emphasis' : 'text-primary' ?> mb-0">
-                                        <?= number_format($selPlanned, 1, ',', '.') ?> <span class="fs-6 fw-normal text-muted">Stunden</span>
-                                    </span>
-                                    <?php if ($selUtilPercent !== null): ?>
-                                        <span class="badge <?= $selIsOverBudget ? 'text-bg-warning' : 'bg-primary-subtle text-primary' ?> fs-6">
-                                            <?= number_format((float) $selUtilPercent, 1, ',', '.') ?> % des Budgets
-                                        </span>
-                                    <?php endif; ?>
-                                </div>
-                                <?php
-                                $utilBarWidth = $selUtilPercent !== null ? min(100.0, (float) $selUtilPercent) : ($selPlanned > 0 ? 100.0 : 0.0);
-                                $utilBarClass = $selIsOverBudget ? 'bg-warning' : ($selUtilPercent !== null && $selUtilPercent >= 90.0 ? 'bg-success' : 'bg-primary');
-                                ?>
-                                <div class="progress" style="height: 8px;" role="progressbar" aria-label="Auslastung des Zeitbudgets" aria-valuenow="<?= (int) $utilBarWidth ?>" aria-valuemin="0" aria-valuemax="100">
-                                    <div class="progress-bar <?= $utilBarClass ?>" style="width: <?= $utilBarWidth ?>%"></div>
-                                </div>
-                                <div class="small text-muted mt-1">
-                                    <?= count($monthlyGoals) ?> Zwischenziel<?= count($monthlyGoals) === 1 ? '' : 'e' ?> in <?= htmlspecialchars((string) $selectedMonthData['label_long']) ?>
-                                </div>
+                            <div class="progress" style="height: 8px;" role="progressbar" aria-label="Auslastung des Zeitbudgets" aria-valuenow="<?= (int) $utilBarWidth ?>" aria-valuemin="0" aria-valuemax="100">
+                                <div class="progress-bar <?= $utilBarClass ?>" style="width: <?= $utilBarWidth ?>%"></div>
+                            </div>
+                            <div class="small mt-2 d-flex flex-wrap align-items-center gap-2">
+                                <?php if ($selBudget === null): ?>
+                                    <span class="text-muted fst-italic">Noch kein Zeitbudget festgelegt.</span>
+                                <?php elseif ($selIsOverBudget): ?>
+                                    <span class="text-warning-emphasis fw-semibold">Zeitbudget um <?= number_format(abs((float) $selRemaining), 1, ',', '.') ?> h überschritten</span>
+                                <?php else: ?>
+                                    <span class="text-success fw-semibold">Noch <?= number_format((float) $selRemaining, 1, ',', '.') ?> h frei</span>
+                                <?php endif; ?>
+                                <span class="text-muted">&middot;</span>
+                                <button
+                                    type="button"
+                                    class="btn btn-link btn-sm p-0 text-decoration-none align-baseline"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#monthlyBudgetModal"
+                                    data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>"
+                                    data-month-label="<?= htmlspecialchars((string) $selectedMonthData['label_long'], ENT_QUOTES) ?>"
+                                    data-budget="<?= htmlspecialchars((string) ($selBudget ?? ''), ENT_QUOTES) ?>">
+                                    <?= $selBudget !== null ? 'Zeitbudget ändern' : 'Zeitbudget festlegen' ?>
+                                </button>
                             </div>
                         </div>
-
-                        <!-- Kachel 3: Prozentuale Verteilung des Workloads -->
-                        <div class="col-md-4">
-                            <div class="p-3 border rounded bg-light h-100">
-                                <span class="text-muted small text-uppercase fw-semibold d-block mb-1">Verteilung deines Workloads</span>
-                                <div class="d-flex justify-content-between align-items-baseline mb-2">
-                                    <span class="h4 fw-bold text-dark mb-0">
-                                        <?= number_format($selWorkloadShare, 1, ',', '.') ?> %
-                                    </span>
-                                    <span class="text-muted small">
-                                        <?= number_format($selPlanned, 1, ',', '.') ?> von <?= number_format($totalPlannedAllMonths, 1, ',', '.') ?> h
-                                    </span>
-                                </div>
-                                <?php $shareBarWidth = min(100.0, $selWorkloadShare); ?>
-                                <div class="progress" style="height: 8px;" role="progressbar" aria-label="Prozentuale Verteilung deines Workloads" aria-valuenow="<?= (int) $shareBarWidth ?>" aria-valuemin="0" aria-valuemax="100">
-                                    <div class="progress-bar bg-info" style="width: <?= $shareBarWidth ?>%"></div>
-                                </div>
-                                <div class="small text-muted mt-1">
-                                    Gleichmäßig auf sechs Monate verteilt entspricht etwa 16,7 % je Monat.
-                                </div>
-                            </div>
+                        <div class="col-md-4 month-share-col small text-muted">
+                            <span class="fs-5 fw-bold text-dark"><?= number_format($selWorkloadShare, 1, ',', '.') ?> %</span>
+                            deiner gesamten Planung
+                            <div><?= number_format($selPlanned, 1, ',', '.') ?> von <?= number_format($totalPlannedAllMonths, 1, ',', '.') ?> h &middot; gleichmäßig wären ca. 16,7 %</div>
                         </div>
                     </div>
 
-                    <!-- Tabelle der Zwischenziele im ausgewählten Monat -->
+                    <!-- Zwischenziele im ausgewählten Monat -->
                     <?php if (empty($monthlyGoals)): ?>
                         <div class="text-center py-4 border rounded bg-light-subtle">
                             <p class="fw-semibold text-dark mb-1">
@@ -741,7 +662,7 @@ require_once __DIR__ . '/includes/header.php';
                                     data-bs-toggle="modal"
                                     data-bs-target="#createMonthlyGoalModal"
                                     data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>">
-                                    Erstes Zwischenziel für <?= htmlspecialchars((string) $selectedMonthData['label_long']) ?> anlegen
+                                    Erstes Zwischenziel anlegen
                                 </button>
                             <?php endif; ?>
                         </div>
@@ -751,9 +672,9 @@ require_once __DIR__ . '/includes/header.php';
                                 <thead class="table-light">
                                     <tr>
                                         <th scope="col">Zwischenziel</th>
-                                        <th scope="col">Zugehöriges Lernziel</th>
-                                        <th scope="col" class="text-end">Geplante Lernzeit</th>
-                                        <th scope="col" class="text-end">Aktionen</th>
+                                        <th scope="col" class="text-end">Geplant</th>
+                                        <th scope="col" style="min-width: 180px;">In der Woche eingeplant</th>
+                                        <th scope="col" class="text-end"><span class="visually-hidden">Aktionen</span></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -768,69 +689,84 @@ require_once __DIR__ . '/includes/header.php';
                                         $mgScheduled = (float) ($mGoal['scheduled_hours'] ?? 0.0);
                                         $mgSlotCount = (int) ($mGoal['slot_count'] ?? 0);
                                         $isMgOverScheduled = (bool) ($mGoal['is_over_scheduled'] ?? false);
+                                        $mgSchedPct = $mgHours > 0 ? min(100.0, $mgScheduled / $mgHours * 100) : 0.0;
                                         ?>
                                         <tr class="<?= ($isParentOver || $isMgOverScheduled) ? 'table-warning' : '' ?>">
                                             <td class="td-mobile-header" data-label="Zwischenziel">
                                                 <strong class="text-dark d-block"><?= htmlspecialchars((string) $mGoal['title']) ?></strong>
                                                 <?php if (!empty($mGoal['description'])): ?>
-                                                    <p class="text-muted small mb-0 mt-1">
-                                                        <?= nl2br(htmlspecialchars((string) $mGoal['description'])) ?>
-                                                    </p>
+                                                    <span class="text-muted small d-block"><?= nl2br(htmlspecialchars((string) $mGoal['description'])) ?></span>
                                                 <?php endif; ?>
-                                            </td>
-                                            <td class="td-mobile-block" data-label="Zugehöriges Lernziel">
-                                                <span class="fw-semibold text-dark d-block"><?= htmlspecialchars((string) $mGoal['parent_goal_title']) ?></span>
-                                                <span class="small <?= $isParentOver ? 'text-warning-emphasis fw-semibold' : 'text-muted' ?>">
-                                                    Insgesamt verplant: <?= number_format($parentAlloc, 1, ',', '.') ?> von <?= number_format($parentTarget, 1, ',', '.') ?> h
+                                                <span
+                                                    class="small d-block mt-1 <?= $isParentOver ? 'text-warning-emphasis fw-semibold' : 'text-secondary' ?>"
+                                                    title="Lernziel insgesamt: <?= number_format($parentAlloc, 1, ',', '.') ?> von <?= number_format($parentTarget, 1, ',', '.') ?> h verteilt">
+                                                    &#8627; <?= htmlspecialchars((string) $mGoal['parent_goal_title']) ?>
                                                     <?php if ($isParentOver): ?>
-                                                        <span class="badge text-bg-warning ms-1">Lernziel überschritten</span>
+                                                        &middot; Lernziel überschritten (<?= number_format($parentAlloc, 1, ',', '.') ?> / <?= number_format($parentTarget, 1, ',', '.') ?> h)
                                                     <?php endif; ?>
                                                 </span>
                                             </td>
-                                            <td class="text-end" data-label="Geplante Lernzeit">
-                                                <div>
-                                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-6 fw-semibold px-2 py-1">
-                                                        <?= number_format($mgHours, 1, ',', '.') ?> h
-                                                    </span>
-                                                    <div class="text-muted small mt-1">
-                                                        <?php if ($shareOfBudget !== null): ?>
-                                                            <?= number_format((float) $shareOfBudget, 1, ',', '.') ?> % vom Zeitbudget
-                                                        <?php else: ?>
-                                                            <?= number_format($shareOfPlanned, 1, ',', '.') ?> % der Monatsplanung
-                                                        <?php endif; ?>
-                                                    </div>
-                                                    <div class="small mt-1 <?= $isMgOverScheduled ? 'text-warning-emphasis fw-semibold' : 'text-muted' ?>">
-                                                        In Timeslots: <?= number_format($mgScheduled, 1, ',', '.') ?> / <?= number_format($mgHours, 1, ',', '.') ?> h (<?= $mgSlotCount ?>)
-                                                    </div>
+                                            <td class="text-end" data-label="Geplant">
+                                                <div class="fw-bold text-primary"><?= number_format($mgHours, 1, ',', '.') ?> h</div>
+                                                <div class="text-muted small">
+                                                    <?php if ($shareOfBudget !== null): ?>
+                                                        <?= number_format((float) $shareOfBudget, 0, ',', '.') ?> % vom Budget
+                                                    <?php else: ?>
+                                                        <?= number_format($shareOfPlanned, 0, ',', '.') ?> % des Monats
+                                                    <?php endif; ?>
+                                                </div>
+                                            </td>
+                                            <td class="td-mobile-block" data-label="In der Woche eingeplant">
+                                                <div class="d-flex justify-content-between small mb-1 <?= $isMgOverScheduled ? 'text-warning-emphasis fw-semibold' : 'text-muted' ?>">
+                                                    <span><?= number_format($mgScheduled, 1, ',', '.') ?> von <?= number_format($mgHours, 1, ',', '.') ?> h</span>
+                                                    <span><?= $mgSlotCount ?> Lerneinheit<?= $mgSlotCount === 1 ? '' : 'en' ?></span>
+                                                </div>
+                                                <div class="progress" style="height: 4px;" role="presentation">
+                                                    <div class="progress-bar <?= $isMgOverScheduled ? 'bg-warning' : ($mgSchedPct >= 100 ? 'bg-success' : 'bg-primary') ?>" style="width: <?= $isMgOverScheduled ? 100 : $mgSchedPct ?>%"></div>
                                                 </div>
                                             </td>
                                             <td class="text-end td-mobile-actions" data-label="Aktionen">
-                                                <div class="btn-group btn-group-sm" role="group" aria-label="Aktionen für Zwischenziel">
+                                                <div class="dropdown">
                                                     <button
+                                                        class="btn btn-sm btn-link text-secondary p-1 text-decoration-none row-action-menu-btn"
                                                         type="button"
-                                                        class="btn btn-outline-secondary edit-monthly-goal-btn"
-                                                        title="Zwischenziel bearbeiten"
-                                                        data-bs-toggle="modal"
-                                                        data-bs-target="#editMonthlyGoalModal"
-                                                        data-id="<?= (int) $mGoal['id'] ?>"
-                                                        data-goal-id="<?= (int) $mGoal['goal_id'] ?>"
-                                                        data-month="<?= htmlspecialchars((string) $mGoal['year_month'], ENT_QUOTES) ?>"
-                                                        data-title="<?= htmlspecialchars((string) $mGoal['title'], ENT_QUOTES) ?>"
-                                                        data-hours="<?= htmlspecialchars((string) $mGoal['planned_hours'], ENT_QUOTES) ?>"
-                                                        data-description="<?= htmlspecialchars((string) ($mGoal['description'] ?? ''), ENT_QUOTES) ?>">
-                                                        Bearbeiten
+                                                        data-bs-toggle="dropdown"
+                                                        aria-expanded="false"
+                                                        title="Aktionen"
+                                                        aria-label="Aktionen für Zwischenziel">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                                            <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0" />
+                                                        </svg>
                                                     </button>
-                                                    <button
-                                                        type="button"
-                                                        class="btn btn-outline-danger delete-monthly-goal-btn"
-                                                        title="Zwischenziel löschen"
-                                                        data-bs-toggle="modal"
-                                                        data-bs-target="#deleteMonthlyGoalModal"
-                                                        data-id="<?= (int) $mGoal['id'] ?>"
-                                                        data-title="<?= htmlspecialchars((string) $mGoal['title'], ENT_QUOTES) ?>"
-                                                        data-month="<?= htmlspecialchars((string) $mGoal['year_month'], ENT_QUOTES) ?>">
-                                                        Löschen
-                                                    </button>
+                                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                                        <li>
+                                                            <button
+                                                                type="button"
+                                                                class="dropdown-item small edit-monthly-goal-btn"
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#editMonthlyGoalModal"
+                                                                data-id="<?= (int) $mGoal['id'] ?>"
+                                                                data-goal-id="<?= (int) $mGoal['goal_id'] ?>"
+                                                                data-month="<?= htmlspecialchars((string) $mGoal['year_month'], ENT_QUOTES) ?>"
+                                                                data-title="<?= htmlspecialchars((string) $mGoal['title'], ENT_QUOTES) ?>"
+                                                                data-hours="<?= htmlspecialchars((string) $mGoal['planned_hours'], ENT_QUOTES) ?>"
+                                                                data-description="<?= htmlspecialchars((string) ($mGoal['description'] ?? ''), ENT_QUOTES) ?>">
+                                                                Bearbeiten
+                                                            </button>
+                                                        </li>
+                                                        <li>
+                                                            <button
+                                                                type="button"
+                                                                class="dropdown-item small text-danger delete-monthly-goal-btn"
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#deleteMonthlyGoalModal"
+                                                                data-id="<?= (int) $mGoal['id'] ?>"
+                                                                data-title="<?= htmlspecialchars((string) $mGoal['title'], ENT_QUOTES) ?>"
+                                                                data-month="<?= htmlspecialchars((string) $mGoal['year_month'], ENT_QUOTES) ?>">
+                                                                Löschen
+                                                            </button>
+                                                        </li>
+                                                    </ul>
                                                 </div>
                                             </td>
                                         </tr>
@@ -845,7 +781,7 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 
     <!-- ================================================================== -->
-    <!-- ANSICHT 3: Wochenplanung (Verfügbare Lern-Timeslots je Woche)      -->
+    <!-- ANSICHT 3: Woche (Lerneinheiten je Kalenderwoche)                  -->
     <!-- ================================================================== -->
     <div
         class="tab-pane fade <?= $activeViewTab === 'week' ? 'show active' : '' ?>"
@@ -862,75 +798,68 @@ require_once __DIR__ . '/includes/header.php';
             data-selected-month-short="<?= htmlspecialchars((string) $selectedMonthData['label_short'], ENT_QUOTES) ?>"
             data-default-slot-date="<?= htmlspecialchars($defaultSlotDate, ENT_QUOTES) ?>"
             data-week-view-mode="day">
-            <!-- Kalenderwochen-Auswahl-Leiste -->
-            <div class="card shadow-sm border-0 mb-3">
-                <div class="card-body p-2 p-sm-3">
-                    <div class="d-flex justify-content-between align-items-center mb-2 gap-2">
-                        <a
-                            href="goals.php?tab=week&month=<?= urlencode((string) $weeklyPlanning['prev_month']) ?>"
-                            data-month-switch="<?= htmlspecialchars((string) $weeklyPlanning['prev_month'], ENT_QUOTES) ?>"
-                            class="btn btn-sm btn-outline-secondary"
-                            title="Vorheriger Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['prev_month'], false)) ?>">
-                            <span class="d-sm-none">&lsaquo; <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['prev_month'], true)) ?></span>
-                            <span class="d-none d-sm-inline">&lsaquo; <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['prev_month'], false)) ?></span>
-                        </a>
-                        <div class="text-center">
-                            <span class="text-muted small fw-semibold d-block">
-                                <?= htmlspecialchars((string) $selectedMonthData['label_long']) ?>
-                            </span>
-                        </div>
-                        <a
-                            href="goals.php?tab=week&month=<?= urlencode((string) $weeklyPlanning['next_month']) ?>"
-                            data-month-switch="<?= htmlspecialchars((string) $weeklyPlanning['next_month'], ENT_QUOTES) ?>"
-                            class="btn btn-sm btn-outline-secondary"
-                            title="Nächster Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['next_month'], false)) ?>">
-                            <span class="d-sm-none"><?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['next_month'], true)) ?> &rsaquo;</span>
-                            <span class="d-none d-sm-inline"><?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['next_month'], false)) ?> &rsaquo;</span>
-                        </a>
-                    </div>
+            <!-- Kalenderwochen-Auswahl: Monat mit Pfeilen wechseln, darunter die Wochen des Monats -->
+            <div class="d-flex justify-content-center align-items-center gap-2 mb-2">
+                <a
+                    href="goals.php?tab=week&month=<?= urlencode((string) $weeklyPlanning['prev_month']) ?>"
+                    data-month-switch="<?= htmlspecialchars((string) $weeklyPlanning['prev_month'], ENT_QUOTES) ?>"
+                    class="btn btn-sm btn-light border period-nav-btn"
+                    title="Vorheriger Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['prev_month'], false)) ?>"
+                    aria-label="Vorheriger Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['prev_month'], false)) ?>">
+                    &lsaquo;
+                </a>
+                <span class="fw-semibold text-dark text-center" style="min-width: 9rem;">
+                    <?= htmlspecialchars((string) $selectedMonthData['label_long']) ?>
+                </span>
+                <a
+                    href="goals.php?tab=week&month=<?= urlencode((string) $weeklyPlanning['next_month']) ?>"
+                    data-month-switch="<?= htmlspecialchars((string) $weeklyPlanning['next_month'], ENT_QUOTES) ?>"
+                    class="btn btn-sm btn-light border period-nav-btn"
+                    title="Nächster Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['next_month'], false)) ?>"
+                    aria-label="Nächster Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['next_month'], false)) ?>">
+                    &rsaquo;
+                </a>
+            </div>
 
-                    <div class="row g-2" role="tablist" aria-label="Kalenderwochenauswahl">
-                        <?php foreach ($weeksWindow as $isoW => $wTab): ?>
-                            <?php
-                            $isWSelected = (bool) $wTab['is_selected'];
-                            $wScheduled = (float) $wTab['scheduled_hours'];
-                            $wSlots = (int) $wTab['slot_count'];
-
-                            if ($isWSelected) {
-                                $wCardClasses = 'border-primary bg-primary text-white shadow-sm active';
-                            } else {
-                                $wCardClasses = 'border-light-subtle bg-light text-dark';
-                            }
-                            ?>
-                            <div class="col-6 col-sm-4 col-lg">
-                                <a
-                                    href="goals.php?tab=week&month=<?= urlencode($selectedMonth) ?>&week=<?= urlencode((string) $isoW) ?>"
-                                    data-week-switch="<?= htmlspecialchars((string) $isoW, ENT_QUOTES) ?>"
-                                    data-week-month="<?= htmlspecialchars((string) $selectedMonth, ENT_QUOTES) ?>"
-                                    class="card h-100 text-decoration-none border week-tab-link <?= $wCardClasses ?>"
-                                    role="tab"
-                                    aria-selected="<?= $isWSelected ? 'true' : 'false' ?>">
-                                    <div class="card-body p-2 text-center">
-                                        <div class="d-flex flex-wrap justify-content-center align-items-center gap-1">
-                                            <span class="fw-bold small"><?= htmlspecialchars((string) $wTab['label_short']) ?></span>
-                                            <?php if ($wTab['is_current_week']): ?>
-                                                <span class="badge <?= $isWSelected ? 'bg-light text-primary' : 'bg-primary-subtle text-primary' ?>" style="font-size: 0.65rem;">Aktuell</span>
-                                            <?php endif; ?>
-                                        </div>
-                                        <div class="small <?= $isWSelected ? 'text-white-50' : 'text-muted' ?>" style="font-size: 0.72rem;">
-                                            <?= htmlspecialchars((string) $wTab['date_range_short']) ?>
-                                        </div>
-                                        <div class="mt-1">
-                                            <span class="badge <?= $isWSelected ? 'bg-white text-primary' : ($wSlots > 0 ? 'bg-primary-subtle text-primary' : 'bg-secondary-subtle text-secondary') ?>" style="font-size: 0.68rem;">
-                                                <?= number_format($wScheduled, 1, ',', '.') ?> h &middot; <?= $wSlots ?> Slot<?= $wSlots === 1 ? '' : 's' ?>
-                                            </span>
-                                        </div>
-                                    </div>
-                                </a>
+            <div class="row g-2 mb-3" role="tablist" aria-label="Kalenderwochenauswahl">
+                <?php foreach ($weeksWindow as $isoW => $wTab): ?>
+                    <?php
+                    $isWSelected = (bool) $wTab['is_selected'];
+                    $wScheduled = (float) $wTab['scheduled_hours'];
+                    $wSlots = (int) $wTab['slot_count'];
+                    $wCardClasses = $isWSelected
+                        ? 'border-primary bg-primary text-white shadow-sm active'
+                        : 'border-light-subtle bg-white text-dark';
+                    ?>
+                    <div class="col-6 col-sm-4 col-lg">
+                        <a
+                            href="goals.php?tab=week&month=<?= urlencode($selectedMonth) ?>&week=<?= urlencode((string) $isoW) ?>"
+                            data-week-switch="<?= htmlspecialchars((string) $isoW, ENT_QUOTES) ?>"
+                            data-week-month="<?= htmlspecialchars((string) $selectedMonth, ENT_QUOTES) ?>"
+                            class="card h-100 text-decoration-none border week-tab-link <?= $wCardClasses ?>"
+                            role="tab"
+                            aria-selected="<?= $isWSelected ? 'true' : 'false' ?>">
+                            <div class="card-body p-2 text-center">
+                                <div class="d-flex justify-content-center align-items-center gap-1">
+                                    <span class="fw-bold small"><?= htmlspecialchars((string) $wTab['label_short']) ?></span>
+                                    <?php if ($wTab['is_current_week']): ?>
+                                        <span class="period-today-dot" title="Aktuelle Woche"></span>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="small <?= $isWSelected ? 'text-white-50' : 'text-muted' ?>" style="font-size: 0.72rem;">
+                                    <?= htmlspecialchars((string) $wTab['date_range_short']) ?>
+                                </div>
+                                <div class="small fw-semibold <?= $isWSelected ? 'text-white' : ($wSlots > 0 ? 'text-primary' : 'text-muted fw-normal') ?>" style="font-size: 0.75rem;">
+                                    <?php if ($wSlots > 0): ?>
+                                        <?= number_format($wScheduled, 1, ',', '.') ?> h &middot; <?= $wSlots ?> Einheit<?= $wSlots === 1 ? '' : 'en' ?>
+                                    <?php else: ?>
+                                        &ndash;
+                                    <?php endif; ?>
+                                </div>
                             </div>
-                        <?php endforeach; ?>
+                        </a>
                     </div>
-                </div>
+                <?php endforeach; ?>
             </div>
 
             <!-- Detailansicht der aktiv ausgewählten Kalenderwoche -->
@@ -940,12 +869,13 @@ require_once __DIR__ . '/includes/header.php';
             $wSumSlots = (int) $weekSummary['slot_count'];
             $wSumCompletedSlots = (int) $weekSummary['completed_slot_count'];
             $wHasOverlaps = (bool) $weekSummary['has_overlaps'];
+            $wDonePct = $wSumScheduled > 0 ? min(100.0, $wSumCompleted / $wSumScheduled * 100) : 0.0;
             $monthTotalScheduled = (float) ($selectedMonthData['scheduled_hours'] ?? 0.0);
             $monthTotalPlanned = (float) $selectedMonthData['planned_hours'];
             $isMonthOverScheduled = $monthTotalPlanned > 0 && $monthTotalScheduled > $monthTotalPlanned;
             ?>
             <div class="card shadow-sm border mb-4">
-                <div class="card-header bg-white py-3 px-4 border-bottom">
+                <div class="card-header bg-white py-3 px-3 px-sm-4 border-bottom">
                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
                         <div>
                             <h2 class="h4 fw-bold mb-1 d-flex align-items-center flex-wrap gap-2">
@@ -954,52 +884,59 @@ require_once __DIR__ . '/includes/header.php';
                                     <span class="badge bg-primary-subtle text-primary fs-6 fw-normal">Aktuelle Woche</span>
                                 <?php endif; ?>
                                 <?php if ($wHasOverlaps): ?>
-                                    <span class="badge text-bg-warning fs-6">
-                                        Zeitüberschneidung bei Timeslots
-                                    </span>
+                                    <span class="badge text-bg-warning fs-6">Zeitüberschneidung</span>
                                 <?php endif; ?>
                             </h2>
-                            <div class="text-muted small d-flex flex-wrap align-items-center gap-2">
-                                <span>
-                                    <strong class="text-primary"><?= number_format($wSumScheduled, 1, ',', '.') ?> h</strong> geplant (<?= $wSumSlots ?> Slot<?= $wSumSlots === 1 ? '' : 's' ?>)
-                                </span>
-                                <span>&middot;</span>
-                                <span>
-                                    <strong class="text-success"><?= number_format($wSumCompleted, 1, ',', '.') ?> h</strong> erledigt (<?= $wSumCompletedSlots ?>/<?= $wSumSlots ?>)
-                                </span>
-                                <span>&middot;</span>
-                                <span class="<?= $isMonthOverScheduled ? 'text-warning-emphasis fw-semibold' : '' ?>">
-                                    <?= htmlspecialchars((string) $selectedMonthData['label_short']) ?>:
-                                    <strong><?= number_format($monthTotalScheduled, 1, ',', '.') ?> / <?= number_format($monthTotalPlanned, 1, ',', '.') ?> h</strong> terminiert
-                                </span>
-                            </div>
+                            <?php if ($wSumSlots > 0): ?>
+                                <div class="d-flex align-items-center gap-2 small text-muted">
+                                    <div class="progress flex-shrink-0" style="height: 6px; width: 120px;" role="progressbar" aria-label="Erledigte Lernzeit dieser Woche" aria-valuenow="<?= (int) $wDonePct ?>" aria-valuemin="0" aria-valuemax="100">
+                                        <div class="progress-bar bg-success" style="width: <?= $wDonePct ?>%"></div>
+                                    </div>
+                                    <span>
+                                        <strong class="text-success"><?= number_format($wSumCompleted, 1, ',', '.') ?></strong> von <strong class="text-primary"><?= number_format($wSumScheduled, 1, ',', '.') ?> h</strong> erledigt
+                                        (<?= $wSumCompletedSlots ?>/<?= $wSumSlots ?> Lerneinheiten)
+                                    </span>
+                                </div>
+                            <?php else: ?>
+                                <div class="small text-muted">Für diese Woche ist noch keine Lernzeit geplant.</div>
+                            <?php endif; ?>
                         </div>
 
                         <div class="d-flex flex-wrap align-items-center gap-2">
-                            <!-- Umschalter: Tagesfokus vs. Ganze Woche -->
-                            <div class="btn-group btn-group-sm" role="group" aria-label="Darstellungsmodus der Woche">
+                            <!-- Umschalter: einzelner Tag vs. ganze Woche -->
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Darstellung der Woche">
                                 <button
                                     type="button"
                                     class="btn btn-outline-secondary active"
                                     data-week-view-mode-btn="day">
-                                    Tagesfokus
+                                    Tag
                                 </button>
                                 <button
                                     type="button"
                                     class="btn btn-outline-secondary"
                                     data-week-view-mode-btn="week">
-                                    Ganze Woche
+                                    Woche
                                 </button>
                             </div>
 
-                            <?php if (empty($selectableMonthlyGoals) && !empty($goals)): ?>
+                            <?php if (!empty($selectableMonthlyGoals)): ?>
                                 <button
                                     type="button"
-                                    class="btn btn-primary btn-sm px-3 py-1"
+                                    class="btn btn-primary"
+                                    id="primary-create-slot-btn"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#createSlotModal"
+                                    data-date="<?= htmlspecialchars($defaultSlotDate, ENT_QUOTES) ?>">
+                                    + Lernzeit planen
+                                </button>
+                            <?php elseif (!empty($goals)): ?>
+                                <button
+                                    type="button"
+                                    class="btn btn-primary"
                                     data-bs-toggle="modal"
                                     data-bs-target="#createMonthlyGoalModal"
                                     data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>">
-                                    + Zwischenziel für <?= htmlspecialchars((string) $selectedMonthData['label_short']) ?> anlegen
+                                    + Zwischenziel für <?= htmlspecialchars((string) $selectedMonthData['label_short']) ?>
                                 </button>
                             <?php endif; ?>
                         </div>
@@ -1009,35 +946,30 @@ require_once __DIR__ . '/includes/header.php';
                 <div class="card-body p-3 p-sm-4">
                     <!-- Einklappbare Übersicht der Zwischenziele des Monats -->
                     <?php if (empty($selectableMonthlyGoals)): ?>
-                        <div class="alert alert-light border d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-                            <div>
-                                <strong class="text-dark d-block">Noch keine Zwischenziele für <?= htmlspecialchars((string) $selectedMonthData['label_long']) ?> vorhanden</strong>
-                                <span class="text-muted small">
-                                    Lege zuerst ein Zwischenziel für <?= htmlspecialchars((string) $selectedMonthData['label_long']) ?> an, um anschließend konkrete Lern-Timeslots in den Wochentagen einzuplanen.
-                                </span>
-                            </div>
+                        <div class="alert alert-light border mb-3">
+                            <strong class="text-dark d-block">Noch keine Zwischenziele für <?= htmlspecialchars((string) $selectedMonthData['label_long']) ?></strong>
+                            <span class="text-muted small">
+                                Lege zuerst ein Zwischenziel an – danach kannst du hier Lernzeiten an einzelnen Tagen einplanen.
+                            </span>
                         </div>
                     <?php else: ?>
                         <div class="border rounded bg-light-subtle mb-3">
                             <button
-                                class="btn btn-link w-100 text-decoration-none text-dark d-flex justify-content-between align-items-center px-3 py-2 collapsed week-collapse-toggle"
+                                class="btn btn-link w-100 text-decoration-none text-dark d-flex justify-content-between align-items-center gap-2 px-3 py-2 collapsed week-collapse-toggle"
                                 type="button"
                                 data-bs-toggle="collapse"
                                 data-bs-target="#weekMonthlyGoalsCollapse"
                                 aria-expanded="false"
                                 aria-controls="weekMonthlyGoalsCollapse">
-                                <span class="small fw-semibold">
-                                    Zwischenziele im <?= htmlspecialchars((string) $selectedMonthData['label_long']) ?>
-                                    <span class="text-muted fw-normal ms-1">
-                                        (<?= count($monthlyGoals) ?> Ziel<?= count($monthlyGoals) === 1 ? '' : 'e' ?> &middot; <?= number_format($monthTotalScheduled, 1, ',', '.') ?> von <?= number_format($monthTotalPlanned, 1, ',', '.') ?> h in Timeslots verplant)
+                                <span class="small text-start">
+                                    <span class="fw-semibold">Zwischenziele im <?= htmlspecialchars((string) $selectedMonthData['label_long']) ?></span>
+                                    <span class="<?= $isMonthOverScheduled ? 'text-warning-emphasis fw-semibold' : 'text-muted' ?> ms-1">
+                                        &middot; <?= number_format($monthTotalScheduled, 1, ',', '.') ?> von <?= number_format($monthTotalPlanned, 1, ',', '.') ?> h eingeplant
                                     </span>
                                 </span>
-                                <span class="text-muted small d-flex align-items-center gap-1">
-                                    <span class="d-none d-sm-inline">Details</span>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-chevron-down week-collapse-chevron" viewBox="0 0 16 16">
-                                        <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708" />
-                                    </svg>
-                                </span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-chevron-down week-collapse-chevron text-muted flex-shrink-0" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708" />
+                                </svg>
                             </button>
                             <div class="collapse" id="weekMonthlyGoalsCollapse">
                                 <div class="p-3 pt-1 border-top">
@@ -1084,7 +1016,7 @@ require_once __DIR__ . '/includes/header.php';
                         </div>
                     <?php endif; ?>
 
-                    <!-- Wochenband (Mo bis So) -->
+                    <!-- Wochenband (Mo bis So), nur in der Tagesansicht sichtbar -->
                     <div class="week-day-strip mb-3" role="tablist" aria-label="Wochentagsauswahl">
                         <?php foreach ($weekDays as $day): ?>
                             <?php
@@ -1121,7 +1053,7 @@ require_once __DIR__ . '/includes/header.php';
                         <?php endforeach; ?>
                     </div>
 
-                    <!-- Tages-Kacheln (im Tagesfokus nur der gewählte Tag sichtbar, in Ganze Woche alle 7 als kompakte Agenda) -->
+                    <!-- Tages-Kacheln (in der Tagesansicht nur der gewählte Tag, in der Wochenansicht alle 7 als Agenda) -->
                     <div class="d-flex flex-column gap-2" id="week-days-container">
                         <?php foreach ($weekDays as $day): ?>
                             <?php
@@ -1134,23 +1066,13 @@ require_once __DIR__ . '/includes/header.php';
                             $dayHasOverlap = (bool) $day['has_overlap'];
                             $daySlots = $day['slots'];
                             $hasSlots = !empty($daySlots);
-                            $collapseId = 'day-collapse-' . $dayDate;
-                            // Im Standardmodus "Tagesfokus" ist der aktive Tag aufgeklappt;
-                            // für die übrigen Tage sind nur Tage mit Slots standardmäßig aufgeklappt, leere Tage eingeklappt.
-                            $isInitiallyExpanded = $isSelectedDay || $hasSlots;
                             ?>
                             <div
                                 class="card week-day-card <?= $isToday ? 'border-primary-subtle' : ($dayHasOverlap ? 'border-warning' : 'border') ?> <?= !$inMonth ? 'bg-light-subtle' : 'bg-white' ?> <?= $isSelectedDay ? '' : 'd-none' ?>"
                                 data-day-card="<?= htmlspecialchars($dayDate, ENT_QUOTES) ?>"
                                 data-has-slots="<?= $hasSlots ? 'true' : 'false' ?>">
-                                <div class="card-header py-2 px-3 d-flex justify-content-between align-items-center <?= $isToday ? 'bg-primary-subtle border-primary-subtle' : 'bg-light-subtle' ?>">
-                                    <div
-                                        class="d-flex align-items-center flex-wrap gap-2 flex-grow-1 week-day-header-toggle <?= $isInitiallyExpanded ? '' : 'collapsed' ?>"
-                                        role="button"
-                                        data-bs-toggle="collapse"
-                                        data-bs-target="#<?= htmlspecialchars($collapseId, ENT_QUOTES) ?>"
-                                        aria-expanded="<?= $isInitiallyExpanded ? 'true' : 'false' ?>"
-                                        aria-controls="<?= htmlspecialchars($collapseId, ENT_QUOTES) ?>">
+                                <div class="card-header py-2 px-3 d-flex justify-content-between align-items-center gap-2 <?= $isToday ? 'bg-primary-subtle border-primary-subtle' : 'bg-light-subtle' ?>">
+                                    <div class="d-flex align-items-center flex-wrap gap-2">
                                         <span class="fw-bold text-dark"><?= htmlspecialchars((string) $day['day_name_long']) ?></span>
                                         <span class="text-muted small"><?= htmlspecialchars((string) $day['date_full_formatted']) ?></span>
                                         <?php if ($isToday): ?>
@@ -1164,13 +1086,13 @@ require_once __DIR__ . '/includes/header.php';
                                         <?php endif; ?>
                                     </div>
                                     <div class="d-flex align-items-center gap-2 flex-shrink-0">
-                                        <?php if ($hasSlots): ?>
-                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-semibold">
-                                                <?= number_format($dayHours, 1, ',', '.') ?> h &middot; <?= $daySlotCount ?> Slot<?= $daySlotCount === 1 ? '' : 's' ?>
-                                            </span>
-                                        <?php else: ?>
-                                            <span class="text-muted small">Keine Slots</span>
-                                        <?php endif; ?>
+                                        <span class="small <?= $hasSlots ? 'text-primary fw-semibold' : 'text-muted' ?>">
+                                            <?php if ($hasSlots): ?>
+                                                <?= number_format($dayHours, 1, ',', '.') ?> h &middot; <?= $daySlotCount ?> Einheit<?= $daySlotCount === 1 ? '' : 'en' ?>
+                                            <?php else: ?>
+                                                Frei
+                                            <?php endif; ?>
+                                        </span>
                                         <?php if (!empty($selectableMonthlyGoals)): ?>
                                             <button
                                                 type="button"
@@ -1178,135 +1100,119 @@ require_once __DIR__ . '/includes/header.php';
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#createSlotModal"
                                                 data-date="<?= htmlspecialchars($dayDate, ENT_QUOTES) ?>"
-                                                title="Lernzeit für <?= htmlspecialchars((string) $day['day_name_long']) ?> (<?= htmlspecialchars((string) $day['date_full_formatted']) ?>) planen">
-                                                Lernzeit planen
+                                                title="Lernzeit für <?= htmlspecialchars((string) $day['day_name_long']) ?> (<?= htmlspecialchars((string) $day['date_full_formatted']) ?>) planen"
+                                                aria-label="Lernzeit für <?= htmlspecialchars((string) $day['day_name_long']) ?> planen">
+                                                +
                                             </button>
                                         <?php endif; ?>
-                                        <button
-                                            type="button"
-                                            class="btn btn-sm p-0 border-0 text-muted week-day-header-toggle <?= $isInitiallyExpanded ? '' : 'collapsed' ?>"
-                                            data-bs-toggle="collapse"
-                                            data-bs-target="#<?= htmlspecialchars($collapseId, ENT_QUOTES) ?>"
-                                            aria-expanded="<?= $isInitiallyExpanded ? 'true' : 'false' ?>"
-                                            aria-controls="<?= htmlspecialchars($collapseId, ENT_QUOTES) ?>"
-                                            aria-label="Details für <?= htmlspecialchars((string) $day['day_name_long']) ?> ein- oder ausklappen">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-chevron-down week-collapse-chevron" viewBox="0 0 16 16">
-                                                <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1 0-.708" />
-                                            </svg>
-                                        </button>
                                     </div>
                                 </div>
 
-                                <div class="collapse <?= $isInitiallyExpanded ? 'show' : '' ?>" id="<?= htmlspecialchars($collapseId, ENT_QUOTES) ?>">
-                                    <div class="card-body p-2 p-sm-3 d-flex flex-column gap-2">
-                                        <?php if (!$hasSlots): ?>
-                                            <div class="text-muted small py-2 px-1 fst-italic">
-                                                Für diesen Tag sind noch keine Lern-Timeslots eingeplant.
-                                            </div>
-                                        <?php else: ?>
-                                            <?php foreach ($daySlots as $slot): ?>
-                                                <?php
-                                                $slotCompleted = (int) $slot['is_completed'] === 1;
-                                                $slotOverlap = (bool) $slot['has_overlap'];
-                                                $slotDur = (float) $slot['duration_hours'];
-                                                $slotTimeRange = $slot['start_time_formatted'] . ' – ' . $slot['end_time_formatted'] . ' Uhr';
-                                                ?>
-                                                <div class="p-2 px-3 border rounded slot-item-card d-flex align-items-start justify-content-between gap-3 <?= $slotOverlap ? 'bg-warning-subtle border-warning' : ($slotCompleted ? 'bg-light text-muted' : 'bg-white') ?>">
-                                                    <div class="d-flex align-items-start gap-3 flex-grow-1 min-w-0">
-                                                        <!-- Ruhiger Status-Check-Button links -->
-                                                        <form action="goals.php" method="POST" class="m-0 pt-1 flex-shrink-0" data-ajax-form>
-                                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
-                                                            <input type="hidden" name="action" value="toggle_learning_slot">
-                                                            <input type="hidden" name="slot_id" value="<?= (int) $slot['id'] ?>">
-                                                            <button
-                                                                type="submit"
-                                                                class="slot-check-btn <?= $slotCompleted ? 'is-completed' : '' ?>"
-                                                                title="<?= $slotCompleted ? 'Als offen markieren' : 'Als erledigt abhaken' ?>"
-                                                                aria-label="<?= $slotCompleted ? 'Als offen markieren' : 'Als erledigt abhaken' ?>">
-                                                                <?php if ($slotCompleted): ?>
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16">
-                                                                        <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z" />
-                                                                    </svg>
-                                                                <?php endif; ?>
-                                                            </button>
-                                                        </form>
+                                <div class="card-body p-2 p-sm-3 d-flex flex-column gap-2 <?= $hasSlots ? '' : 'week-day-empty' ?>">
+                                    <?php if (!$hasSlots): ?>
+                                        <div class="text-muted small py-2 px-1 fst-italic">
+                                            Für diesen Tag ist noch keine Lernzeit geplant.
+                                        </div>
+                                    <?php else: ?>
+                                        <?php foreach ($daySlots as $slot): ?>
+                                            <?php
+                                            $slotCompleted = (int) $slot['is_completed'] === 1;
+                                            $slotOverlap = (bool) $slot['has_overlap'];
+                                            $slotDur = (float) $slot['duration_hours'];
+                                            $slotTimeRange = $slot['start_time_formatted'] . ' – ' . $slot['end_time_formatted'] . ' Uhr';
+                                            ?>
+                                            <div class="p-2 px-3 border rounded slot-item-card d-flex align-items-start justify-content-between gap-3 <?= $slotOverlap ? 'bg-warning-subtle border-warning' : ($slotCompleted ? 'bg-light text-muted' : 'bg-white') ?>">
+                                                <div class="d-flex align-items-start gap-3 flex-grow-1 min-w-0">
+                                                    <!-- Ruhiger Status-Check-Button links -->
+                                                    <form action="goals.php" method="POST" class="m-0 pt-1 flex-shrink-0" data-ajax-form>
+                                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
+                                                        <input type="hidden" name="action" value="toggle_learning_slot">
+                                                        <input type="hidden" name="slot_id" value="<?= (int) $slot['id'] ?>">
+                                                        <button
+                                                            type="submit"
+                                                            class="slot-check-btn <?= $slotCompleted ? 'is-completed' : '' ?>"
+                                                            title="<?= $slotCompleted ? 'Erledigt – als offen markieren' : 'Als erledigt abhaken' ?>"
+                                                            aria-label="<?= $slotCompleted ? 'Erledigt – als offen markieren' : 'Als erledigt abhaken' ?>">
+                                                            <?php if ($slotCompleted): ?>
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16">
+                                                                    <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z" />
+                                                                </svg>
+                                                            <?php endif; ?>
+                                                        </button>
+                                                    </form>
 
-                                                        <!-- Zeitspanne, Zwischenziel und optionale Notiz in der Mitte -->
-                                                        <div class="flex-grow-1 min-w-0">
-                                                            <div class="d-flex align-items-center flex-wrap gap-2 small">
-                                                                <span class="fw-semibold <?= $slotCompleted ? 'text-muted' : 'text-primary' ?>">
-                                                                    <?= htmlspecialchars($slotTimeRange) ?>
+                                                    <!-- Zeitspanne, Zwischenziel und optionale Notiz in der Mitte -->
+                                                    <div class="flex-grow-1 min-w-0">
+                                                        <div class="d-flex align-items-center flex-wrap gap-2 small">
+                                                            <span class="fw-semibold <?= $slotCompleted ? 'text-muted' : 'text-primary' ?>">
+                                                                <?= htmlspecialchars($slotTimeRange) ?>
+                                                            </span>
+                                                            <span class="text-muted">&middot; <?= number_format($slotDur, 1, ',', '.') ?> h</span>
+                                                            <?php if ($slotOverlap): ?>
+                                                                <span class="badge text-bg-warning" style="font-size: 0.68rem;" title="Diese Lerneinheit überschneidet sich zeitlich mit einer anderen an diesem Tag.">
+                                                                    Überschneidung
                                                                 </span>
-                                                                <span class="text-muted">&middot; <?= number_format($slotDur, 1, ',', '.') ?> h</span>
-                                                                <?php if ($slotCompleted): ?>
-                                                                    <span class="badge bg-success-subtle text-success fw-normal" style="font-size: 0.68rem;">Erledigt</span>
-                                                                <?php endif; ?>
-                                                                <?php if ($slotOverlap): ?>
-                                                                    <span class="badge text-bg-warning" style="font-size: 0.68rem;" title="Dieser Timeslot überschneidet sich zeitlich mit einem anderen Slot an diesem Tag.">
-                                                                        Kollision
-                                                                    </span>
-                                                                <?php endif; ?>
-                                                            </div>
+                                                            <?php endif; ?>
+                                                        </div>
 
-                                                            <div class="fw-semibold <?= $slotCompleted ? 'text-decoration-line-through text-muted' : 'text-dark' ?>">
-                                                                <?= htmlspecialchars((string) $slot['monthly_goal_title']) ?>
-                                                            </div>
-                                                            <div class="text-muted small" style="font-size: 0.78rem;">
-                                                                <?= htmlspecialchars((string) $slot['parent_goal_title']) ?>
-                                                                <?php if (!empty($slot['notes'])): ?>
-                                                                    <span class="mx-1">&middot;</span>
-                                                                    <span class="fst-italic"><?= htmlspecialchars((string) $slot['notes']) ?></span>
-                                                                <?php endif; ?>
-                                                            </div>
+                                                        <div class="fw-semibold <?= $slotCompleted ? 'text-decoration-line-through text-muted' : 'text-dark' ?>">
+                                                            <?= htmlspecialchars((string) $slot['monthly_goal_title']) ?>
+                                                        </div>
+                                                        <div class="text-muted small" style="font-size: 0.78rem;">
+                                                            <?= htmlspecialchars((string) $slot['parent_goal_title']) ?>
+                                                            <?php if (!empty($slot['notes'])): ?>
+                                                                <span class="mx-1">&middot;</span>
+                                                                <span class="fst-italic"><?= htmlspecialchars((string) $slot['notes']) ?></span>
+                                                            <?php endif; ?>
                                                         </div>
                                                     </div>
-
-                                                    <!-- Dezentes Aktionsmenü (⋮) rechts -->
-                                                    <div class="dropdown flex-shrink-0">
-                                                        <button
-                                                            class="btn btn-sm btn-link text-secondary p-1 text-decoration-none slot-action-menu-btn"
-                                                            type="button"
-                                                            data-bs-toggle="dropdown"
-                                                            aria-expanded="false"
-                                                            title="Aktionen für Timeslot"
-                                                            aria-label="Aktionen für Timeslot">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                                                                <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0" />
-                                                            </svg>
-                                                        </button>
-                                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                                                            <li>
-                                                                <button
-                                                                    type="button"
-                                                                    class="dropdown-item small edit-slot-btn"
-                                                                    data-bs-toggle="modal"
-                                                                    data-bs-target="#editSlotModal"
-                                                                    data-id="<?= (int) $slot['id'] ?>"
-                                                                    data-monthly-goal-id="<?= (int) $slot['monthly_goal_id'] ?>"
-                                                                    data-date="<?= htmlspecialchars((string) $slot['slot_date'], ENT_QUOTES) ?>"
-                                                                    data-start="<?= htmlspecialchars((string) $slot['start_time_formatted'], ENT_QUOTES) ?>"
-                                                                    data-end="<?= htmlspecialchars((string) $slot['end_time_formatted'], ENT_QUOTES) ?>"
-                                                                    data-notes="<?= htmlspecialchars((string) ($slot['notes'] ?? ''), ENT_QUOTES) ?>">
-                                                                    Bearbeiten
-                                                                </button>
-                                                            </li>
-                                                            <li>
-                                                                <button
-                                                                    type="button"
-                                                                    class="dropdown-item small text-danger delete-slot-btn"
-                                                                    data-bs-toggle="modal"
-                                                                    data-bs-target="#deleteSlotModal"
-                                                                    data-id="<?= (int) $slot['id'] ?>"
-                                                                    data-summary="<?= htmlspecialchars((string) $day['day_name_long'] . ', ' . (string) $day['date_full_formatted'] . ' (' . $slotTimeRange . ') – ' . (string) $slot['monthly_goal_title'], ENT_QUOTES) ?>">
-                                                                    Löschen
-                                                                </button>
-                                                            </li>
-                                                        </ul>
-                                                    </div>
                                                 </div>
-                                            <?php endforeach; ?>
-                                        <?php endif; ?>
-                                    </div>
+
+                                                <!-- Dezentes Aktionsmenü (⋮) rechts -->
+                                                <div class="dropdown flex-shrink-0">
+                                                    <button
+                                                        class="btn btn-sm btn-link text-secondary p-1 text-decoration-none row-action-menu-btn"
+                                                        type="button"
+                                                        data-bs-toggle="dropdown"
+                                                        aria-expanded="false"
+                                                        title="Aktionen"
+                                                        aria-label="Aktionen für Lerneinheit">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                                            <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0" />
+                                                        </svg>
+                                                    </button>
+                                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                                        <li>
+                                                            <button
+                                                                type="button"
+                                                                class="dropdown-item small edit-slot-btn"
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#editSlotModal"
+                                                                data-id="<?= (int) $slot['id'] ?>"
+                                                                data-monthly-goal-id="<?= (int) $slot['monthly_goal_id'] ?>"
+                                                                data-date="<?= htmlspecialchars((string) $slot['slot_date'], ENT_QUOTES) ?>"
+                                                                data-start="<?= htmlspecialchars((string) $slot['start_time_formatted'], ENT_QUOTES) ?>"
+                                                                data-end="<?= htmlspecialchars((string) $slot['end_time_formatted'], ENT_QUOTES) ?>"
+                                                                data-notes="<?= htmlspecialchars((string) ($slot['notes'] ?? ''), ENT_QUOTES) ?>">
+                                                                Bearbeiten
+                                                            </button>
+                                                        </li>
+                                                        <li>
+                                                            <button
+                                                                type="button"
+                                                                class="dropdown-item small text-danger delete-slot-btn"
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#deleteSlotModal"
+                                                                data-id="<?= (int) $slot['id'] ?>"
+                                                                data-summary="<?= htmlspecialchars((string) $day['day_name_long'] . ', ' . (string) $day['date_full_formatted'] . ' (' . $slotTimeRange . ') – ' . (string) $slot['monthly_goal_title'], ENT_QUOTES) ?>">
+                                                                Löschen
+                                                            </button>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         <?php endforeach; ?>
@@ -1773,7 +1679,7 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
                 <div class="modal-body">
                     <p class="mb-2">
-                        Möchtest du das folgende Zwischenziel und alle zugehörigen Lern-Timeslots wirklich löschen?
+                        Möchtest du das folgende Zwischenziel und alle zugehörigen Lerneinheiten wirklich löschen?
                     </p>
                     <p class="fw-bold text-dark mb-0" id="delete_mg_title"></p>
                 </div>
