@@ -11,39 +11,52 @@ INSERT INTO users (id, email, password_hash, display_name, study_program, semest
     (2, 'testuser2@iu-demo.de', '$2y$10$crH3Dq6gADtWjO70Kz8pAuiHFx9jXyAb8jUCaegA9DjAWhEjQRd26', 'Test Nutzerin', 'Wirtschaftsinformatik', 2, '2026-09-02 09:30:00');
 
 INSERT INTO learning_goals (id, user_id, title, description, target_hours, start_date, end_date, created_at) VALUES
-    (1, 1, 'Software Engineering – Klausurvorbereitung', 'Skript Kapitel 1–6 durcharbeiten', 20.00, '2026-09-01', '2026-12-15', '2026-09-01 08:15:00'),
-    (2, 1, 'Datenbanken – Übungsaufgaben',               'SQL-Joins und Normalisierung üben', 10.00, '2026-09-01', '2026-11-30', '2026-09-03 18:00:00'),
-    (3, 2, 'Mathematik – Wiederholung',                  NULL,                                 8.00, '2026-09-01', '2027-02-28', '2026-09-05 10:00:00');
+    (1, 1, '3. Semester – Informatik (WiSe 2026/27)',             'Module: Software Engineering, Datenbanken, Betriebssysteme', 180.00, '2026-09-01', '2027-02-28', '2026-09-01 08:15:00'),
+    (2, 1, '4. Semester – Informatik (SoSe 2027)',                'Module: IT-Sicherheit, Web-Programmierung',                  150.00, '2027-03-01', '2027-08-31', '2026-09-03 18:00:00'),
+    (3, 2, '2. Semester – Wirtschaftsinformatik (WiSe 2026/27)', 'Module: Mathematik, Betriebswirtschaftslehre',               120.00, '2026-09-01', '2027-02-28', '2026-09-05 10:00:00');
 
 INSERT INTO monthly_budgets (id, user_id, plan_month, budget_hours, created_at) VALUES
-    (1, 1, '2026-09', 10.00, '2026-09-01 08:20:00'),
-    (2, 1, '2026-10', 12.00, '2026-09-01 08:21:00'),
-    (3, 1, '2026-11', 10.00, '2026-09-01 08:22:00'),
-    (4, 1, '2026-12',  8.00, '2026-09-01 08:23:00'),
-    (5, 2, '2026-10',  5.00, '2026-09-05 10:05:00');
+    (1, 1, '2026-09', 30.00, '2026-09-01 08:20:00'),
+    (2, 1, '2026-10', 45.00, '2026-09-01 08:21:00'),
+    (3, 1, '2026-11', 40.00, '2026-09-01 08:22:00'),
+    (4, 1, '2026-12', 25.00, '2026-09-01 08:23:00'),
+    (5, 1, '2027-03', 30.00, '2026-09-03 18:05:00'),
+    (6, 2, '2026-10', 25.00, '2026-09-05 10:05:00');
 
 INSERT INTO monthly_goals (id, user_id, goal_id, plan_month, title, description, planned_hours, created_at) VALUES
-    (1, 1, 1, '2026-09', 'Kapitel 1–2: Grundlagen & Vorgehensmodelle', 'Zusammenfassung schreiben',              5.00, '2026-09-01 08:25:00'),
-    (2, 1, 2, '2026-09', 'ER-Modellierung & Relationenschema',         'Übungsblatt 1 und 2 lösen',              3.50, '2026-09-03 18:05:00'),
-    (3, 1, 1, '2026-10', 'Kapitel 3–4: Anforderungsanalyse & UML',     'Use-Case- und Klassendiagramme zeichnen', 6.00, '2026-09-15 09:00:00'),
-    (4, 1, 2, '2026-10', 'SQL-Joins & Normalisierung (1NF–3NF)',       'Praxisaufgaben in MariaDB testen',        4.00, '2026-09-15 09:10:00'),
-    (5, 1, 1, '2026-11', 'Kapitel 5–6: Softwarearchitektur & Tests',   'Altklausuren sichten',                    5.00, '2026-09-20 11:00:00'),
-    (6, 1, 2, '2026-11', 'Transaktionen & Indexierung',                'Restliche Übungsaufgaben abschließen',    2.50, '2026-09-20 11:15:00'),
-    (7, 1, 1, '2026-12', 'Generalprobe & Karteikarten wiederholen',    'Prüfungssimulation unter Zeitdruck',      4.00, '2026-09-25 14:00:00'),
-    (8, 2, 3, '2026-10', 'Lineare Algebra Grundlagen',                 NULL,                                      4.00, '2026-09-05 10:10:00');
+    (1,  1, 1, '2026-09', 'Modul Software Engineering', 'Kapitel 1–2: Grundlagen & Vorgehensmodelle',     15.00, '2026-09-01 08:25:00'),
+    (2,  1, 1, '2026-09', 'Modul Datenbanken',          'ER-Modellierung & Relationenschema',             12.00, '2026-09-01 08:30:00'),
+    (3,  1, 1, '2026-10', 'Modul Software Engineering', 'Kapitel 3–4: Anforderungsanalyse & UML',         18.00, '2026-09-15 09:00:00'),
+    (4,  1, 1, '2026-10', 'Modul Datenbanken',          'SQL-Joins & Normalisierung (1NF–3NF)',           15.00, '2026-09-15 09:10:00'),
+    (5,  1, 1, '2026-10', 'Modul Betriebssysteme',      'Prozesse, Threads & Scheduling',                 10.00, '2026-09-15 09:20:00'),
+    (6,  1, 1, '2026-11', 'Modul Software Engineering', 'Kapitel 5–6: Softwarearchitektur & Tests',       15.00, '2026-09-20 11:00:00'),
+    (7,  1, 1, '2026-11', 'Modul Datenbanken',          'Transaktionen & Indexierung',                    12.00, '2026-09-20 11:15:00'),
+    (8,  1, 1, '2026-11', 'Modul Betriebssysteme',      'Speicherverwaltung & Dateisysteme',              12.00, '2026-09-20 11:30:00'),
+    (9,  1, 1, '2026-12', 'Modul Software Engineering', 'Klausurvorbereitung mit Altklausuren',           12.00, '2026-09-25 14:00:00'),
+    (10, 1, 1, '2026-12', 'Modul Betriebssysteme',      'Rechnernetze & Prüfungsvorbereitung',            10.00, '2026-09-25 14:10:00'),
+    (11, 1, 2, '2027-03', 'Modul IT-Sicherheit',        'Schutzziele, Kryptografie-Grundlagen',           15.00, '2026-09-03 18:10:00'),
+    (12, 1, 2, '2027-03', 'Modul Web-Programmierung',   'HTML, CSS & JavaScript-Grundlagen',              12.00, '2026-09-03 18:15:00'),
+    (13, 2, 3, '2026-10', 'Modul Mathematik',           'Lineare Algebra Grundlagen',                     10.00, '2026-09-05 10:10:00'),
+    (14, 2, 3, '2026-10', 'Modul Betriebswirtschaftslehre', 'Kosten- und Leistungsrechnung',              8.00, '2026-09-05 10:15:00');
 
 INSERT INTO learning_slots (id, user_id, monthly_goal_id, slot_date, start_time, end_time, notes, is_completed, created_at) VALUES
-    (1, 1, 3, '2026-10-20', '18:00:00', '20:00:00', 'Kapitel 3 lesen und Use-Case-Elemente notieren',     1, '2026-10-18 10:00:00'),
-    (2, 1, 4, '2026-10-22', '17:30:00', '19:00:00', 'INNER und LEFT JOIN an Beispieltabellen üben',       1, '2026-10-18 10:05:00'),
-    (3, 1, 3, '2026-10-26', '18:00:00', '20:00:00', 'Klassendiagramme für Fallstudie modellieren',        1, '2026-10-25 09:00:00'),
-    (4, 1, 4, '2026-10-28', '16:00:00', '18:00:00', 'Normalisierungsaufgaben (1NF bis 3NF) durchrechnen', 0, '2026-10-25 09:10:00'),
-    (5, 1, 3, '2026-10-30', '14:00:00', '16:00:00', 'Sequenz- und Aktivitätsdiagramme wiederholen',       0, '2026-10-25 09:15:00'),
-    (6, 1, 5, '2026-11-03', '18:00:00', '20:00:00', 'Schichtenarchitektur und MVC-Muster zusammenfassen', 0, '2026-10-25 09:20:00'),
-    (7, 2, 8, '2026-10-27', '09:00:00', '11:00:00', 'Vektorräume und Matrizenmultiplikation',             0, '2026-10-20 12:00:00');
+    (1,  1, 3,  '2026-10-20', '18:00:00', '20:00:00', 'Kapitel 3 lesen und Use-Case-Elemente notieren',      1, '2026-10-18 10:00:00'),
+    (2,  1, 4,  '2026-10-21', '17:30:00', '19:00:00', 'INNER und LEFT JOIN an Beispieltabellen üben',        1, '2026-10-18 10:05:00'),
+    (3,  1, 5,  '2026-10-23', '16:00:00', '18:00:00', 'Prozesszustände und Scheduling-Verfahren zusammenfassen', 1, '2026-10-18 10:10:00'),
+    (4,  1, 3,  '2026-10-26', '18:00:00', '20:00:00', 'Klassendiagramme für Fallstudie modellieren',         1, '2026-10-25 09:00:00'),
+    (5,  1, 4,  '2026-10-27', '17:00:00', '18:30:00', 'Normalisierungsaufgaben (1NF bis 3NF) durchrechnen',  1, '2026-10-25 09:05:00'),
+    (6,  1, 5,  '2026-10-28', '16:00:00', '18:00:00', 'Übungsaufgaben zu Round Robin und Prioritäten lösen', 1, '2026-10-25 09:10:00'),
+    (7,  1, 3,  '2026-10-30', '14:00:00', '16:00:00', 'Sequenz- und Aktivitätsdiagramme wiederholen',        0, '2026-10-25 09:15:00'),
+    (8,  1, 4,  '2026-10-31', '10:00:00', '12:00:00', 'Views und Unterabfragen in MariaDB testen',           0, '2026-10-25 09:20:00'),
+    (9,  1, 5,  '2026-11-01', '10:00:00', '11:30:00', 'Threads und Synchronisation (Semaphore) nachbereiten', 0, '2026-10-25 09:25:00'),
+    (10, 1, 6,  '2026-11-03', '18:00:00', '20:00:00', 'Schichtenarchitektur und MVC-Muster zusammenfassen',  0, '2026-10-25 09:30:00'),
+    (11, 1, 7,  '2026-11-04', '17:30:00', '19:00:00', 'ACID-Eigenschaften und Isolationsstufen lernen',      0, '2026-10-25 09:35:00'),
+    (12, 2, 13, '2026-10-27', '09:00:00', '11:00:00', 'Vektorräume und Matrizenmultiplikation',              0, '2026-10-20 12:00:00'),
+    (13, 2, 14, '2026-10-29', '14:00:00', '15:30:00', 'Deckungsbeitragsrechnung an Beispielen üben',         0, '2026-10-20 12:05:00');
 
 INSERT INTO time_entries (id, user_id, goal_id, started_at, ended_at, tracked_seconds) VALUES
     (1, 1, 1,    '2026-10-01 09:00:00', '2026-10-01 10:30:00', 5400),
     (2, 1, 1,    '2026-10-03 14:00:00', '2026-10-03 14:45:00', 2700),
-    (3, 1, 2,    '2026-10-05 19:00:00', '2026-10-05 20:00:00', 3600),
+    (3, 1, 1,    '2026-10-05 19:00:00', '2026-10-05 20:00:00', 3600),
     (4, 1, NULL, '2026-10-06 08:00:00', '2026-10-06 08:20:00', 1200),
     (5, 2, 3,    '2026-10-04 16:00:00', '2026-10-04 17:15:00', 4500);
