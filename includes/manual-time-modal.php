@@ -197,12 +197,12 @@ if (!isset($extraScripts) || !is_string($extraScripts)) {
                         <div class="mb-3">
                             <div class="d-flex flex-wrap align-items-center gap-1 mb-1" role="group" aria-label="Schnellauswahl für die Dauer">
                                 <span class="text-muted small me-1">Schnellwahl:</span>
-                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 manual-time-preset-btn" data-quick-minutes="15">15 Min.</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 manual-time-preset-btn" data-quick-minutes="30">30 Min.</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 manual-time-preset-btn" data-quick-minutes="45">45 Min.</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 manual-time-preset-btn" data-quick-minutes="30">0,5 Std.</button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 manual-time-preset-btn" data-quick-minutes="60">1 Std.</button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 manual-time-preset-btn" data-quick-minutes="90">1,5 Std.</button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 manual-time-preset-btn" data-quick-minutes="120">2 Std.</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 manual-time-preset-btn" data-quick-minutes="150">2,5 Std.</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 manual-time-preset-btn" data-quick-minutes="180">3 Std.</button>
                             </div>
                             <div class="form-text" id="manual_time_duration_hint">
                                 Erfasste Netto-Lernzeit: <strong>1 Std.</strong>
