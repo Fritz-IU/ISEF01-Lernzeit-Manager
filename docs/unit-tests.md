@@ -73,10 +73,11 @@ Vorlage zum Kopieren: [`tests/Unit/Controllers/GoalControllerTest.php`](../tests
 
 ## Vorhandene Tests
 
-| Testklasse                                      | Geprüfte Methoden                                                                                                                                    |
-| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tests/Unit/Controllers/GoalControllerTest.php` | `formatYearMonth`, `validateYearMonth`, `validateAndParseInput`, `validateAndParseMonthlyGoalInput`, `saveMonthlyBudget`, `buildMonthlyPlanningData` |
-| `tests/Unit/Classes/UserTest.php`               | `parseProfileInput`, `isLoggedIn`, `currentNavName`, `currentShortNavName`                                                                           |
+| Testklasse                                           | Geprüfte Methoden                                                                                                                                    |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tests/Unit/Controllers/GoalControllerTest.php`      | `formatYearMonth`, `validateYearMonth`, `validateAndParseInput`, `validateAndParseMonthlyGoalInput`, `saveMonthlyBudget`, `buildMonthlyPlanningData` |
+| `tests/Unit/Controllers/TimeEntryControllerTest.php` | `formatDurationSeconds`, `validateAndParseManualEntryInput`, `createManualEntry`, `updateManualEntry`, `deleteEntry`, `groupMonthlyGoalsBySemester`  |
+| `tests/Unit/Classes/UserTest.php`                    | `parseProfileInput`, `isLoggedIn`, `currentNavName`, `currentShortNavName`                                                                           |
 
 Zwei Sonderfälle, die in den Tests gelöst sind und als Muster dienen:
 
