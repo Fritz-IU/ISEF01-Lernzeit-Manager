@@ -10,6 +10,7 @@ Dieses Dokument beschreibt die Architektur, Datenhaltung und Funktionsweise des 
 * **Live-Zeiterfassung per Stoppuhr:** Studierende können ihre Lernzeit zu einzelnen Modulen / Lernzielen in Echtzeit messen, pausieren, fortsetzen und mit Notizen abspeichern.
 * **Neulade- und Ausfallsicherheit (TC-12-03):** Die Stoppuhr wird serverseitig in der Datenbank geführt. Beim Neuladen der Seite oder Schließen des Browsers läuft die Stoppuhr nahtlos weiter und synchronisiert sich präzise mit dem Server.
 * **Lernhistorie & Übersicht:** Alle Einheiten werden tabellarisch aufgeführt und liefern aggregierte Kennzahlen (heute gelernt, Gesamtlernzeit, Anzahl Einheiten). (Hinweis: Die manuelle Nachbuchung wird separat in einem späteren Schritt ergänzt.)
+* **Verknüpfung mit Tages-/Wochenzielen & Auto-Completion:** Gespeicherte Stoppuhr-Zeiten fließen automatisch als Ist-Zeit in die Tages-, Wochen- und Monatsplanung ([`goals.php`](../goals.php)) ein. Sobald die aufsummierte gestoppte Zeit eines Tagesziels (`learning_slots`) oder Monatsziels (`monthly_goals`) die geplante Soll-Zeit erreicht oder überschreitet, wird das Ziel automatisch als erledigt (`is_completed = 1` bzw. `completed_at`) abgehakt.
 
 ### Warum wurde es so implementiert? (Entwurfsprinzipien)
 * **Separation of Concerns (SoC) & MVC/DAO-Muster:** Strikte Trennung zwischen Benutzeroberfläche ([`timer.php`](../timer.php)), Controller-/Geschäftslogik ([`src/Controllers/TimeTrackingController.php`](../src/Controllers/TimeTrackingController.php)), Datenzugriffsschicht ([`src/DAO/TimeTrackingDAO.php`](../src/DAO/TimeTrackingDAO.php)) und MariaDB-Datenbank ([`sql/schema.sql`](../sql/schema.sql)).
@@ -109,10 +110,11 @@ CREATE TABLE time_entries (
 
 ## 6. Unit-Tests ([TimeTrackingControllerTest.php](../tests/Unit/Controllers/TimeTrackingControllerTest.php))
 
-Die Testsuite umfasst 48 isolierte Tests (111 Assertions) ohne Datenbankzugriff:
+Die Testsuite umfasst 55 isolierte Tests (125 Assertions) ohne Datenbankzugriff:
 * **Pflichtfeldprüfungen & Grenzwerte:** `#[DataProvider]` für fehlende/ungültige `goal_id`, ungültige Start-/Endzeiten, Notizlängen und negative Zeiten.
 * **Plausibilitätsprüfung:** `lehntEndzeitVorStartzeitAb` verifiziert, dass verkehrte Zeitfolgen abgewiesen werden.
 * **Dauerberechnung:** Verifiziert `calculateDuration` über mehrere Szenarien (exakte Minuten, über Mitternacht, HTML-Datetimes).
 * **Zustandsübergänge der Stoppuhr:** Testet Starten, Pausieren, Fortsetzen, Stoppen, Verwerfen und das Verhindern von Mehrfachstarts.
+* **Auto-Completion & Soll-Ist-Abgleich:** `markiertZielAlsErledigtWennSollzeitErreicht`, `markiertZielNichtAlsErledigtWennSollzeitNochNichtErreicht`, `markiertMonatszielAlsErledigtWennAufsummierteZeitSollzeitUeberschreitet` sowie `bewertetErreichenDerSollzeitKorrekt` prüfen, ob Ziele bei Erreichen oder Überschreiten der geplanten Soll-Zeit automatisch als erledigt markiert werden.
 * **Formatierungsfunktionen:** Prüft `formatSecondsToTime` (`00:00:00`) und `formatSecondsHuman` (`1 Std. 30 Min.`).
 

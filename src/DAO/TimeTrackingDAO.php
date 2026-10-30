@@ -493,5 +493,145 @@ class TimeTrackingDAO
 
         return (int) $stmt->fetchColumn();
     }
+
+    /**
+     * Berechnet die aufsummierte gestoppte/erfasste Lernzeit in Sekunden für ein bestimmtes
+     * Lernziel (monthly_goal_id) an einem bestimmten Datum (entry_date).
+     *
+     * @param int $userId ID des Nutzers
+     * @param int $monthlyGoalId ID des Moduls / Zwischenziels
+     * @param string $entryDate Datum im Format YYYY-MM-DD
+     * @return int Aufsummierte Sekunden
+     */
+    public function getTrackedSecondsForGoalAndDate(int $userId, int $monthlyGoalId, string $entryDate): int
+    {
+        $sql = "SELECT COALESCE(SUM(tracked_seconds), 0)
+                FROM time_entries
+                WHERE user_id = :user_id
+                  AND monthly_goal_id = :monthly_goal_id
+                  AND entry_date = :entry_date
+                  AND (source = 'manual' OR ended_at IS NOT NULL)";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            ':user_id'         => $userId,
+            ':monthly_goal_id' => $monthlyGoalId,
+            ':entry_date'      => $entryDate,
+        ]);
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Liefert alle geplanten Tagesziele / Lerneinheiten (learning_slots) eines Nutzers
+     * für ein bestimmtes Modul an einem bestimmten Tag, chronologisch sortiert.
+     *
+     * @param int $userId ID des Nutzers
+     * @param int $monthlyGoalId ID des Moduls / Zwischenziels
+     * @param string $slotDate Datum im Format YYYY-MM-DD
+     * @return list<array<string, mixed>>
+     */
+    public function findLearningSlotsByGoalAndDate(int $userId, int $monthlyGoalId, string $slotDate): array
+    {
+        $sql = "SELECT id,
+                       user_id,
+                       monthly_goal_id,
+                       slot_date,
+                       start_time,
+                       end_time,
+                       is_completed,
+                       TIME_TO_SEC(TIMEDIFF(end_time, start_time)) AS planned_seconds,
+                       ROUND(TIME_TO_SEC(TIMEDIFF(end_time, start_time)) / 3600.0, 2) AS duration_hours
+                FROM learning_slots
+                WHERE user_id = :user_id
+                  AND monthly_goal_id = :monthly_goal_id
+                  AND slot_date = :slot_date
+                ORDER BY start_time ASC, id ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            ':user_id'         => $userId,
+            ':monthly_goal_id' => $monthlyGoalId,
+            ':slot_date'       => $slotDate,
+        ]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Setzt den Erledigt-Status (is_completed) eines Tagesziels / Lern-Timeslots.
+     *
+     * @param int $slotId ID des Timeslots (learning_slots.id)
+     * @param int $userId ID des Nutzers
+     * @param bool $isCompleted Neuer Status (Standard: true)
+     * @return bool True bei Erfolg
+     */
+    public function markLearningSlotCompleted(int $slotId, int $userId, bool $isCompleted = true): bool
+    {
+        $sql = "UPDATE learning_slots
+                SET is_completed = :is_completed
+                WHERE id = :id AND user_id = :user_id";
+
+        $stmt = $this->db->prepare($sql);
+
+        return $stmt->execute([
+            ':is_completed' => $isCompleted ? 1 : 0,
+            ':id'           => $slotId,
+            ':user_id'      => $userId,
+        ]);
+    }
+
+    /**
+     * Lädt ein einzelnes Lernziel / Zwischenziel (monthly_goals) anhand seiner ID und Benutzer-ID.
+     *
+     * @param int $monthlyGoalId ID des Moduls / Zwischenziels
+     * @param int $userId ID des Nutzers
+     * @return array<string, mixed>|null
+     */
+    public function findGoalByIdAndUserId(int $monthlyGoalId, int $userId): ?array
+    {
+        $sql = "SELECT id,
+                       user_id,
+                       goal_id,
+                       plan_month,
+                       title,
+                       planned_hours,
+                       completed_at
+                FROM monthly_goals
+                WHERE id = :id AND user_id = :user_id";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            ':id'      => $monthlyGoalId,
+            ':user_id' => $userId,
+        ]);
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $row ?: null;
+    }
+
+    /**
+     * Markiert ein monatliches Lernziel (monthly_goals) durch Setzen von completed_at als erledigt.
+     *
+     * @param int $monthlyGoalId ID des Moduls / Zwischenziels
+     * @param int $userId ID des Nutzers
+     * @param string|null $completedAt Abschlussdatum (YYYY-MM-DD) oder null
+     * @return bool True bei Erfolg
+     */
+    public function markMonthlyGoalCompleted(int $monthlyGoalId, int $userId, ?string $completedAt = null): bool
+    {
+        $sql = "UPDATE monthly_goals
+                SET completed_at = :completed_at
+                WHERE id = :id AND user_id = :user_id";
+
+        $stmt = $this->db->prepare($sql);
+
+        return $stmt->execute([
+            ':completed_at' => $completedAt ?? date('Y-m-d'),
+            ':id'           => $monthlyGoalId,
+            ':user_id'      => $userId,
+        ]);
+    }
 }
 

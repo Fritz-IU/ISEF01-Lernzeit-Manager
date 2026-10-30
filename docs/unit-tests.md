@@ -76,7 +76,7 @@ Vorlage zum Kopieren: [`tests/Unit/Controllers/GoalControllerTest.php`](../tests
 | Testklasse                                      | Geprüfte Methoden                                                                                                                                    |
 | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `tests/Unit/Controllers/GoalControllerTest.php`         | `formatYearMonth`, `validateYearMonth`, `validateAndParseInput`, `validateAndParseMonthlyGoalInput`, `saveMonthlyBudget`, `buildMonthlyPlanningData` |
-| `tests/Unit/Controllers/TimeTrackingControllerTest.php` | `calculateDuration`, `validateAndParseInput`, `startStopwatch`, `pauseStopwatch`, `resumeStopwatch`, `stopAndSaveStopwatch`, `getCurrentStopwatch`, `formatSecondsToTime`, `formatSecondsHuman` |
+| `tests/Unit/Controllers/TimeTrackingControllerTest.php` | `calculateDuration`, `validateAndParseInput`, `startStopwatch`, `pauseStopwatch`, `resumeStopwatch`, `stopAndSaveStopwatch`, `evaluateAndCompleteGoals`, `hasReachedTargetTime`, `getCurrentStopwatch`, `formatSecondsToTime`, `formatSecondsHuman` |
 | `tests/Unit/Classes/UserTest.php`                       | `parseProfileInput`, `isLoggedIn`, `currentNavName`, `currentShortNavName`                                                                           |
 
 Zwei Sonderfälle, die in den Tests gelöst sind und als Muster dienen:

@@ -687,13 +687,24 @@ require_once __DIR__ . '/includes/header.php';
                                         $shareOfBudget = $mGoal['share_of_month_budget_percent'];
                                         $shareOfPlanned = (float) $mGoal['share_of_month_planned_percent'];
                                         $mgScheduled = (float) ($mGoal['scheduled_hours'] ?? 0.0);
+                                        $mgTrackedHours = (float) ($mGoal['tracked_hours'] ?? 0.0);
+                                        $mgTrackedSeconds = (int) ($mGoal['tracked_seconds'] ?? 0);
+                                        $mgTrackedPct = (float) ($mGoal['tracked_percent'] ?? 0.0);
+                                        $mgCompleted = (bool) ($mGoal['is_completed'] ?? false);
                                         $mgSlotCount = (int) ($mGoal['slot_count'] ?? 0);
                                         $isMgOverScheduled = (bool) ($mGoal['is_over_scheduled'] ?? false);
                                         $mgSchedPct = $mgHours > 0 ? min(100.0, $mgScheduled / $mgHours * 100) : 0.0;
                                         ?>
                                         <tr class="<?= ($isParentOver || $isMgOverScheduled) ? 'table-warning' : '' ?>">
                                             <td class="td-mobile-header" data-label="Zwischenziel">
-                                                <strong class="text-dark d-block"><?= htmlspecialchars((string) $mGoal['title']) ?></strong>
+                                                <div class="d-flex align-items-center flex-wrap gap-2">
+                                                    <strong class="text-dark"><?= htmlspecialchars((string) $mGoal['title']) ?></strong>
+                                                    <?php if ($mgCompleted): ?>
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 0.7rem;">
+                                                            &#10003; Erledigt
+                                                        </span>
+                                                    <?php endif; ?>
+                                                </div>
                                                 <?php if (!empty($mGoal['description'])): ?>
                                                     <span class="text-muted small d-block"><?= nl2br(htmlspecialchars((string) $mGoal['description'])) ?></span>
                                                 <?php endif; ?>
@@ -718,11 +729,22 @@ require_once __DIR__ . '/includes/header.php';
                                             </td>
                                             <td class="td-mobile-block" data-label="In der Woche eingeplant">
                                                 <div class="d-flex justify-content-between small mb-1 <?= $isMgOverScheduled ? 'text-warning-emphasis fw-semibold' : 'text-muted' ?>">
-                                                    <span><?= number_format($mgScheduled, 1, ',', '.') ?> von <?= number_format($mgHours, 1, ',', '.') ?> h</span>
+                                                    <span><?= number_format($mgScheduled, 1, ',', '.') ?> von <?= number_format($mgHours, 1, ',', '.') ?> h geplant</span>
                                                     <span><?= $mgSlotCount ?> Lerneinheit<?= $mgSlotCount === 1 ? '' : 'en' ?></span>
                                                 </div>
-                                                <div class="progress" style="height: 4px;" role="presentation">
+                                                <div class="progress mb-2" style="height: 4px;" role="presentation">
                                                     <div class="progress-bar <?= $isMgOverScheduled ? 'bg-warning' : ($mgSchedPct >= 100 ? 'bg-success' : 'bg-primary') ?>" style="width: <?= $isMgOverScheduled ? 100 : $mgSchedPct ?>%"></div>
+                                                </div>
+                                                <div class="d-flex justify-content-between small mb-1" style="font-size: 0.75rem;">
+                                                    <span class="<?= $mgCompleted ? 'text-success fw-semibold' : 'text-muted' ?>">
+                                                        ⏱️ Ist-Zeit: <strong><?= number_format($mgTrackedHours, 1, ',', '.') ?></strong> / <?= number_format($mgHours, 1, ',', '.') ?> h
+                                                    </span>
+                                                    <span class="<?= $mgCompleted ? 'text-success fw-semibold' : 'text-muted' ?>">
+                                                        <?= number_format($mgTrackedPct, 0, ',', '.') ?> %
+                                                    </span>
+                                                </div>
+                                                <div class="progress" style="height: 4px;" role="progressbar" aria-label="Gestoppte Ist-Zeit" aria-valuenow="<?= (int) $mgTrackedPct ?>" aria-valuemin="0" aria-valuemax="100">
+                                                    <div class="progress-bar bg-success" style="width: <?= $mgTrackedPct ?>%"></div>
                                                 </div>
                                             </td>
                                             <td class="text-end td-mobile-actions" data-label="Aktionen">
@@ -866,6 +888,9 @@ require_once __DIR__ . '/includes/header.php';
             <?php
             $wSumScheduled = (float) $weekSummary['scheduled_hours'];
             $wSumCompleted = (float) $weekSummary['completed_hours'];
+            $wSumTrackedHours = (float) ($weekSummary['tracked_hours'] ?? 0.0);
+            $wSumTrackedSeconds = (int) ($weekSummary['tracked_seconds'] ?? 0);
+            $wSumTrackedFormatted = (string) ($weekSummary['tracked_formatted'] ?? '0 Min.');
             $wSumSlots = (int) $weekSummary['slot_count'];
             $wSumCompletedSlots = (int) $weekSummary['completed_slot_count'];
             $wHasOverlaps = (bool) $weekSummary['has_overlaps'];
@@ -887,14 +912,19 @@ require_once __DIR__ . '/includes/header.php';
                                     <span class="badge text-bg-warning fs-6">Zeitüberschneidung</span>
                                 <?php endif; ?>
                             </h2>
-                            <?php if ($wSumSlots > 0): ?>
-                                <div class="d-flex align-items-center gap-2 small text-muted">
-                                    <div class="progress flex-shrink-0" style="height: 6px; width: 120px;" role="progressbar" aria-label="Erledigte Lernzeit dieser Woche" aria-valuenow="<?= (int) $wDonePct ?>" aria-valuemin="0" aria-valuemax="100">
-                                        <div class="progress-bar bg-success" style="width: <?= $wDonePct ?>%"></div>
-                                    </div>
-                                    <span>
-                                        <strong class="text-success"><?= number_format($wSumCompleted, 1, ',', '.') ?></strong> von <strong class="text-primary"><?= number_format($wSumScheduled, 1, ',', '.') ?> h</strong> erledigt
-                                        (<?= $wSumCompletedSlots ?>/<?= $wSumSlots ?> Lerneinheiten)
+                            <?php if ($wSumSlots > 0 || $wSumTrackedSeconds > 0): ?>
+                                <div class="d-flex align-items-center flex-wrap gap-2 small text-muted">
+                                    <?php if ($wSumSlots > 0): ?>
+                                        <div class="progress flex-shrink-0" style="height: 6px; width: 120px;" role="progressbar" aria-label="Erledigte Lernzeit dieser Woche" aria-valuenow="<?= (int) $wDonePct ?>" aria-valuemin="0" aria-valuemax="100">
+                                            <div class="progress-bar bg-success" style="width: <?= $wDonePct ?>%"></div>
+                                        </div>
+                                        <span>
+                                            <strong class="text-success"><?= number_format($wSumCompleted, 1, ',', '.') ?></strong> von <strong class="text-primary"><?= number_format($wSumScheduled, 1, ',', '.') ?> h</strong> erledigt
+                                            (<?= $wSumCompletedSlots ?>/<?= $wSumSlots ?> Lerneinheiten)
+                                        </span>
+                                    <?php endif; ?>
+                                    <span class="badge bg-light text-dark border fw-normal">
+                                        ⏱️ Ist-Zeit Woche: <strong><?= number_format($wSumTrackedHours, 1, ',', '.') ?> h</strong> (<?= htmlspecialchars($wSumTrackedFormatted) ?>)
                                     </span>
                                 </div>
                             <?php else: ?>
@@ -978,6 +1008,9 @@ require_once __DIR__ . '/includes/header.php';
                                             <?php
                                             $mgItemPlanned = (float) $mgItem['planned_hours'];
                                             $mgItemSched = (float) ($mgItem['scheduled_hours'] ?? 0.0);
+                                            $mgItemTracked = (float) ($mgItem['tracked_hours'] ?? 0.0);
+                                            $mgItemTrackedPct = (float) ($mgItem['tracked_percent'] ?? 0.0);
+                                            $mgItemDone = (bool) ($mgItem['is_completed'] ?? false);
                                             $mgItemRem = round($mgItemPlanned - $mgItemSched, 2);
                                             $mgItemOver = $mgItemSched > $mgItemPlanned;
                                             $mgItemPct = $mgItemPlanned > 0 ? min(100.0, round(($mgItemSched / $mgItemPlanned) * 100, 1)) : 0.0;
@@ -985,7 +1018,12 @@ require_once __DIR__ . '/includes/header.php';
                                             <div class="col-md-6 col-xl-4">
                                                 <div class="p-2 px-3 border rounded h-100 d-flex flex-column justify-content-between <?= $mgItemOver ? 'bg-warning-subtle border-warning' : 'bg-white' ?>">
                                                     <div>
-                                                        <strong class="small text-dark d-block"><?= htmlspecialchars((string) $mgItem['title']) ?></strong>
+                                                        <div class="d-flex align-items-center justify-content-between gap-1">
+                                                            <strong class="small text-dark"><?= htmlspecialchars((string) $mgItem['title']) ?></strong>
+                                                            <?php if ($mgItemDone): ?>
+                                                                <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 0.65rem;">&#10003; Erledigt</span>
+                                                            <?php endif; ?>
+                                                        </div>
                                                         <div class="text-muted" style="font-size: 0.74rem;">
                                                             <?= htmlspecialchars((string) $mgItem['parent_goal_title']) ?>
                                                         </div>
@@ -993,18 +1031,14 @@ require_once __DIR__ . '/includes/header.php';
                                                     <div class="mt-2">
                                                         <div class="d-flex justify-content-between align-items-center small" style="font-size: 0.75rem;">
                                                             <span class="<?= $mgItemOver ? 'text-warning-emphasis fw-bold' : 'text-dark fw-semibold' ?>">
-                                                                <?= number_format($mgItemSched, 1, ',', '.') ?> / <?= number_format($mgItemPlanned, 1, ',', '.') ?> h
+                                                                <?= number_format($mgItemSched, 1, ',', '.') ?> / <?= number_format($mgItemPlanned, 1, ',', '.') ?> h geplant
                                                             </span>
-                                                            <?php if ($mgItemOver): ?>
-                                                                <span class="badge text-bg-warning">+<?= number_format(abs($mgItemRem), 1, ',', '.') ?> h</span>
-                                                            <?php elseif ($mgItemRem > 0): ?>
-                                                                <span class="text-muted">noch <?= number_format($mgItemRem, 1, ',', '.') ?> h offen</span>
-                                                            <?php else: ?>
-                                                                <span class="text-success fw-semibold">vollständig</span>
-                                                            <?php endif; ?>
+                                                            <span class="<?= $mgItemDone ? 'text-success fw-semibold' : 'text-muted' ?>">
+                                                                ⏱️ Ist: <?= number_format($mgItemTracked, 1, ',', '.') ?> h
+                                                            </span>
                                                         </div>
                                                         <div class="progress mt-1" style="height: 4px;">
-                                                            <div class="progress-bar <?= $mgItemOver ? 'bg-warning' : ($mgItemRem <= 0 ? 'bg-success' : 'bg-primary') ?>" style="width: <?= $mgItemPct ?>%"></div>
+                                                            <div class="progress-bar <?= $mgItemDone ? 'bg-success' : ($mgItemOver ? 'bg-warning' : 'bg-primary') ?>" style="width: <?= max($mgItemPct, $mgItemTrackedPct) ?>%"></div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1062,6 +1096,8 @@ require_once __DIR__ . '/includes/header.php';
                             $isToday = (bool) $day['is_today'];
                             $inMonth = (bool) $day['is_in_selected_month'];
                             $dayHours = (float) $day['scheduled_hours'];
+                            $dayTrackedSeconds = (int) ($day['tracked_seconds'] ?? 0);
+                            $dayTrackedFormatted = (string) ($day['tracked_formatted'] ?? '0 Min.');
                             $daySlotCount = (int) $day['slot_count'];
                             $dayHasOverlap = (bool) $day['has_overlap'];
                             $daySlots = $day['slots'];
@@ -1089,6 +1125,11 @@ require_once __DIR__ . '/includes/header.php';
                                         <span class="small <?= $hasSlots ? 'text-primary fw-semibold' : 'text-muted' ?>">
                                             <?php if ($hasSlots): ?>
                                                 <?= number_format($dayHours, 1, ',', '.') ?> h &middot; <?= $daySlotCount ?> Einheit<?= $daySlotCount === 1 ? '' : 'en' ?>
+                                                <?php if ($dayTrackedSeconds > 0): ?>
+                                                    &middot; <span class="text-success">⏱️ <?= htmlspecialchars($dayTrackedFormatted) ?></span>
+                                                <?php endif; ?>
+                                            <?php elseif ($dayTrackedSeconds > 0): ?>
+                                                <span class="text-success">⏱️ <?= htmlspecialchars($dayTrackedFormatted) ?> gestoppt</span>
                                             <?php else: ?>
                                                 Frei
                                             <?php endif; ?>
@@ -1120,6 +1161,11 @@ require_once __DIR__ . '/includes/header.php';
                                             $slotOverlap = (bool) $slot['has_overlap'];
                                             $slotDur = (float) $slot['duration_hours'];
                                             $slotTimeRange = $slot['start_time_formatted'] . ' – ' . $slot['end_time_formatted'] . ' Uhr';
+                                            $slotTrackedSeconds = (int) ($slot['tracked_seconds'] ?? 0);
+                                            $slotTrackedHours = (float) ($slot['tracked_hours'] ?? 0.0);
+                                            $slotTrackedFormatted = (string) ($slot['tracked_formatted'] ?? '0 Min.');
+                                            $slotProgressPct = (float) ($slot['progress_percent'] ?? ($slotCompleted ? 100.0 : 0.0));
+                                            $slotTargetReached = (bool) ($slot['is_target_reached'] ?? false);
                                             ?>
                                             <div class="p-2 px-3 border rounded slot-item-card d-flex align-items-start justify-content-between gap-3 <?= $slotOverlap ? 'bg-warning-subtle border-warning' : ($slotCompleted ? 'bg-light text-muted' : 'bg-white') ?>">
                                                 <div class="d-flex align-items-start gap-3 flex-grow-1 min-w-0">
@@ -1141,13 +1187,18 @@ require_once __DIR__ . '/includes/header.php';
                                                         </button>
                                                     </form>
 
-                                                    <!-- Zeitspanne, Zwischenziel und optionale Notiz in der Mitte -->
+                                                    <!-- Zeitspanne, Zwischenziel, Ist-Zeit-Fortschritt und optionale Notiz in der Mitte -->
                                                     <div class="flex-grow-1 min-w-0">
                                                         <div class="d-flex align-items-center flex-wrap gap-2 small">
                                                             <span class="fw-semibold <?= $slotCompleted ? 'text-muted' : 'text-primary' ?>">
                                                                 <?= htmlspecialchars($slotTimeRange) ?>
                                                             </span>
-                                                            <span class="text-muted">&middot; <?= number_format($slotDur, 1, ',', '.') ?> h</span>
+                                                            <span class="text-muted">&middot; Soll: <?= number_format($slotDur, 1, ',', '.') ?> h</span>
+                                                            <?php if ($slotCompleted): ?>
+                                                                <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 0.68rem;">
+                                                                    &#10003; Erledigt
+                                                                </span>
+                                                            <?php endif; ?>
                                                             <?php if ($slotOverlap): ?>
                                                                 <span class="badge text-bg-warning" style="font-size: 0.68rem;" title="Diese Lerneinheit überschneidet sich zeitlich mit einer anderen an diesem Tag.">
                                                                     Überschneidung
@@ -1164,6 +1215,25 @@ require_once __DIR__ . '/includes/header.php';
                                                                 <span class="mx-1">&middot;</span>
                                                                 <span class="fst-italic"><?= htmlspecialchars((string) $slot['notes']) ?></span>
                                                             <?php endif; ?>
+                                                        </div>
+
+                                                        <!-- Ist-Zeit & Fortschrittsbalken -->
+                                                        <div class="mt-2" style="max-width: 340px;">
+                                                            <div class="d-flex justify-content-between align-items-center small mb-1" style="font-size: 0.74rem;">
+                                                                <span class="text-muted">
+                                                                    ⏱️ Ist-Zeit:
+                                                                    <strong class="<?= $slotCompleted ? 'text-success' : ($slotTrackedSeconds > 0 ? 'text-primary' : 'text-dark') ?>">
+                                                                        <?= htmlspecialchars($slotTrackedFormatted) ?>
+                                                                    </strong>
+                                                                    (<?= number_format($slotTrackedHours, 1, ',', '.') ?> / <?= number_format($slotDur, 1, ',', '.') ?> h)
+                                                                </span>
+                                                                <span class="fw-semibold <?= $slotCompleted ? 'text-success' : 'text-muted' ?>">
+                                                                    <?= number_format($slotProgressPct, 0, ',', '.') ?> %
+                                                                </span>
+                                                            </div>
+                                                            <div class="progress" style="height: 5px;" role="progressbar" aria-label="Gestoppte Ist-Zeit für dieses Tagesziel" aria-valuenow="<?= (int) $slotProgressPct ?>" aria-valuemin="0" aria-valuemax="100">
+                                                                <div class="progress-bar <?= $slotCompleted ? 'bg-success' : 'bg-primary' ?>" style="width: <?= $slotProgressPct ?>%"></div>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>

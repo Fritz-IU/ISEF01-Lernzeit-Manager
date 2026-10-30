@@ -548,5 +548,178 @@ final class TimeTrackingControllerTest extends TestCase
     {
         self::assertSame($expected, TimeTrackingController::formatSecondsHuman($seconds));
     }
+
+    // =========================================================================
+    // 7. Auto-Completion / Verknüpfung mit Tages- und Wochenzielen
+    // =========================================================================
+
+    #[Test]
+    public function markiertZielAlsErledigtWennSollzeitErreicht(): void
+    {
+        $runningEntry = [
+            'id'              => 15,
+            'user_id'         => self::USER_ID,
+            'monthly_goal_id' => self::VALID_GOAL_ID,
+            'entry_date'      => '2026-10-30',
+            'started_at'      => '2026-10-30 14:00:00',
+            'resumed_at'      => '2026-10-30 14:30:00',
+            'ended_at'        => null,
+            'tracked_seconds' => 1800, // Bereits 30 Min. gestoppt
+        ];
+
+        $this->dao->method('findOpenStopwatch')
+            ->with(self::USER_ID)
+            ->willReturn($runningEntry);
+
+        $this->dao->expects(self::once())
+            ->method('stopStopwatch')
+            ->with(15, self::USER_ID, '2026-10-30 15:00:00', 1800, null)
+            ->willReturn(true);
+
+        // Aufsummierte gestoppte Zeit am Tag: 3600 Sekunden (1 Stunde)
+        $this->dao->method('getTrackedSecondsForGoalAndDate')
+            ->with(self::USER_ID, self::VALID_GOAL_ID, '2026-10-30')
+            ->willReturn(3600);
+
+        // Geplantes Tagesziel (Slot) über 1 Stunde (3600s), noch offen (is_completed = 0)
+        $this->dao->method('findLearningSlotsByGoalAndDate')
+            ->with(self::USER_ID, self::VALID_GOAL_ID, '2026-10-30')
+            ->willReturn([
+                [
+                    'id'              => 99,
+                    'user_id'         => self::USER_ID,
+                    'monthly_goal_id' => self::VALID_GOAL_ID,
+                    'slot_date'       => '2026-10-30',
+                    'start_time'      => '14:00:00',
+                    'end_time'        => '15:00:00',
+                    'planned_seconds' => 3600,
+                    'duration_hours'  => 1.0,
+                    'is_completed'    => 0,
+                ],
+            ]);
+
+        // Erwartung: Tagesziel (Slot 99) wird automatisch als erledigt markiert
+        $this->dao->expects(self::once())
+            ->method('markLearningSlotCompleted')
+            ->with(99, self::USER_ID, true)
+            ->willReturn(true);
+
+        $result = $this->controller->stopAndSaveStopwatch(
+            self::USER_ID,
+            [],
+            '2026-10-30 15:00:00'
+        );
+
+        self::assertTrue($result['goal_completed']);
+    }
+
+    #[Test]
+    public function markiertZielNichtAlsErledigtWennSollzeitNochNichtErreicht(): void
+    {
+        $runningEntry = [
+            'id'              => 16,
+            'user_id'         => self::USER_ID,
+            'monthly_goal_id' => self::VALID_GOAL_ID,
+            'entry_date'      => '2026-10-30',
+            'started_at'      => '2026-10-30 14:00:00',
+            'resumed_at'      => '2026-10-30 14:00:00',
+            'ended_at'        => null,
+            'tracked_seconds' => 0,
+        ];
+
+        $this->dao->method('findOpenStopwatch')
+            ->with(self::USER_ID)
+            ->willReturn($runningEntry);
+
+        $this->dao->expects(self::once())
+            ->method('stopStopwatch')
+            ->willReturn(true);
+
+        // Erst 1800s (30 Min.) von geplanten 3600s (60 Min.) erreicht
+        $this->dao->method('getTrackedSecondsForGoalAndDate')
+            ->with(self::USER_ID, self::VALID_GOAL_ID, '2026-10-30')
+            ->willReturn(1800);
+
+        $this->dao->method('findLearningSlotsByGoalAndDate')
+            ->with(self::USER_ID, self::VALID_GOAL_ID, '2026-10-30')
+            ->willReturn([
+                [
+                    'id'              => 99,
+                    'user_id'         => self::USER_ID,
+                    'monthly_goal_id' => self::VALID_GOAL_ID,
+                    'slot_date'       => '2026-10-30',
+                    'planned_seconds' => 3600,
+                    'is_completed'    => 0,
+                ],
+            ]);
+
+        $this->dao->expects(self::never())
+            ->method('markLearningSlotCompleted');
+
+        $result = $this->controller->stopAndSaveStopwatch(
+            self::USER_ID,
+            [],
+            '2026-10-30 14:30:00'
+        );
+
+        self::assertFalse($result['goal_completed']);
+    }
+
+    #[Test]
+    public function markiertMonatszielAlsErledigtWennAufsummierteZeitSollzeitUeberschreitet(): void
+    {
+        $this->dao->method('getTrackedSecondsForGoalAndDate')
+            ->with(self::USER_ID, self::VALID_GOAL_ID, '2026-10-30')
+            ->willReturn(7500);
+
+        $this->dao->method('findLearningSlotsByGoalAndDate')
+            ->willReturn([]);
+
+        $this->dao->method('findGoalByIdAndUserId')
+            ->with(self::VALID_GOAL_ID, self::USER_ID)
+            ->willReturn([
+                'id'            => self::VALID_GOAL_ID,
+                'user_id'       => self::USER_ID,
+                'planned_hours' => 2.0, // 7200 Sekunden Soll-Zeit
+                'completed_at'  => null,
+            ]);
+
+        $this->dao->method('getTotalTrackedSecondsByUserId')
+            ->with(self::USER_ID, self::VALID_GOAL_ID)
+            ->willReturn(7500); // 7500s >= 7200s
+
+        $this->dao->expects(self::once())
+            ->method('markMonthlyGoalCompleted')
+            ->with(self::VALID_GOAL_ID, self::USER_ID, '2026-10-30')
+            ->willReturn(true);
+
+        $completed = $this->controller->evaluateAndCompleteGoals(
+            self::USER_ID,
+            self::VALID_GOAL_ID,
+            '2026-10-30'
+        );
+
+        self::assertTrue($completed);
+    }
+
+    /**
+     * @return array<string, array{int, int, bool}>
+     */
+    public static function sollIstVergleichProvider(): array
+    {
+        return [
+            'Unter Soll-Zeit (1 Sekunde fehlt)' => [3599, 3600, false],
+            'Exakt Soll-Zeit erreicht'          => [3600, 3600, true],
+            'Soll-Zeit überschritten'           => [4200, 3600, true],
+            'Keine Soll-Zeit (0s)'              => [100, 0, false],
+        ];
+    }
+
+    #[Test]
+    #[DataProvider('sollIstVergleichProvider')]
+    public function bewertetErreichenDerSollzeitKorrekt(int $trackedSeconds, int $targetSeconds, bool $expected): void
+    {
+        self::assertSame($expected, TimeTrackingController::hasReachedTargetTime($trackedSeconds, $targetSeconds));
+    }
 }
 

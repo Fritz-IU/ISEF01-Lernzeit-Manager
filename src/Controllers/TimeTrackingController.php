@@ -160,9 +160,129 @@ class TimeTrackingController
             $note
         );
 
-        $saved = $this->timeTrackingDAO->findByIdAndUserId((int) $open['id'], $userId);
+        $monthlyGoalId = (int) ($open['monthly_goal_id'] ?? $open['goal_id'] ?? 0);
+        $entryDate = (string) ($open['entry_date'] ?? substr((string) ($open['started_at'] ?? $endedAt), 0, 10));
 
-        return $saved ?: $open;
+        $goalCompleted = false;
+        if ($monthlyGoalId > 0) {
+            $goalCompleted = $this->evaluateAndCompleteGoals($userId, $monthlyGoalId, $entryDate, $totalSeconds);
+        }
+
+        $saved = $this->timeTrackingDAO->findByIdAndUserId((int) $open['id'], $userId);
+        $result = $saved ?: $open;
+        $result['tracked_seconds'] = (int) ($result['tracked_seconds'] ?? $totalSeconds);
+        $result['goal_completed'] = $goalCompleted;
+
+        return $result;
+    }
+
+    /**
+     * Prüft nach dem Speichern einer gestoppten Lernzeit, ob die aufsummierte Ist-Zeit
+     * für das Tagesziel (learning_slots) bzw. das Lernziel (monthly_goals) die geplante
+     * Soll-Zeit erreicht oder überschreitet, und setzt den Status automatisch auf "erledigt".
+     *
+     * @param int $userId ID des Nutzers
+     * @param int $monthlyGoalId ID des Moduls / Zwischenziels
+     * @param string $entryDate Datum der Lerneinheit (YYYY-MM-DD)
+     * @param int $currentSessionSeconds Sekunden der soeben gespeicherten Einheit (Fallback)
+     * @return bool True, wenn mindestens ein Tages-/Lernziel als erledigt markiert wurde bzw. die Soll-Zeit erreicht hat
+     */
+    public function evaluateAndCompleteGoals(
+        int $userId,
+        int $monthlyGoalId,
+        string $entryDate,
+        int $currentSessionSeconds = 0
+    ): bool {
+        $completedAny = false;
+
+        // 1. Aufsummierte gestoppte Zeit für dieses Ziel am jeweiligen Tag abrufen
+        $accumulatedDailySeconds = $this->timeTrackingDAO->getTrackedSecondsForGoalAndDate(
+            $userId,
+            $monthlyGoalId,
+            $entryDate
+        );
+        $effectiveDailySeconds = max($accumulatedDailySeconds, $currentSessionSeconds);
+
+        // 2. Geplante Tagesziele / Lerneinheiten (learning_slots) für diesen Tag prüfen
+        $slots = $this->timeTrackingDAO->findLearningSlotsByGoalAndDate($userId, $monthlyGoalId, $entryDate);
+        $remainingSeconds = $effectiveDailySeconds;
+
+        foreach ($slots as $slot) {
+            $plannedSeconds = self::resolvePlannedSeconds($slot);
+            if ($plannedSeconds > 0 && self::hasReachedTargetTime($remainingSeconds, $plannedSeconds)) {
+                if ((int) ($slot['is_completed'] ?? 0) === 0) {
+                    $this->timeTrackingDAO->markLearningSlotCompleted((int) $slot['id'], $userId, true);
+                }
+                $completedAny = true;
+                $remainingSeconds = max(0, $remainingSeconds - $plannedSeconds);
+            }
+        }
+
+        // 3. Übergeordnetes Monats-/Lernziel (monthly_goals) auf Erreichen der Soll-Zeit prüfen
+        $goal = $this->timeTrackingDAO->findGoalByIdAndUserId($monthlyGoalId, $userId);
+        if ($goal !== null) {
+            $totalGoalSeconds = max(
+                $this->timeTrackingDAO->getTotalTrackedSecondsByUserId($userId, $monthlyGoalId),
+                $effectiveDailySeconds
+            );
+            $goalPlannedSeconds = self::resolvePlannedSeconds($goal);
+
+            if ($goalPlannedSeconds > 0 && self::hasReachedTargetTime($totalGoalSeconds, $goalPlannedSeconds)) {
+                if (empty($goal['completed_at']) && (int) ($goal['is_completed'] ?? 0) === 0) {
+                    $this->timeTrackingDAO->markMonthlyGoalCompleted($monthlyGoalId, $userId, $entryDate);
+                }
+                $completedAny = true;
+            }
+        }
+
+        return $completedAny;
+    }
+
+    /**
+     * Bewertet, ob eine aufsummierte gestoppte Ist-Zeit (in Sekunden) die geplante
+     * Soll-Zeit (in Sekunden) erreicht oder überschritten hat.
+     *
+     * @param int $trackedSeconds Aufsummierte Ist-Zeit in Sekunden
+     * @param int $targetSeconds Geplante Soll-Zeit in Sekunden
+     * @return bool True, wenn Soll-Zeit erreicht oder überschritten
+     */
+    public static function hasReachedTargetTime(int $trackedSeconds, int $targetSeconds): bool
+    {
+        return $targetSeconds > 0 && $trackedSeconds >= $targetSeconds;
+    }
+
+    /**
+     * Ermittelt die geplante Soll-Zeit eines Tagesziels (learning_slot) oder Lernziels (monthly_goal) in Sekunden.
+     *
+     * @param array<string, mixed> $goalOrSlot Datensatz eines Tages- oder Monatsziels
+     * @return int Geplante Zeit in Sekunden
+     */
+    public static function resolvePlannedSeconds(array $goalOrSlot): int
+    {
+        if (isset($goalOrSlot['planned_seconds']) && is_numeric($goalOrSlot['planned_seconds'])) {
+            return max(0, (int) $goalOrSlot['planned_seconds']);
+        }
+        if (isset($goalOrSlot['target_seconds']) && is_numeric($goalOrSlot['target_seconds'])) {
+            return max(0, (int) $goalOrSlot['target_seconds']);
+        }
+        if (isset($goalOrSlot['duration_hours']) && is_numeric($goalOrSlot['duration_hours'])) {
+            return max(0, (int) round(((float) $goalOrSlot['duration_hours']) * 3600));
+        }
+        if (isset($goalOrSlot['planned_hours']) && is_numeric($goalOrSlot['planned_hours'])) {
+            return max(0, (int) round(((float) $goalOrSlot['planned_hours']) * 3600));
+        }
+        if (isset($goalOrSlot['target_hours']) && is_numeric($goalOrSlot['target_hours'])) {
+            return max(0, (int) round(((float) $goalOrSlot['target_hours']) * 3600));
+        }
+        if (isset($goalOrSlot['start_time'], $goalOrSlot['end_time']) && is_string($goalOrSlot['start_time']) && is_string($goalOrSlot['end_time'])) {
+            $startTs = strtotime('1970-01-01 ' . trim($goalOrSlot['start_time']));
+            $endTs = strtotime('1970-01-01 ' . trim($goalOrSlot['end_time']));
+            if ($startTs !== false && $endTs !== false && $endTs > $startTs) {
+                return $endTs - $startTs;
+            }
+        }
+
+        return 0;
     }
 
     /**
