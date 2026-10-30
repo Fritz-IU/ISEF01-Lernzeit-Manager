@@ -313,6 +313,7 @@ class GoalDAO
                        mg.title,
                        mg.description,
                        mg.planned_hours,
+                       mg.completed_at,
                        mg.created_at,
                        lg.title AS parent_goal_title,
                        lg.target_hours AS parent_target_hours,
@@ -320,7 +321,14 @@ class GoalDAO
                        lg.end_date AS parent_end_date,
                        COALESCE(ROUND(SUM(TIME_TO_SEC(TIMEDIFF(ls.end_time, ls.start_time))) / 3600.0, 2), 0) AS scheduled_hours,
                        COALESCE(ROUND(SUM(CASE WHEN ls.is_completed = 1 THEN TIME_TO_SEC(TIMEDIFF(ls.end_time, ls.start_time)) / 3600.0 ELSE 0 END), 2), 0) AS completed_hours,
-                       COUNT(ls.id) AS slot_count
+                       COUNT(ls.id) AS slot_count,
+                       COALESCE((
+                           SELECT SUM(te.tracked_seconds)
+                           FROM time_entries te
+                           WHERE te.monthly_goal_id = mg.id
+                             AND te.user_id = mg.user_id
+                             AND (te.source = 'manual' OR te.ended_at IS NOT NULL)
+                       ), 0) AS tracked_seconds
                 FROM monthly_goals mg
                 INNER JOIN learning_goals lg
                     ON lg.id = mg.goal_id AND lg.user_id = mg.user_id
@@ -334,7 +342,7 @@ class GoalDAO
             $params[':plan_month'] = $yearMonth;
         }
 
-        $sql .= " GROUP BY mg.id, mg.user_id, mg.goal_id, mg.plan_month, mg.title, mg.description, mg.planned_hours, mg.created_at,
+        $sql .= " GROUP BY mg.id, mg.user_id, mg.goal_id, mg.plan_month, mg.title, mg.description, mg.planned_hours, mg.completed_at, mg.created_at,
                            lg.title, lg.target_hours, lg.start_date, lg.end_date
                   ORDER BY mg.plan_month ASC, lg.title ASC, mg.id ASC";
 
@@ -559,6 +567,7 @@ class GoalDAO
                        ls.notes,
                        ls.is_completed,
                        ls.created_at,
+                       TIME_TO_SEC(TIMEDIFF(ls.end_time, ls.start_time)) AS planned_seconds,
                        ROUND(TIME_TO_SEC(TIMEDIFF(ls.end_time, ls.start_time)) / 3600.0, 2) AS duration_hours,
                        mg.title AS monthly_goal_title,
                        mg.plan_month,
@@ -573,6 +582,37 @@ class GoalDAO
                 WHERE ls.user_id = :user_id
                   AND ls.slot_date BETWEEN :start_date AND :end_date
                 ORDER BY ls.slot_date ASC, ls.start_time ASC, ls.end_time ASC, ls.id ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            ':user_id'    => $userId,
+            ':start_date' => $startDate,
+            ':end_date'   => $endDate,
+        ]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Liefert die aufsummierten gestoppten / erfassten Lernzeiten (time_entries) eines Nutzers
+     * in einem Datumszeitraum, gruppiert nach Datum und monatlichem Zwischenziel.
+     *
+     * @param int $userId ID des Nutzers
+     * @param string $startDate Startdatum (inklusiv, YYYY-MM-DD)
+     * @param string $endDate Enddatum (inklusiv, YYYY-MM-DD)
+     * @return list<array<string, mixed>>
+     */
+    public function findTrackedSecondsByDateRange(int $userId, string $startDate, string $endDate): array
+    {
+        $sql = "SELECT te.entry_date,
+                       te.monthly_goal_id,
+                       COALESCE(SUM(te.tracked_seconds), 0) AS tracked_seconds
+                FROM time_entries te
+                WHERE te.user_id = :user_id
+                  AND te.entry_date BETWEEN :start_date AND :end_date
+                  AND (te.source = 'manual' OR te.ended_at IS NOT NULL)
+                GROUP BY te.entry_date, te.monthly_goal_id
+                ORDER BY te.entry_date ASC, te.monthly_goal_id ASC";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([

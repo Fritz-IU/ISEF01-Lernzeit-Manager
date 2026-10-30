@@ -69,7 +69,10 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
 
                 <div class="d-flex justify-content-center gap-3 flex-wrap">
-                    <a href="goals.php" class="btn btn-primary px-4">
+                    <a href="timer.php" class="btn btn-primary px-4">
+                        Stoppuhr
+                    </a>
+                    <a href="goals.php" class="btn btn-outline-primary px-4">
                         Planen
                     </a>
                     <a href="profile.php" class="btn btn-outline-secondary">

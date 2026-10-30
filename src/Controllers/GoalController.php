@@ -648,6 +648,7 @@ class GoalController
         $selectedBudget = $selectedMonthData['budget_hours'];
         $selectedPlanned = (float) $selectedMonthData['planned_hours'];
         $totalScheduledInMonth = 0.0;
+        $totalTrackedInMonth = 0.0;
 
         foreach ($monthlyGoalsRaw as $mg) {
             $gId = (int) $mg['goal_id'];
@@ -657,13 +658,23 @@ class GoalController
             $scheduledHours = (float) ($mg['scheduled_hours'] ?? 0.0);
             $completedHours = (float) ($mg['completed_hours'] ?? 0.0);
             $slotCount = (int) ($mg['slot_count'] ?? 0);
+            $trackedSeconds = (int) ($mg['tracked_seconds'] ?? 0);
+            $trackedHours = round($trackedSeconds / 3600.0, 2);
+            $plannedSeconds = (int) round($pHours * 3600);
+            $isGoalCompleted = !empty($mg['completed_at']) || ($plannedSeconds > 0 && $trackedSeconds >= $plannedSeconds);
 
             $totalScheduledInMonth += $scheduledHours;
+            $totalTrackedInMonth += $trackedHours;
 
             $mg['parent_allocated_hours'] = $parentAllocated;
             $mg['is_parent_over_allocated'] = $parentAllocated > $parentTarget;
             $mg['scheduled_hours'] = $scheduledHours;
             $mg['completed_hours'] = $completedHours;
+            $mg['tracked_seconds'] = $trackedSeconds;
+            $mg['tracked_hours'] = $trackedHours;
+            $mg['tracked_formatted'] = self::formatTrackedDuration($trackedSeconds);
+            $mg['tracked_percent'] = $pHours > 0 ? min(100.0, round(($trackedHours / $pHours) * 100, 1)) : 0.0;
+            $mg['is_completed'] = $isGoalCompleted;
             $mg['slot_count'] = $slotCount;
             $mg['is_over_scheduled'] = $scheduledHours > $pHours;
             $mg['scheduled_percent'] = $pHours > 0 ? round(($scheduledHours / $pHours) * 100, 1) : 0.0;
@@ -678,6 +689,7 @@ class GoalController
         }
 
         $selectedMonthData['scheduled_hours'] = round($totalScheduledInMonth, 2);
+        $selectedMonthData['tracked_hours'] = round($totalTrackedInMonth, 2);
 
         return [
             'selected_month'           => $selectedMonth,
@@ -1070,16 +1082,72 @@ class GoalController
         $selectedIsoWeek = $selectedWeekMonday->format('o-\WW');
         $selectedWeekSunday = $selectedWeekMonday->modify('+6 days');
 
-        // 3. Alle Lern-Timeslots für das gesamte Wochenfenster des Monats in einer Abfrage laden
+        // 3. Alle Lern-Timeslots und gestoppten Lernzeiten für das gesamte Wochenfenster des Monats laden
         $windowStartDate = $firstWeekMonday->format('Y-m-d');
         $windowEndDate = $lastWeekMonday->modify('+6 days')->format('Y-m-d');
         $allWindowSlots = $this->goalDAO->findLearningSlotsByDateRange($userId, $windowStartDate, $windowEndDate);
+        $trackedRows = $this->goalDAO->findTrackedSecondsByDateRange($userId, $windowStartDate, $windowEndDate);
 
-        // Slots nach Datum gruppieren
-        $slotsByDate = [];
+        $trackedByDateAndGoal = [];
+        $trackedByDateTotal = [];
+        foreach ($trackedRows as $tRow) {
+            $dKey = (string) $tRow['entry_date'];
+            $mgKey = (int) $tRow['monthly_goal_id'];
+            $sec = max(0, (int) $tRow['tracked_seconds']);
+            $trackedByDateAndGoal[$dKey][$mgKey] = ($trackedByDateAndGoal[$dKey][$mgKey] ?? 0) + $sec;
+            $trackedByDateTotal[$dKey] = ($trackedByDateTotal[$dKey] ?? 0) + $sec;
+        }
+
+        // Slots nach Datum gruppieren und gestoppte Ist-Zeiten chronologisch zuordnen
+        $rawSlotsByDate = [];
         foreach ($allWindowSlots as $slot) {
             $d = (string) $slot['slot_date'];
-            $slotsByDate[$d][] = $slot;
+            $rawSlotsByDate[$d][] = $slot;
+        }
+
+        $slotsByDate = [];
+        foreach ($rawSlotsByDate as $d => $dateSlots) {
+            $goalCountsOnDay = [];
+            foreach ($dateSlots as $ds) {
+                $mgId = (int) $ds['monthly_goal_id'];
+                $goalCountsOnDay[$mgId] = ($goalCountsOnDay[$mgId] ?? 0) + 1;
+            }
+
+            $remainingByGoal = $trackedByDateAndGoal[$d] ?? [];
+            $seenByGoal = [];
+
+            foreach ($dateSlots as $ds) {
+                $mgId = (int) $ds['monthly_goal_id'];
+                $seenByGoal[$mgId] = ($seenByGoal[$mgId] ?? 0) + 1;
+                $isLastForGoal = ($seenByGoal[$mgId] === $goalCountsOnDay[$mgId]);
+
+                $plannedSec = isset($ds['planned_seconds']) && (int) $ds['planned_seconds'] > 0
+                    ? (int) $ds['planned_seconds']
+                    : (int) round(((float) $ds['duration_hours']) * 3600);
+                $availableSec = $remainingByGoal[$mgId] ?? 0;
+                $allocatedSec = $isLastForGoal ? $availableSec : min($plannedSec, $availableSec);
+                $remainingByGoal[$mgId] = max(0, $availableSec - $allocatedSec);
+
+                $targetReached = ($plannedSec > 0 && $allocatedSec >= $plannedSec);
+                if ($targetReached && (int) $ds['is_completed'] === 0) {
+                    $ds['is_completed'] = 1;
+                    $this->goalDAO->setLearningSlotCompleted((int) $ds['id'], $userId, true);
+                }
+
+                $isDone = (int) $ds['is_completed'] === 1;
+                $progressPct = $plannedSec > 0
+                    ? min(100.0, round(($allocatedSec / $plannedSec) * 100, 1))
+                    : ($isDone ? 100.0 : 0.0);
+
+                $ds['planned_seconds'] = $plannedSec;
+                $ds['tracked_seconds'] = $allocatedSec;
+                $ds['tracked_hours'] = round($allocatedSec / 3600.0, 2);
+                $ds['tracked_formatted'] = self::formatTrackedDuration($allocatedSec);
+                $ds['progress_percent'] = $progressPct;
+                $ds['is_target_reached'] = $targetReached;
+
+                $slotsByDate[$d][] = $ds;
+            }
         }
 
         // Empfohlener Wochen-Richtwert aus dem Monatsbudget (proportional auf die Wochen des Monats)
@@ -1096,10 +1164,12 @@ class GoalController
             $sundayDt = $mondayDt->modify('+6 days');
             $weekHours = 0.0;
             $weekCompletedHours = 0.0;
+            $weekTrackedSeconds = 0;
             $weekSlotCount = 0;
 
             for ($dIdx = 0; $dIdx < 7; $dIdx++) {
                 $dStr = $mondayDt->modify("+{$dIdx} days")->format('Y-m-d');
+                $weekTrackedSeconds += ($trackedByDateTotal[$dStr] ?? 0);
                 foreach ($slotsByDate[$dStr] ?? [] as $s) {
                     $dur = (float) $s['duration_hours'];
                     $weekHours += $dur;
@@ -1123,6 +1193,8 @@ class GoalController
                 'is_selected'       => ($isoW === $selectedIsoWeek),
                 'scheduled_hours'   => round($weekHours, 2),
                 'completed_hours'   => round($weekCompletedHours, 2),
+                'tracked_seconds'   => $weekTrackedSeconds,
+                'tracked_hours'     => round($weekTrackedSeconds / 3600.0, 2),
                 'slot_count'        => $weekSlotCount,
             ];
         }
@@ -1131,6 +1203,7 @@ class GoalController
         $days = [];
         $selectedWeekScheduled = 0.0;
         $selectedWeekCompleted = 0.0;
+        $selectedWeekTrackedSeconds = 0;
         $selectedWeekSlotCount = 0;
         $selectedWeekCompletedSlotCount = 0;
         $weekHasOverlaps = false;
@@ -1140,6 +1213,8 @@ class GoalController
             $dayDateStr = $dayDt->format('Y-m-d');
             $isoDayNum = (int) $dayDt->format('N'); // 1 (Mo) bis 7 (So)
             $daySlots = $slotsByDate[$dayDateStr] ?? [];
+            $dayTrackedSeconds = $trackedByDateTotal[$dayDateStr] ?? 0;
+            $selectedWeekTrackedSeconds += $dayTrackedSeconds;
 
             // Zeitüberschneidungen innerhalb des Tages prüfen
             $dayHasOverlap = false;
@@ -1186,6 +1261,9 @@ class GoalController
                 'is_today'            => ($dayDateStr === $todayStr),
                 'is_in_selected_month'=> (substr($dayDateStr, 0, 7) === $selectedMonth),
                 'scheduled_hours'     => round($dayHours, 2),
+                'tracked_seconds'     => $dayTrackedSeconds,
+                'tracked_hours'       => round($dayTrackedSeconds / 3600.0, 2),
+                'tracked_formatted'   => self::formatTrackedDuration($dayTrackedSeconds),
                 'slot_count'          => $slotCountDay,
                 'has_overlap'         => $dayHasOverlap,
                 'slots'               => $daySlots,
@@ -1269,6 +1347,9 @@ class GoalController
             'week_summary'             => [
                 'scheduled_hours'                => $selectedWeekScheduled,
                 'completed_hours'                => $selectedWeekCompleted,
+                'tracked_seconds'                => $selectedWeekTrackedSeconds,
+                'tracked_hours'                  => round($selectedWeekTrackedSeconds / 3600.0, 2),
+                'tracked_formatted'              => self::formatTrackedDuration($selectedWeekTrackedSeconds),
                 'slot_count'                     => $selectedWeekSlotCount,
                 'completed_slot_count'           => $selectedWeekCompletedSlotCount,
                 'has_overlaps'                   => $weekHasOverlaps,
@@ -1278,6 +1359,39 @@ class GoalController
             'monthly_goals'            => $monthlyGoals,
             'selectable_monthly_goals' => $selectableMonthlyGoals,
         ];
+    }
+
+    /**
+     * Formatiert eine gestoppte Ist-Zeit (in Sekunden) in eine kompakte lesbare Form (z. B. "1 Std. 30 Min.", "45 Min.").
+     *
+     * @param int $seconds
+     * @return string
+     */
+    public static function formatTrackedDuration(int $seconds): string
+    {
+        $seconds = max(0, $seconds);
+        if ($seconds === 0) {
+            return '0 Min.';
+        }
+        if ($seconds < 60) {
+            return sprintf('%d Sek.', $seconds);
+        }
+
+        $hours = (int) floor($seconds / 3600);
+        $minutes = (int) round(($seconds % 3600) / 60);
+        if ($minutes === 60) {
+            $hours++;
+            $minutes = 0;
+        }
+
+        if ($hours > 0 && $minutes > 0) {
+            return sprintf('%d Std. %d Min.', $hours, $minutes);
+        }
+        if ($hours > 0) {
+            return sprintf('%d Std.', $hours);
+        }
+
+        return sprintf('%d Min.', $minutes);
     }
 }
 

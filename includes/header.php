@@ -61,6 +61,9 @@ $currentUserEmail = $isLoggedIn ? (string) ($_SESSION['user_email'] ?? '') : '';
                             <li class="nav-item">
                                 <a class="nav-link <?= $activeNav === 'goals' ? 'active" aria-current="page' : '' ?>" href="goals.php">Planen</a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link <?= $activeNav === 'timer' ? 'active" aria-current="page' : '' ?>" href="timer.php">Stoppuhr</a>
+                            </li>
                         </ul>
                         <div class="dropdown">
                             <button
