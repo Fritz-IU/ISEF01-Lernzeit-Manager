@@ -226,7 +226,7 @@ class TimeEntryController
 
         if ($rawGoalId === '' || !preg_match('/^[1-9]\d*$/', $rawGoalId)) {
             throw new ValidationException(
-                'Bitte wähle ein Ziel (Modul) für die Nachbuchung aus.',
+                'Bitte wähle ein Modul für die Nachbuchung aus.',
                 'monthly_goal_id'
             );
         }
@@ -235,7 +235,7 @@ class TimeEntryController
         $monthlyGoal = $this->timeEntryDAO->findMonthlyGoalByIdAndUserId($monthlyGoalId, $userId);
         if ($monthlyGoal === null) {
             throw new ValidationException(
-                'Das ausgewählte Ziel wurde nicht gefunden oder du hast keine Berechtigung.',
+                'Das ausgewählte Modul wurde nicht gefunden oder du hast keine Berechtigung.',
                 'monthly_goal_id'
             );
         }
@@ -246,7 +246,7 @@ class TimeEntryController
 
         if ($goalPlanMonth !== '' && $goalPlanMonth !== $entryMonth) {
             throw new ValidationException(
-                'Das ausgewählte Modul gehört zu einem anderen Monat (' . GoalController::formatYearMonth($goalPlanMonth) . ') als das gewählte Datum.',
+                'Das ausgewählte Modul gehört zum ' . GoalController::formatYearMonth($goalPlanMonth) . ' und passt nicht zum gewählten Datum.',
                 'monthly_goal_id'
             );
         }
@@ -314,7 +314,7 @@ class TimeEntryController
             $hours = (int) $rawHours;
             if ($hours > 24) {
                 throw new ValidationException(
-                    'Die nachgebuchte Lernzeit darf maximal 24 Stunden (1440 Minuten) pro Eintrag betragen.',
+                    'Die nachgebuchte Lernzeit darf maximal 24 Stunden pro Eintrag betragen.',
                     'duration_hours'
                 );
             }
@@ -348,7 +348,7 @@ class TimeEntryController
 
         if ($totalMinutes > self::MAX_DURATION_MINUTES) {
             throw new ValidationException(
-                'Die nachgebuchte Lernzeit darf maximal 24 Stunden (1440 Minuten) pro Eintrag betragen.',
+                'Die nachgebuchte Lernzeit darf maximal 24 Stunden pro Eintrag betragen.',
                 $hasHoursField ? 'duration_hours' : 'duration_minutes'
             );
         }
@@ -428,12 +428,12 @@ class TimeEntryController
         $notes = trim((string) ($slot['notes'] ?? ''));
         $isCompleted = ((int) ($slot['is_completed'] ?? 0)) === 1;
 
-        $label = $startTime . ' – ' . $endTime . ' Uhr (' . $durationLabel . ')';
+        $label = $startTime . '–' . $endTime . ' Uhr · ' . $durationLabel;
         if ($notes !== '') {
             $label .= ' · ' . $notes;
         }
         if ($isCompleted) {
-            $label .= ' [bereits erledigt]';
+            $label .= ' · erledigt';
         }
 
         return $label;
@@ -491,7 +491,7 @@ class TimeEntryController
             $mg['month_label_short'] = $monthLabel;
             $mg['tracked_hours'] = $trackedHours;
             $mg['option_label'] = (string) ($mg['title'] ?? '')
-                . ' (' . number_format($trackedHours, 1, ',', '.') . ' / ' . number_format($plannedHours, 1, ',', '.') . ' h)';
+                . ' · ' . number_format($trackedHours, 1, ',', '.') . ' / ' . number_format($plannedHours, 1, ',', '.') . ' h';
 
             if (!isset($groups[$goalId])) {
                 $groups[$goalId] = [

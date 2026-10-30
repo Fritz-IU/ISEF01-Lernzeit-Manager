@@ -1,7 +1,6 @@
 <?php
 // includes/manual-time-modal.php
-// Wiederverwendbares Bootstrap-Modal für die manuelle Zeitnachbuchung (Issue #9).
-// Kann auf beliebigen Seiten (z. B. index.php, Dashboard, goals.php) vor includes/footer.php eingebunden werden.
+// Wiederverwendbares Bootstrap-Modal für die manuelle Zeitnachbuchung.
 
 declare(strict_types=1);
 
@@ -48,7 +47,7 @@ if (!isset($extraScripts) || !is_string($extraScripts)) {
 }
 ?>
 
-<!-- Modal: Lernzeit manuell nachbuchen (Issue #9) -->
+<!-- Modal: Lernzeit manuell nachbuchen -->
 <div class="modal fade" id="manualTimeModal" tabindex="-1" aria-labelledby="manualTimeModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -67,19 +66,19 @@ if (!isset($extraScripts) || !is_string($extraScripts)) {
 
                     <?php if (!$hasSelectableManualGoals): ?>
                         <div class="alert alert-light border mb-0">
-                            <strong class="text-dark d-block mb-1">Noch keine Module (Zwischenziele) vorhanden</strong>
+                            <strong class="text-dark d-block mb-1">Noch keine Module vorhanden</strong>
                             <p class="text-muted small mb-3">
-                                Um Lernzeiten nachbuchen und einem Ziel zuordnen zu können, lege bitte zuerst unter „Planen“ ein Semester (Lernziel) und mindestens ein Modul (Zwischenziel) an.
+                                Lege zuerst unter „Planen“ ein Semester und mindestens ein Modul an, um Lernzeiten nachbuchen zu können.
                             </p>
                             <a href="goals.php?tab=month" class="btn btn-sm btn-primary">
-                                Zur Lernzielplanung
+                                Zur Planung
                             </a>
                         </div>
                     <?php else: ?>
-                        <!-- 1. Lerntag zuerst wählen, damit die Modulauswahl auf den passenden Monat gefiltert wird -->
+                        <!-- 1. Datum -->
                         <div class="mb-3">
                             <label for="manual_time_entry_date" class="form-label fw-semibold">
-                                Lerntag (Datum) <span class="text-danger">*</span>
+                                Datum <span class="text-danger">*</span>
                             </label>
                             <input
                                 type="date"
@@ -90,15 +89,12 @@ if (!isset($extraScripts) || !is_string($extraScripts)) {
                                 max="<?= htmlspecialchars($defaultManualEntryDate, ENT_QUOTES) ?>"
                                 data-default="<?= htmlspecialchars($defaultManualEntryDate, ENT_QUOTES) ?>"
                                 required>
-                            <div class="form-text">
-                                Nachbuchungen sind für heute oder vergangene Tage möglich.
-                            </div>
                         </div>
 
-                        <!-- 2. Zugeordnetes Ziel (Modul), automatisch gefiltert auf den Monat des Lerntags -->
+                        <!-- 2. Modul -->
                         <div class="mb-3">
                             <label for="manual_time_monthly_goal_id" class="form-label fw-semibold">
-                                Zugeordnetes Ziel (Modul) <span class="text-danger">*</span>
+                                Modul <span class="text-danger">*</span>
                             </label>
                             <select
                                 class="form-select"
@@ -119,21 +115,19 @@ if (!isset($extraScripts) || !is_string($extraScripts)) {
                                     </optgroup>
                                 <?php endforeach; ?>
                             </select>
-                            <div class="form-text" id="manual_time_goal_hint">
-                                Es werden die Module angezeigt, die für den Monat des gewählten Lerntags geplant sind.
-                            </div>
+                            <div class="form-text d-none" id="manual_time_goal_hint"></div>
                         </div>
 
-                        <!-- 3. Optionale Zuordnung zu einer für diesen Tag geplanten Lerneinheit (hakt diese automatisch ab) -->
+                        <!-- 3. Geplante Lerneinheit am gewählten Tag -->
                         <div class="mb-3 d-none" id="manual_time_slot_wrapper">
                             <label for="manual_time_learning_slot_id" class="form-label fw-semibold">
-                                Geplante Lerneinheit an diesem Tag <span class="text-muted fw-normal small">(optional abhaken)</span>
+                                Geplante Lerneinheit
                             </label>
                             <select
                                 class="form-select"
                                 id="manual_time_learning_slot_id"
                                 name="learning_slot_id">
-                                <option value="">Ohne Zuordnung (zusätzliche / ungeplante Lernzeit)</option>
+                                <option value="">Keine – als freie Lernzeit buchen</option>
                                 <?php foreach ($manualTimeLearningSlots as $slotItem): ?>
                                     <option
                                         value="<?= (int) $slotItem['id'] ?>"
@@ -146,17 +140,15 @@ if (!isset($extraScripts) || !is_string($extraScripts)) {
                                     </option>
                                 <?php endforeach; ?>
                             </select>
-                            <div class="form-text" id="manual_time_slot_hint">
-                                Wenn du eine geplante Lerneinheit auswählst, wird sie beim Speichern automatisch als erledigt abgehakt.
-                            </div>
+                            <div class="form-text" id="manual_time_slot_hint"></div>
                         </div>
 
-                        <!-- 4. Geleistete Netto-Dauer -->
-                        <div class="mb-2">
+                        <!-- 4. Dauer -->
+                        <div class="mb-3">
                             <label class="form-label fw-semibold mb-1">
-                                Geleistete Lernzeit (Netto-Dauer) <span class="text-danger">*</span>
+                                Dauer <span class="text-danger">*</span>
                             </label>
-                            <div class="row g-2">
+                            <div class="row g-2 mb-2">
                                 <div class="col-6">
                                     <div class="input-group">
                                         <input
@@ -192,11 +184,8 @@ if (!isset($extraScripts) || !is_string($extraScripts)) {
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div class="mb-3">
-                            <div class="d-flex flex-wrap align-items-center gap-1 mb-1" role="group" aria-label="Schnellauswahl für die Dauer">
-                                <span class="text-muted small me-1">Schnellwahl:</span>
+                            <div class="d-flex flex-wrap align-items-center gap-1" role="group" aria-label="Schnellauswahl für die Dauer">
                                 <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 manual-time-preset-btn" data-quick-minutes="30">0,5 Std.</button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 manual-time-preset-btn" data-quick-minutes="60">1 Std.</button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 manual-time-preset-btn" data-quick-minutes="90">1,5 Std.</button>
@@ -204,15 +193,13 @@ if (!isset($extraScripts) || !is_string($extraScripts)) {
                                 <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 manual-time-preset-btn" data-quick-minutes="150">2,5 Std.</button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 manual-time-preset-btn" data-quick-minutes="180">3 Std.</button>
                             </div>
-                            <div class="form-text" id="manual_time_duration_hint">
-                                Erfasste Netto-Lernzeit: <strong>1 Std.</strong>
-                            </div>
+                            <div class="form-text d-none" id="manual_time_duration_hint"></div>
                         </div>
 
-                        <!-- 5. Optionale Notiz -->
+                        <!-- 5. Notiz -->
                         <div class="mb-2">
                             <label for="manual_time_note" class="form-label fw-semibold">
-                                Notiz <span class="text-muted fw-normal small">(optional)</span>
+                                Notiz
                             </label>
                             <input
                                 type="text"
@@ -220,7 +207,7 @@ if (!isset($extraScripts) || !is_string($extraScripts)) {
                                 id="manual_time_note"
                                 name="note"
                                 maxlength="255"
-                                placeholder="z. B. Offline in der Bibliothek gelernt, Übungsaufgaben gelöst">
+                                placeholder="z. B. Kapitel 3 zusammengefasst">
                         </div>
                     <?php endif; ?>
                 </div>

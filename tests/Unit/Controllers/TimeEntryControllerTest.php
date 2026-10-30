@@ -144,14 +144,14 @@ final class TimeEntryControllerTest extends TestCase
             'is_completed'     => 0,
         ];
         self::assertSame(
-            '14:00 – 15:30 Uhr (1 Std. 30 Min.) · Kapitel 3 lesen',
+            '14:00–15:30 Uhr · 1 Std. 30 Min. · Kapitel 3 lesen',
             TimeEntryController::formatLearningSlotOptionLabel($offenerSlot)
         );
 
         $erledigterSlot = $offenerSlot;
         $erledigterSlot['is_completed'] = 1;
         self::assertSame(
-            '14:00 – 15:30 Uhr (1 Std. 30 Min.) · Kapitel 3 lesen [bereits erledigt]',
+            '14:00–15:30 Uhr · 1 Std. 30 Min. · Kapitel 3 lesen · erledigt',
             TimeEntryController::formatLearningSlotOptionLabel($erledigterSlot)
         );
     }
@@ -575,13 +575,13 @@ final class TimeEntryControllerTest extends TestCase
         self::assertSame('3. Semester – Informatik', $grouped[0]['goal_title']);
         self::assertCount(2, $grouped[0]['items']);
         self::assertSame(
-            'Modul Datenbanken (1,5 / 15,0 h)',
+            'Modul Datenbanken · 1,5 / 15,0 h',
             $grouped[0]['items'][1]['option_label']
         );
 
         self::assertSame(2, $grouped[1]['goal_id']);
         self::assertSame(
-            'Modul IT-Sicherheit (0,0 / 15,0 h)',
+            'Modul IT-Sicherheit · 0,0 / 15,0 h',
             $grouped[1]['items'][0]['option_label']
         );
     }

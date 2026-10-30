@@ -76,7 +76,7 @@ try {
             ? ' und die geplante Lerneinheit als erledigt markiert.'
             : '.';
         $response = [
-            'message'  => 'Die Lernzeit (' . $entry['formatted_duration'] . ') für „' . $entry['monthly_goal_title'] . '“ wurde erfolgreich nachgebucht' . $slotSuffix,
+            'message'  => 'Die Lernzeit von ' . $entry['formatted_duration'] . ' für „' . $entry['monthly_goal_title'] . '“ wurde nachgebucht' . $slotSuffix,
             'entry_id' => $entry['entry_id'],
             'entry'    => $entry,
         ];

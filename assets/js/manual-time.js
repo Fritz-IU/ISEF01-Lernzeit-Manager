@@ -142,31 +142,18 @@ document.addEventListener('DOMContentLoaded', () => {
     durationHint.textContent = '';
 
     if (totalMinutes <= 0) {
-      durationHint.className = 'form-text text-danger';
+      durationHint.className = 'form-text text-danger mt-1';
       durationHint.textContent = 'Bitte gib eine Dauer von mindestens einer Minute an.';
       return;
     }
 
     if (totalMinutes > 1440) {
-      durationHint.className = 'form-text text-danger';
-      durationHint.textContent = 'Maximal 24 Stunden (1440 Minuten) pro Eintrag möglich.';
+      durationHint.className = 'form-text text-danger mt-1';
+      durationHint.textContent = 'Maximal 24 Stunden pro Eintrag möglich.';
       return;
     }
 
-    durationHint.className = 'form-text';
-    durationHint.appendChild(document.createTextNode('Erfasste Netto-Lernzeit: '));
-
-    const strong = document.createElement('strong');
-    const displayHours = Math.floor(totalMinutes / 60);
-    const displayMinutes = totalMinutes % 60;
-    if (displayHours > 0 && displayMinutes > 0) {
-      strong.textContent = `${displayHours} Std. ${displayMinutes} Min.`;
-    } else if (displayHours > 0) {
-      strong.textContent = `${displayHours} Std.`;
-    } else {
-      strong.textContent = `${displayMinutes} Min.`;
-    }
-    durationHint.appendChild(strong);
+    durationHint.className = 'form-text d-none';
   }
 
   /**
@@ -196,20 +183,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectedOpt = slotSelect.selectedOptions[0];
     if (!selectedOpt || !selectedOpt.value) {
       slotHint.className = 'form-text text-muted';
-      slotHint.textContent =
-        'Ohne Zuordnung wird die Lernzeit als zusätzliche / ungeplante Einheit auf das Modul gebucht.';
+      slotHint.textContent = 'Wird als freie Lernzeit auf das Modul gebucht.';
       return;
     }
 
     const isCompleted = selectedOpt.getAttribute('data-is-completed') === '1';
     if (isCompleted) {
-      slotHint.className = 'form-text text-success';
-      slotHint.textContent =
-        'Die Lernzeit wird dieser geplanten Einheit zugeordnet (bereits als erledigt markiert).';
+      slotHint.className = 'form-text text-muted';
+      slotHint.textContent = 'Diese Lerneinheit ist bereits als erledigt markiert.';
     } else {
       slotHint.className = 'form-text text-success fw-semibold';
-      slotHint.textContent =
-        '✓ Diese geplante Lerneinheit wird beim Speichern automatisch als erledigt abgehakt.';
+      slotHint.textContent = '✓ Wird beim Speichern als erledigt abgehakt.';
     }
   }
 
@@ -318,16 +302,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (selectedMonth === '') {
       goalSelect.disabled = true;
       if (goalPlaceholder) {
-        goalPlaceholder.textContent = 'Bitte zuerst ein gültiges Datum wählen…';
+        goalPlaceholder.textContent = 'Bitte zuerst ein Datum wählen…';
       }
       if (goalHint) {
-        goalHint.className = 'form-text text-muted';
-        goalHint.textContent = 'Wähle zuerst den Lerntag aus, um die passenden Module zu sehen.';
+        goalHint.className = 'form-text d-none';
+        goalHint.textContent = '';
       }
     } else if (totalVisible === 0) {
       goalSelect.disabled = true;
       if (goalPlaceholder) {
-        goalPlaceholder.textContent = `Keine Module für ${formatMonthLabel(selectedMonth)} geplant`;
+        goalPlaceholder.textContent = `Keine Module im ${formatMonthLabel(selectedMonth)}`;
       }
       if (goalHint) {
         goalHint.className = 'form-text text-warning-emphasis';
@@ -338,7 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const link = document.createElement('a');
         link.href = `goals.php?tab=month&month=${encodeURIComponent(selectedMonth)}`;
         link.className = 'fw-semibold';
-        link.textContent = 'Jetzt in der Monatsplanung anlegen';
+        link.textContent = 'Jetzt anlegen';
         goalHint.appendChild(link);
       }
     } else {
@@ -347,8 +331,8 @@ document.addEventListener('DOMContentLoaded', () => {
         goalPlaceholder.textContent = 'Bitte Modul auswählen…';
       }
       if (goalHint) {
-        goalHint.className = 'form-text text-muted';
-        goalHint.textContent = `Angezeigt werden deine ${totalVisible} geplanten Module für ${formatMonthLabel(selectedMonth)}.`;
+        goalHint.className = 'form-text d-none';
+        goalHint.textContent = '';
       }
     }
 
