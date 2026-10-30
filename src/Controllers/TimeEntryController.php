@@ -36,6 +36,7 @@ class TimeEntryController
 
     /**
      * Erstellt eine neue manuelle Zeitnachbuchung nach erfolgreicher Validierung.
+     * Wird dabei eine geplante Lerneinheit (learning_slot_id) zugeordnet, wird diese automatisch als erledigt abgehakt.
      *
      * @param int $userId ID des angemeldeten Nutzers
      * @param array<string, mixed> $input Rohdaten aus dem Formular / JSON-Body
@@ -56,6 +57,12 @@ class TimeEntryController
             $validated['learning_slot_id']
         );
 
+        $slotCompleted = false;
+        if ($validated['learning_slot_id'] !== null) {
+            $this->timeEntryDAO->markLearningSlotCompleted($validated['learning_slot_id'], $userId);
+            $slotCompleted = true;
+        }
+
         return [
             'entry_id'           => $entryId,
             'monthly_goal_id'    => $validated['monthly_goal_id'],
@@ -67,6 +74,7 @@ class TimeEntryController
             'formatted_duration' => self::formatDurationSeconds($validated['tracked_seconds']),
             'note'               => $validated['note'],
             'learning_slot_id'   => $validated['learning_slot_id'],
+            'slot_completed'     => $slotCompleted,
         ];
     }
 
@@ -107,6 +115,12 @@ class TimeEntryController
             $validated['learning_slot_id']
         );
 
+        $slotCompleted = false;
+        if ($validated['learning_slot_id'] !== null) {
+            $this->timeEntryDAO->markLearningSlotCompleted($validated['learning_slot_id'], $userId);
+            $slotCompleted = true;
+        }
+
         return [
             'entry_id'           => $entryId,
             'monthly_goal_id'    => $validated['monthly_goal_id'],
@@ -118,6 +132,7 @@ class TimeEntryController
             'formatted_duration' => self::formatDurationSeconds($validated['tracked_seconds']),
             'note'               => $validated['note'],
             'learning_slot_id'   => $validated['learning_slot_id'],
+            'slot_completed'     => $slotCompleted,
         ];
     }
 
@@ -145,6 +160,8 @@ class TimeEntryController
 
     /**
      * Validiert und bereinigt alle Eingabefelder für eine manuelle Zeitnachbuchung.
+     * Reihenfolge passend zum Formular: 1. Lerntag (entry_date), 2. Ziel/Modul im Monat (monthly_goal_id),
+     * 3. Geplante Lerneinheit am Tag (learning_slot_id, optional), 4. Dauer, 5. Notiz.
      *
      * @param int $userId ID des angemeldeten Nutzers
      * @param array<string, mixed> $input Rohdaten
@@ -162,28 +179,7 @@ class TimeEntryController
      */
     public function validateAndParseManualEntryInput(int $userId, array $input, ?string $today = null): array
     {
-        // 1. Ziel / Modul (monthly_goal_id) prüfen
-        $rawGoalId = isset($input['monthly_goal_id']) && is_scalar($input['monthly_goal_id'])
-            ? trim((string) $input['monthly_goal_id'])
-            : '';
-
-        if ($rawGoalId === '' || !preg_match('/^[1-9]\d*$/', $rawGoalId)) {
-            throw new ValidationException(
-                'Bitte wähle ein Ziel (Modul) für die Nachbuchung aus.',
-                'monthly_goal_id'
-            );
-        }
-
-        $monthlyGoalId = (int) $rawGoalId;
-        $monthlyGoal = $this->timeEntryDAO->findMonthlyGoalByIdAndUserId($monthlyGoalId, $userId);
-        if ($monthlyGoal === null) {
-            throw new ValidationException(
-                'Das ausgewählte Ziel wurde nicht gefunden oder du hast keine Berechtigung.',
-                'monthly_goal_id'
-            );
-        }
-
-        // 2. Lerntag / Datum (entry_date) prüfen
+        // 1. Lerntag / Datum (entry_date) prüfen
         $entryDate = isset($input['entry_date']) && is_string($input['entry_date'])
             ? trim($input['entry_date'])
             : '';
@@ -221,7 +217,84 @@ class TimeEntryController
             );
         }
 
-        // 3. Dauer (duration_hours / duration_minutes) prüfen und in Sekunden umrechnen
+        $entryMonth = substr($entryDate, 0, 7);
+
+        // 2. Ziel / Modul (monthly_goal_id) prüfen (inkl. Zugehörigkeit zum Monat des Lerntags)
+        $rawGoalId = isset($input['monthly_goal_id']) && is_scalar($input['monthly_goal_id'])
+            ? trim((string) $input['monthly_goal_id'])
+            : '';
+
+        if ($rawGoalId === '' || !preg_match('/^[1-9]\d*$/', $rawGoalId)) {
+            throw new ValidationException(
+                'Bitte wähle ein Ziel (Modul) für die Nachbuchung aus.',
+                'monthly_goal_id'
+            );
+        }
+
+        $monthlyGoalId = (int) $rawGoalId;
+        $monthlyGoal = $this->timeEntryDAO->findMonthlyGoalByIdAndUserId($monthlyGoalId, $userId);
+        if ($monthlyGoal === null) {
+            throw new ValidationException(
+                'Das ausgewählte Ziel wurde nicht gefunden oder du hast keine Berechtigung.',
+                'monthly_goal_id'
+            );
+        }
+
+        $goalPlanMonth = isset($monthlyGoal['plan_month']) && is_string($monthlyGoal['plan_month'])
+            ? trim($monthlyGoal['plan_month'])
+            : '';
+
+        if ($goalPlanMonth !== '' && $goalPlanMonth !== $entryMonth) {
+            throw new ValidationException(
+                'Das ausgewählte Modul gehört zu einem anderen Monat (' . GoalController::formatYearMonth($goalPlanMonth) . ') als das gewählte Datum.',
+                'monthly_goal_id'
+            );
+        }
+
+        // 3. Optionale Verknüpfung zu einer geplanten Lerneinheit (learning_slot_id) prüfen
+        $rawSlotId = isset($input['learning_slot_id']) && is_scalar($input['learning_slot_id'])
+            ? trim((string) $input['learning_slot_id'])
+            : '';
+        $learningSlotId = null;
+
+        if ($rawSlotId !== '' && $rawSlotId !== '0') {
+            if (!preg_match('/^[1-9]\d*$/', $rawSlotId)) {
+                throw new ValidationException(
+                    'Ungültige geplante Lerneinheit.',
+                    'learning_slot_id'
+                );
+            }
+
+            $slotId = (int) $rawSlotId;
+            $slot = $this->timeEntryDAO->findLearningSlotByIdAndUserId($slotId, $userId);
+            if ($slot === null) {
+                throw new ValidationException(
+                    'Die ausgewählte geplante Lerneinheit wurde nicht gefunden.',
+                    'learning_slot_id'
+                );
+            }
+
+            if ((int) ($slot['monthly_goal_id'] ?? 0) !== $monthlyGoalId) {
+                throw new ValidationException(
+                    'Die geplante Lerneinheit gehört zu einem anderen Modul.',
+                    'learning_slot_id'
+                );
+            }
+
+            $slotDate = isset($slot['slot_date']) && is_string($slot['slot_date'])
+                ? trim($slot['slot_date'])
+                : '';
+            if ($slotDate !== '' && $slotDate !== $entryDate) {
+                throw new ValidationException(
+                    'Die ausgewählte geplante Lerneinheit liegt an einem anderen Tag.',
+                    'learning_slot_id'
+                );
+            }
+
+            $learningSlotId = $slotId;
+        }
+
+        // 4. Dauer (duration_hours / duration_minutes) prüfen und in Sekunden umrechnen
         $hasHoursField = array_key_exists('duration_hours', $input);
         $rawHours = isset($input['duration_hours']) && is_scalar($input['duration_hours'])
             ? trim((string) $input['duration_hours'])
@@ -282,39 +355,6 @@ class TimeEntryController
 
         $trackedSeconds = $totalMinutes * 60;
 
-        // 4. Optionale Verknüpfung zu einer geplanten Lerneinheit (learning_slot_id) prüfen
-        $rawSlotId = isset($input['learning_slot_id']) && is_scalar($input['learning_slot_id'])
-            ? trim((string) $input['learning_slot_id'])
-            : '';
-        $learningSlotId = null;
-
-        if ($rawSlotId !== '' && $rawSlotId !== '0') {
-            if (!preg_match('/^[1-9]\d*$/', $rawSlotId)) {
-                throw new ValidationException(
-                    'Ungültige geplante Lerneinheit.',
-                    'learning_slot_id'
-                );
-            }
-
-            $slotId = (int) $rawSlotId;
-            $slot = $this->timeEntryDAO->findLearningSlotByIdAndUserId($slotId, $userId);
-            if ($slot === null) {
-                throw new ValidationException(
-                    'Die ausgewählte geplante Lerneinheit wurde nicht gefunden.',
-                    'learning_slot_id'
-                );
-            }
-
-            if ((int) ($slot['monthly_goal_id'] ?? 0) !== $monthlyGoalId) {
-                throw new ValidationException(
-                    'Die geplante Lerneinheit gehört zu einem anderen Modul.',
-                    'learning_slot_id'
-                );
-            }
-
-            $learningSlotId = $slotId;
-        }
-
         // 5. Optionale Notiz (note) prüfen
         $note = isset($input['note']) && is_string($input['note'])
             ? trim($input['note'])
@@ -353,6 +393,50 @@ class TimeEntryController
         $monthlyGoals = $this->timeEntryDAO->findSelectableMonthlyGoalsByUserId($userId);
 
         return self::groupMonthlyGoalsBySemester($monthlyGoals);
+    }
+
+    /**
+     * Liefert alle geplanten Lerneinheiten eines Nutzers aufbereitet für die tagesbezogene Auswahl im Modal.
+     *
+     * @param int $userId ID des Nutzers
+     * @return list<array<string, mixed>>
+     */
+    public function getSelectableLearningSlots(int $userId): array
+    {
+        $slots = $this->timeEntryDAO->findLearningSlotsByUserId($userId);
+
+        foreach ($slots as &$slot) {
+            $slot['option_label'] = self::formatLearningSlotOptionLabel($slot);
+        }
+        unset($slot);
+
+        return $slots;
+    }
+
+    /**
+     * Formatiert eine geplante Lerneinheit als lesbaren Option-Text für das Auswahlfeld im Modal.
+     *
+     * @param array<string, mixed> $slot
+     * @return string
+     */
+    public static function formatLearningSlotOptionLabel(array $slot): string
+    {
+        $startTime = substr((string) ($slot['start_time'] ?? '00:00'), 0, 5);
+        $endTime = substr((string) ($slot['end_time'] ?? '00:00'), 0, 5);
+        $durationMinutes = max(1, (int) ($slot['duration_minutes'] ?? 60));
+        $durationLabel = self::formatDurationSeconds($durationMinutes * 60);
+        $notes = trim((string) ($slot['notes'] ?? ''));
+        $isCompleted = ((int) ($slot['is_completed'] ?? 0)) === 1;
+
+        $label = $startTime . ' – ' . $endTime . ' Uhr (' . $durationLabel . ')';
+        if ($notes !== '') {
+            $label .= ' · ' . $notes;
+        }
+        if ($isCompleted) {
+            $label .= ' [bereits erledigt]';
+        }
+
+        return $label;
     }
 
     /**
@@ -406,8 +490,7 @@ class TimeEntryController
 
             $mg['month_label_short'] = $monthLabel;
             $mg['tracked_hours'] = $trackedHours;
-            $mg['option_label'] = ($monthLabel !== '' ? '[' . $monthLabel . '] ' : '')
-                . (string) ($mg['title'] ?? '')
+            $mg['option_label'] = (string) ($mg['title'] ?? '')
                 . ' (' . number_format($trackedHours, 1, ',', '.') . ' / ' . number_format($plannedHours, 1, ',', '.') . ' h)';
 
             if (!isset($groups[$goalId])) {
@@ -474,4 +557,3 @@ class TimeEntryController
         return $date->format('Y-m-d') === $dateString ? $date : null;
     }
 }
-

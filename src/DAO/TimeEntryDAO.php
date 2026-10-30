@@ -306,6 +306,56 @@ class TimeEntryDAO
     }
 
     /**
+     * Markiert eine geplante Lerneinheit (learning_slot) als erledigt (is_completed = 1).
+     *
+     * @param int $slotId ID des Timeslots
+     * @param int $userId ID des berechtigten Nutzers
+     * @return bool True bei Erfolg
+     */
+    public function markLearningSlotCompleted(int $slotId, int $userId): bool
+    {
+        $sql = "UPDATE learning_slots
+                SET is_completed = 1
+                WHERE id = :id AND user_id = :user_id";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            ':id'      => $slotId,
+            ':user_id' => $userId,
+        ]);
+
+        return $stmt->rowCount() >= 0;
+    }
+
+    /**
+     * Liefert alle geplanten Lerneinheiten (learning_slots) eines Nutzers für die Auswahl im Nachbuchungs-Modal,
+     * inklusive der geplanten Dauer in Minuten.
+     *
+     * @param int $userId ID des Nutzers
+     * @return list<array<string, mixed>>
+     */
+    public function findLearningSlotsByUserId(int $userId): array
+    {
+        $sql = "SELECT ls.id,
+                       ls.user_id,
+                       ls.monthly_goal_id,
+                       ls.slot_date,
+                       ls.start_time,
+                       ls.end_time,
+                       ls.notes,
+                       ls.is_completed,
+                       GREATEST(1, ROUND(TIME_TO_SEC(TIMEDIFF(ls.end_time, ls.start_time)) / 60)) AS duration_minutes
+                FROM learning_slots ls
+                WHERE ls.user_id = :user_id
+                ORDER BY ls.slot_date DESC, ls.start_time ASC, ls.id ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':user_id' => $userId]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
      * Liefert alle auswählbaren Module / Zwischenziele eines Nutzers für das Nachbuchungs-Formular,
      * inklusive übergeordnetem Semester und bisher gebuchter Lernzeit.
      *

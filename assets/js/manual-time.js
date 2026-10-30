@@ -14,13 +14,32 @@ document.addEventListener('DOMContentLoaded', () => {
   const submitBtn = document.getElementById('manualTimeSubmitBtn');
   const actionInput = document.getElementById('manual_time_action');
   const entryIdInput = document.getElementById('manual_time_entry_id');
-  const slotIdInput = document.getElementById('manual_time_learning_slot_id');
-  const goalSelect = document.getElementById('manual_time_monthly_goal_id');
   const dateInput = document.getElementById('manual_time_entry_date');
+  const goalSelect = document.getElementById('manual_time_monthly_goal_id');
+  const goalPlaceholder = document.getElementById('manual_time_goal_placeholder');
+  const goalHint = document.getElementById('manual_time_goal_hint');
+  const slotWrapper = document.getElementById('manual_time_slot_wrapper');
+  const slotSelect = document.getElementById('manual_time_learning_slot_id');
+  const slotHint = document.getElementById('manual_time_slot_hint');
   const hoursInput = document.getElementById('manual_time_duration_hours');
   const minutesInput = document.getElementById('manual_time_duration_minutes');
   const durationHint = document.getElementById('manual_time_duration_hint');
   const noteInput = document.getElementById('manual_time_note');
+
+  const MONTH_NAMES = [
+    'Januar',
+    'Februar',
+    'März',
+    'April',
+    'Mai',
+    'Juni',
+    'Juli',
+    'August',
+    'September',
+    'Oktober',
+    'November',
+    'Dezember',
+  ];
 
   const BAD_INPUT_MESSAGES = {
     entry_date: 'Das Datum muss im gültigen Format JJJJ-MM-TT vorliegen.',
@@ -30,6 +49,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let hasUnsavedErrorState = false;
   let lastTriggerSignature = '';
+
+  /**
+   * Formatiert einen Monat im Format YYYY-MM als deutschen Monatsnamen (z. B. "Oktober 2026").
+   * @param {string} yearMonth
+   * @returns {string}
+   */
+  function formatMonthLabel(yearMonth) {
+    const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(yearMonth);
+    if (!match) {
+      return yearMonth;
+    }
+    const monthIndex = parseInt(match[2], 10) - 1;
+    return `${MONTH_NAMES[monthIndex]} ${match[1]}`;
+  }
 
   /**
    * Entfernt die Rotmarkierung eines einzelnen Eingabefelds.
@@ -152,6 +185,209 @@ document.addEventListener('DOMContentLoaded', () => {
     updateDurationHint();
   }
 
+  /**
+   * Aktualisiert den Hinweistext unter der Lerneinheiten-Auswahl.
+   */
+  function updateSlotHintText() {
+    if (!slotSelect || !slotHint) {
+      return;
+    }
+
+    const selectedOpt = slotSelect.selectedOptions[0];
+    if (!selectedOpt || !selectedOpt.value) {
+      slotHint.className = 'form-text text-muted';
+      slotHint.textContent =
+        'Ohne Zuordnung wird die Lernzeit als zusätzliche / ungeplante Einheit auf das Modul gebucht.';
+      return;
+    }
+
+    const isCompleted = selectedOpt.getAttribute('data-is-completed') === '1';
+    if (isCompleted) {
+      slotHint.className = 'form-text text-success';
+      slotHint.textContent =
+        'Die Lernzeit wird dieser geplanten Einheit zugeordnet (bereits als erledigt markiert).';
+    } else {
+      slotHint.className = 'form-text text-success fw-semibold';
+      slotHint.textContent =
+        '✓ Diese geplante Lerneinheit wird beim Speichern automatisch als erledigt abgehakt.';
+    }
+  }
+
+  /**
+   * Filtert die geplanten Lerneinheiten (learning_slots) passend zum gewählten Datum und Modul.
+   * @param {boolean} [autoSelectOpenSlot=false]
+   */
+  function filterSlotsByDateAndGoal(autoSelectOpenSlot = false) {
+    if (!slotWrapper || !slotSelect || !dateInput || !goalSelect) {
+      return;
+    }
+
+    const selectedDate = dateInput.value.trim();
+    const selectedGoalId = goalSelect.value.trim();
+
+    if (!selectedDate || !selectedGoalId) {
+      slotWrapper.classList.add('d-none');
+      slotSelect.value = '';
+      return;
+    }
+
+    let matchingCount = 0;
+    let firstOpenOption = null;
+    const previousSlotId = slotSelect.value;
+    let previousStillValid = false;
+
+    slotSelect.querySelectorAll('option[data-slot-date]').forEach((opt) => {
+      const matchesDate = opt.getAttribute('data-slot-date') === selectedDate;
+      const matchesGoal = opt.getAttribute('data-monthly-goal-id') === selectedGoalId;
+      const isVisible = matchesDate && matchesGoal;
+
+      opt.hidden = !isVisible;
+      opt.disabled = !isVisible;
+
+      if (isVisible) {
+        matchingCount += 1;
+        if (opt.value === previousSlotId) {
+          previousStillValid = true;
+        }
+        if (!firstOpenOption && opt.getAttribute('data-is-completed') === '0') {
+          firstOpenOption = opt;
+        }
+      }
+    });
+
+    if (matchingCount === 0) {
+      slotWrapper.classList.add('d-none');
+      slotSelect.value = '';
+      return;
+    }
+
+    slotWrapper.classList.remove('d-none');
+
+    if (previousStillValid && !autoSelectOpenSlot) {
+      slotSelect.value = previousSlotId;
+    } else if (autoSelectOpenSlot && firstOpenOption) {
+      slotSelect.value = firstOpenOption.value;
+      const slotMinutes = parseInt(firstOpenOption.getAttribute('data-duration-minutes') || '0', 10);
+      if (slotMinutes > 0) {
+        setDurationFromMinutes(slotMinutes);
+      }
+    } else if (!previousStillValid) {
+      slotSelect.value = '';
+    }
+
+    updateSlotHintText();
+  }
+
+  /**
+   * Filtert die Optionen im Modul-Dropdown (monthly_goal_id) auf den Monat (YYYY-MM) des gewählten Lerntags.
+   */
+  function filterGoalsBySelectedDate() {
+    if (!dateInput || !goalSelect) {
+      return;
+    }
+
+    const dateVal = dateInput.value.trim();
+    const selectedMonth = /^\d{4}-(0[1-9]|1[0-2])/.test(dateVal) ? dateVal.slice(0, 7) : '';
+    const previousGoalId = goalSelect.value;
+    let totalVisible = 0;
+    let previousStillValid = false;
+
+    goalSelect.querySelectorAll('optgroup').forEach((group) => {
+      let visibleInGroup = 0;
+      group.querySelectorAll('option[data-plan-month]').forEach((opt) => {
+        const matchesMonth = selectedMonth !== '' && opt.getAttribute('data-plan-month') === selectedMonth;
+        opt.hidden = !matchesMonth;
+        opt.disabled = !matchesMonth;
+
+        if (matchesMonth) {
+          visibleInGroup += 1;
+          totalVisible += 1;
+          if (opt.value === previousGoalId) {
+            previousStillValid = true;
+          }
+        }
+      });
+
+      group.hidden = visibleInGroup === 0;
+    });
+
+    if (!previousStillValid) {
+      goalSelect.value = '';
+    }
+
+    if (selectedMonth === '') {
+      goalSelect.disabled = true;
+      if (goalPlaceholder) {
+        goalPlaceholder.textContent = 'Bitte zuerst ein gültiges Datum wählen…';
+      }
+      if (goalHint) {
+        goalHint.className = 'form-text text-muted';
+        goalHint.textContent = 'Wähle zuerst den Lerntag aus, um die passenden Module zu sehen.';
+      }
+    } else if (totalVisible === 0) {
+      goalSelect.disabled = true;
+      if (goalPlaceholder) {
+        goalPlaceholder.textContent = `Keine Module für ${formatMonthLabel(selectedMonth)} geplant`;
+      }
+      if (goalHint) {
+        goalHint.className = 'form-text text-warning-emphasis';
+        goalHint.textContent = '';
+        goalHint.appendChild(
+          document.createTextNode(`Für ${formatMonthLabel(selectedMonth)} sind noch keine Module angelegt. `)
+        );
+        const link = document.createElement('a');
+        link.href = `goals.php?tab=month&month=${encodeURIComponent(selectedMonth)}`;
+        link.className = 'fw-semibold';
+        link.textContent = 'Jetzt in der Monatsplanung anlegen';
+        goalHint.appendChild(link);
+      }
+    } else {
+      goalSelect.disabled = false;
+      if (goalPlaceholder) {
+        goalPlaceholder.textContent = 'Bitte Modul auswählen…';
+      }
+      if (goalHint) {
+        goalHint.className = 'form-text text-muted';
+        goalHint.textContent = `Angezeigt werden deine ${totalVisible} geplanten Module für ${formatMonthLabel(selectedMonth)}.`;
+      }
+    }
+
+    filterSlotsByDateAndGoal(false);
+  }
+
+  // Bei Datumswechsel: Modul-Liste auf den neuen Monat filtern
+  if (dateInput) {
+    dateInput.addEventListener('change', () => {
+      filterGoalsBySelectedDate();
+    });
+    dateInput.addEventListener('input', () => {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateInput.value)) {
+        filterGoalsBySelectedDate();
+      }
+    });
+  }
+
+  // Bei Modulwechsel: Geplante Lerneinheiten an diesem Tag prüfen und ggf. offene Einheit vorschlagen
+  if (goalSelect) {
+    goalSelect.addEventListener('change', () => {
+      filterSlotsByDateAndGoal(true);
+    });
+  }
+
+  // Bei Wechsel der geplanten Lerneinheit: Geplante Dauer übernehmen und Hinweis aktualisieren
+  if (slotSelect) {
+    slotSelect.addEventListener('change', () => {
+      const selectedOpt = slotSelect.selectedOptions[0];
+      if (selectedOpt && selectedOpt.value) {
+        const slotMinutes = parseInt(selectedOpt.getAttribute('data-duration-minutes') || '0', 10);
+        if (slotMinutes > 0) {
+          setDurationFromMinutes(slotMinutes);
+        }
+      }
+      updateSlotHintText();
+    });
+  }
+
   // Schnellauswahl-Buttons für gängige Lerndauern
   form.querySelectorAll('.manual-time-preset-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -183,10 +419,11 @@ document.addEventListener('DOMContentLoaded', () => {
     field.addEventListener('change', onFieldChange);
   });
 
-  // Vorbefüllen des Modals beim Öffnen über Trigger-Buttons (z. B. Neuanlage oder Bearbeiten)
+  // Vorbefüllen des Modals beim Öffnen über Trigger-Buttons
   modalEl.addEventListener('show.bs.modal', (event) => {
     const triggerBtn = event.relatedTarget;
     if (!triggerBtn) {
+      filterGoalsBySelectedDate();
       return;
     }
 
@@ -217,9 +454,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (entryIdInput) {
       entryIdInput.value = entryId;
     }
-    if (slotIdInput) {
-      slotIdInput.value = slotId;
-    }
     if (modalTitle) {
       modalTitle.textContent = isEditMode ? 'Nachbuchung bearbeiten' : 'Lernzeit nachbuchen';
     }
@@ -227,17 +461,30 @@ document.addEventListener('DOMContentLoaded', () => {
       submitBtn.textContent = isEditMode ? 'Änderungen speichern' : 'Lernzeit speichern';
     }
 
+    if (dateInput) {
+      const defaultDate = dateInput.getAttribute('data-default') || '';
+      dateInput.value = entryDate !== '' ? entryDate : defaultDate;
+    }
+
+    filterGoalsBySelectedDate();
+
     if (goalSelect) {
-      if (goalId !== '' && goalSelect.querySelector(`option[value="${CSS.escape(goalId)}"]`)) {
+      const targetOpt = goalId !== '' ? goalSelect.querySelector(`option[value="${CSS.escape(goalId)}"]`) : null;
+      if (targetOpt && !targetOpt.disabled) {
         goalSelect.value = goalId;
       } else {
         goalSelect.value = '';
       }
     }
 
-    if (dateInput) {
-      const defaultDate = dateInput.getAttribute('data-default') || '';
-      dateInput.value = entryDate !== '' ? entryDate : defaultDate;
+    filterSlotsByDateAndGoal(slotId === '');
+
+    if (slotSelect && slotId !== '') {
+      const slotOpt = slotSelect.querySelector(`option[value="${CSS.escape(slotId)}"]`);
+      if (slotOpt && !slotOpt.disabled) {
+        slotSelect.value = slotId;
+        updateSlotHintText();
+      }
     }
 
     if (durationMinAttr !== '') {
@@ -245,7 +492,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (trackedSecAttr !== '') {
       const sec = parseInt(trackedSecAttr, 10) || 3600;
       setDurationFromMinutes(Math.max(1, Math.round(sec / 60)));
-    } else {
+    } else if (!slotSelect || !slotSelect.value) {
       setDurationFromMinutes(60);
     }
 
@@ -355,6 +602,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  filterGoalsBySelectedDate();
   updateDurationHint();
 });
-

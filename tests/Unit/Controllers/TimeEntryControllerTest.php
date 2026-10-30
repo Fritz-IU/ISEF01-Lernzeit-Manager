@@ -37,7 +37,7 @@ final class TimeEntryControllerTest extends TestCase
         'parent_end_date'   => '2027-02-28',
     ];
 
-    /** Geplante Lerneinheit zu Modul 5 */
+    /** Geplante Lerneinheit zu Modul 5 am 28.10.2026 */
     private const LEARNING_SLOT = [
         'id'              => 6,
         'user_id'         => self::USER_ID,
@@ -46,7 +46,7 @@ final class TimeEntryControllerTest extends TestCase
         'start_time'      => '16:00:00',
         'end_time'        => '18:00:00',
         'notes'           => 'Übungsaufgaben zu Round Robin',
-        'is_completed'    => 1,
+        'is_completed'    => 0,
     ];
 
     private TimeEntryDAO&MockObject $dao;
@@ -67,8 +67,8 @@ final class TimeEntryControllerTest extends TestCase
     private static function nachbuchungEingabe(array $overrides = []): array
     {
         return array_merge([
-            'monthly_goal_id'  => '5',
             'entry_date'       => '2026-10-28',
+            'monthly_goal_id'  => '5',
             'duration_hours'   => '1',
             'duration_minutes' => '30',
             'note'             => 'Scheduling-Aufgaben wiederholt',
@@ -107,7 +107,7 @@ final class TimeEntryControllerTest extends TestCase
     }
 
     // ------------------------------------------------------------------
-    // formatDurationSeconds
+    // formatDurationSeconds & formatLearningSlotOptionLabel
     // ------------------------------------------------------------------
 
     /**
@@ -131,6 +131,29 @@ final class TimeEntryControllerTest extends TestCase
     public function formatiertSekundenAlsLesbareDauer(int $seconds, string $expected): void
     {
         self::assertSame($expected, TimeEntryController::formatDurationSeconds($seconds));
+    }
+
+    #[Test]
+    public function formatiertLerneinheitAlsAuswahltext(): void
+    {
+        $offenerSlot = [
+            'start_time'       => '14:00:00',
+            'end_time'         => '15:30:00',
+            'duration_minutes' => 90,
+            'notes'            => 'Kapitel 3 lesen',
+            'is_completed'     => 0,
+        ];
+        self::assertSame(
+            '14:00 – 15:30 Uhr (1 Std. 30 Min.) · Kapitel 3 lesen',
+            TimeEntryController::formatLearningSlotOptionLabel($offenerSlot)
+        );
+
+        $erledigterSlot = $offenerSlot;
+        $erledigterSlot['is_completed'] = 1;
+        self::assertSame(
+            '14:00 – 15:30 Uhr (1 Std. 30 Min.) · Kapitel 3 lesen [bereits erledigt]',
+            TimeEntryController::formatLearningSlotOptionLabel($erledigterSlot)
+        );
     }
 
     // ------------------------------------------------------------------
@@ -168,6 +191,7 @@ final class TimeEntryControllerTest extends TestCase
         self::assertSame('1 Std. 30 Min.', $result['formatted_duration']);
         self::assertSame('Scheduling-Aufgaben wiederholt', $result['note']);
         self::assertNull($result['learning_slot_id']);
+        self::assertFalse($result['slot_completed']);
     }
 
     #[Test]
@@ -192,7 +216,7 @@ final class TimeEntryControllerTest extends TestCase
     }
 
     #[Test]
-    public function akzeptiertNachbuchungMitVerknuepfterLerneinheit(): void
+    public function haktVerknuepfteLerneinheitAutomatischAlsErledigtAb(): void
     {
         $this->daoLiefertModul();
         $this->dao->method('findLearningSlotByIdAndUserId')->willReturnCallback(
@@ -201,13 +225,24 @@ final class TimeEntryControllerTest extends TestCase
                 : null
         );
 
-        $parsed = $this->controller->validateAndParseManualEntryInput(
+        $this->dao->expects(self::once())
+            ->method('createManualEntry')
+            ->with(self::USER_ID, 5, '2026-10-28', 5400, 'Scheduling-Aufgaben wiederholt', 6)
+            ->willReturn(21);
+
+        $this->dao->expects(self::once())
+            ->method('markLearningSlotCompleted')
+            ->with(6, self::USER_ID)
+            ->willReturn(true);
+
+        $result = $this->controller->createManualEntry(
             self::USER_ID,
             self::nachbuchungEingabe(['learning_slot_id' => '6']),
             self::FIXED_TODAY
         );
 
-        self::assertSame(6, $parsed['learning_slot_id']);
+        self::assertSame(6, $result['learning_slot_id']);
+        self::assertTrue($result['slot_completed']);
     }
 
     /**
@@ -247,6 +282,21 @@ final class TimeEntryControllerTest extends TestCase
             fn () => $this->controller->validateAndParseManualEntryInput(
                 self::USER_ID,
                 self::nachbuchungEingabe(['monthly_goal_id' => '999']),
+                self::FIXED_TODAY
+            ),
+            'monthly_goal_id'
+        );
+    }
+
+    #[Test]
+    public function lehntModulEinesAnderenMonatsAlsDasDatumAb(): void
+    {
+        $this->daoLiefertModul(); // Modul 5 gehört zu '2026-10'
+
+        $this->erwartetValidierungsfehler(
+            fn () => $this->controller->validateAndParseManualEntryInput(
+                self::USER_ID,
+                self::nachbuchungEingabe(['entry_date' => '2026-09-15']),
                 self::FIXED_TODAY
             ),
             'monthly_goal_id'
@@ -364,12 +414,34 @@ final class TimeEntryControllerTest extends TestCase
             'id'              => 8,
             'user_id'         => self::USER_ID,
             'monthly_goal_id' => 4, // anderes Modul als 5
+            'slot_date'       => '2026-10-28',
         ]);
 
         $this->erwartetValidierungsfehler(
             fn () => $this->controller->validateAndParseManualEntryInput(
                 self::USER_ID,
                 self::nachbuchungEingabe(['learning_slot_id' => '8']),
+                self::FIXED_TODAY
+            ),
+            'learning_slot_id'
+        );
+    }
+
+    #[Test]
+    public function lehntLerneinheitEinesAnderenTagesAb(): void
+    {
+        $this->daoLiefertModul();
+        $this->dao->method('findLearningSlotByIdAndUserId')->willReturn([
+            'id'              => 6,
+            'user_id'         => self::USER_ID,
+            'monthly_goal_id' => 5,
+            'slot_date'       => '2026-10-23', // anderes Datum als 2026-10-28
+        ]);
+
+        $this->erwartetValidierungsfehler(
+            fn () => $this->controller->validateAndParseManualEntryInput(
+                self::USER_ID,
+                self::nachbuchungEingabe(['learning_slot_id' => '6']),
                 self::FIXED_TODAY
             ),
             'learning_slot_id'
@@ -503,15 +575,14 @@ final class TimeEntryControllerTest extends TestCase
         self::assertSame('3. Semester – Informatik', $grouped[0]['goal_title']);
         self::assertCount(2, $grouped[0]['items']);
         self::assertSame(
-            '[Okt 2026] Modul Datenbanken (1,5 / 15,0 h)',
+            'Modul Datenbanken (1,5 / 15,0 h)',
             $grouped[0]['items'][1]['option_label']
         );
 
         self::assertSame(2, $grouped[1]['goal_id']);
         self::assertSame(
-            '[Mär 2027] Modul IT-Sicherheit (0,0 / 15,0 h)',
+            'Modul IT-Sicherheit (0,0 / 15,0 h)',
             $grouped[1]['items'][0]['option_label']
         );
     }
 }
-

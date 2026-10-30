@@ -72,10 +72,13 @@ try {
 
     if ($action === 'create_manual_entry' || $action === 'create') {
         $entry = $timeEntryController->createManualEntry($userId, $input);
+        $slotSuffix = !empty($entry['slot_completed'])
+            ? ' und die geplante Lerneinheit als erledigt markiert.'
+            : '.';
         $response = [
-            'message' => 'Die Lernzeit (' . $entry['formatted_duration'] . ') für „' . $entry['monthly_goal_title'] . '“ wurde erfolgreich nachgebucht.',
+            'message'  => 'Die Lernzeit (' . $entry['formatted_duration'] . ') für „' . $entry['monthly_goal_title'] . '“ wurde erfolgreich nachgebucht' . $slotSuffix,
             'entry_id' => $entry['entry_id'],
-            'entry' => $entry,
+            'entry'    => $entry,
         ];
     } elseif ($action === 'update_manual_entry') {
         $entryId = isset($input['entry_id']) && is_scalar($input['entry_id']) ? (int) $input['entry_id'] : 0;

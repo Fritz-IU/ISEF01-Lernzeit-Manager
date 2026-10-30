@@ -33,6 +33,7 @@ $manualModalDao = new TimeEntryDAO($manualModalDb);
 $manualModalController = new TimeEntryController($manualModalDao);
 
 $manualTimeGoalGroups = $manualModalController->getSelectableGoalsGroupedBySemester($manualModalUserId);
+$manualTimeLearningSlots = $manualModalController->getSelectableLearningSlots($manualModalUserId);
 $hasSelectableManualGoals = !empty($manualTimeGoalGroups);
 $defaultManualEntryDate = date('Y-m-d');
 
@@ -55,7 +56,6 @@ if (!isset($extraScripts) || !is_string($extraScripts)) {
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($manualModalCsrfToken, ENT_QUOTES) ?>">
                 <input type="hidden" name="action" id="manual_time_action" value="create_manual_entry">
                 <input type="hidden" name="entry_id" id="manual_time_entry_id" value="">
-                <input type="hidden" name="learning_slot_id" id="manual_time_learning_slot_id" value="">
 
                 <div class="modal-header">
                     <h5 class="modal-title fw-bold" id="manualTimeModalLabel">Lernzeit nachbuchen</h5>
@@ -76,31 +76,7 @@ if (!isset($extraScripts) || !is_string($extraScripts)) {
                             </a>
                         </div>
                     <?php else: ?>
-                        <div class="mb-3">
-                            <label for="manual_time_monthly_goal_id" class="form-label fw-semibold">
-                                Zugeordnetes Ziel (Modul) <span class="text-danger">*</span>
-                            </label>
-                            <select
-                                class="form-select"
-                                id="manual_time_monthly_goal_id"
-                                name="monthly_goal_id"
-                                required>
-                                <option value="" disabled selected>Bitte Modul auswählen…</option>
-                                <?php foreach ($manualTimeGoalGroups as $group): ?>
-                                    <optgroup label="<?= htmlspecialchars((string) $group['goal_title'], ENT_QUOTES) ?>">
-                                        <?php foreach ($group['items'] as $goalItem): ?>
-                                            <option value="<?= (int) $goalItem['id'] ?>">
-                                                <?= htmlspecialchars((string) $goalItem['option_label']) ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </optgroup>
-                                <?php endforeach; ?>
-                            </select>
-                            <div class="form-text">
-                                Wähle das Modul aus, auf das die geleistete Lernzeit angerechnet werden soll.
-                            </div>
-                        </div>
-
+                        <!-- 1. Lerntag zuerst wählen, damit die Modulauswahl auf den passenden Monat gefiltert wird -->
                         <div class="mb-3">
                             <label for="manual_time_entry_date" class="form-label fw-semibold">
                                 Lerntag (Datum) <span class="text-danger">*</span>
@@ -119,6 +95,63 @@ if (!isset($extraScripts) || !is_string($extraScripts)) {
                             </div>
                         </div>
 
+                        <!-- 2. Zugeordnetes Ziel (Modul), automatisch gefiltert auf den Monat des Lerntags -->
+                        <div class="mb-3">
+                            <label for="manual_time_monthly_goal_id" class="form-label fw-semibold">
+                                Zugeordnetes Ziel (Modul) <span class="text-danger">*</span>
+                            </label>
+                            <select
+                                class="form-select"
+                                id="manual_time_monthly_goal_id"
+                                name="monthly_goal_id"
+                                required>
+                                <option value="" id="manual_time_goal_placeholder" disabled selected>Bitte Modul auswählen…</option>
+                                <?php foreach ($manualTimeGoalGroups as $group): ?>
+                                    <optgroup label="<?= htmlspecialchars((string) $group['goal_title'], ENT_QUOTES) ?>">
+                                        <?php foreach ($group['items'] as $goalItem): ?>
+                                            <option
+                                                value="<?= (int) $goalItem['id'] ?>"
+                                                data-plan-month="<?= htmlspecialchars((string) $goalItem['plan_month'], ENT_QUOTES) ?>"
+                                                data-month-label="<?= htmlspecialchars((string) $goalItem['month_label_short'], ENT_QUOTES) ?>">
+                                                <?= htmlspecialchars((string) $goalItem['option_label']) ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </optgroup>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="form-text" id="manual_time_goal_hint">
+                                Es werden die Module angezeigt, die für den Monat des gewählten Lerntags geplant sind.
+                            </div>
+                        </div>
+
+                        <!-- 3. Optionale Zuordnung zu einer für diesen Tag geplanten Lerneinheit (hakt diese automatisch ab) -->
+                        <div class="mb-3 d-none" id="manual_time_slot_wrapper">
+                            <label for="manual_time_learning_slot_id" class="form-label fw-semibold">
+                                Geplante Lerneinheit an diesem Tag <span class="text-muted fw-normal small">(optional abhaken)</span>
+                            </label>
+                            <select
+                                class="form-select"
+                                id="manual_time_learning_slot_id"
+                                name="learning_slot_id">
+                                <option value="">Ohne Zuordnung (zusätzliche / ungeplante Lernzeit)</option>
+                                <?php foreach ($manualTimeLearningSlots as $slotItem): ?>
+                                    <option
+                                        value="<?= (int) $slotItem['id'] ?>"
+                                        data-slot-date="<?= htmlspecialchars((string) $slotItem['slot_date'], ENT_QUOTES) ?>"
+                                        data-monthly-goal-id="<?= (int) $slotItem['monthly_goal_id'] ?>"
+                                        data-duration-minutes="<?= (int) $slotItem['duration_minutes'] ?>"
+                                        data-is-completed="<?= (int) $slotItem['is_completed'] ?>"
+                                        data-notes="<?= htmlspecialchars((string) ($slotItem['notes'] ?? ''), ENT_QUOTES) ?>">
+                                        <?= htmlspecialchars((string) $slotItem['option_label']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="form-text" id="manual_time_slot_hint">
+                                Wenn du eine geplante Lerneinheit auswählst, wird sie beim Speichern automatisch als erledigt abgehakt.
+                            </div>
+                        </div>
+
+                        <!-- 4. Geleistete Netto-Dauer -->
                         <div class="mb-2">
                             <label class="form-label fw-semibold mb-1">
                                 Geleistete Lernzeit (Netto-Dauer) <span class="text-danger">*</span>
@@ -176,6 +209,7 @@ if (!isset($extraScripts) || !is_string($extraScripts)) {
                             </div>
                         </div>
 
+                        <!-- 5. Optionale Notiz -->
                         <div class="mb-2">
                             <label for="manual_time_note" class="form-label fw-semibold">
                                 Notiz <span class="text-muted fw-normal small">(optional)</span>
