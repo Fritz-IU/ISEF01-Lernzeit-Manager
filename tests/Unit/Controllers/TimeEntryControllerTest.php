@@ -154,6 +154,14 @@ final class TimeEntryControllerTest extends TestCase
             '14:00–15:30 Uhr · 1 Std. 30 Min. · Kapitel 3 lesen · erledigt',
             TimeEntryController::formatLearningSlotOptionLabel($erledigterSlot)
         );
+
+        $unterschrittenerSlot = $erledigterSlot;
+        $unterschrittenerSlot['planned_seconds'] = 5400;
+        $unterschrittenerSlot['tracked_seconds'] = 3600;
+        self::assertSame(
+            '14:00–15:30 Uhr · 1 Std. 30 Min. · Kapitel 3 lesen · 0,5 h fehlen',
+            TimeEntryController::formatLearningSlotOptionLabel($unterschrittenerSlot)
+        );
     }
 
     // ------------------------------------------------------------------

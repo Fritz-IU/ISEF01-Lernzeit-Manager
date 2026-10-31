@@ -71,6 +71,7 @@ Manuelle Buchungen nutzen die vorbereitete Tabelle `time_entries` aus Issue #29:
    * Muss zum Monat des gewählten Datums gehören (Konsistenz zwischen Lerntag und Modulplanung).
 3. **Geplante Lerneinheit (`learning_slot_id`):**
    * Optional. Gehört die gewählte Einheit zum selben Modul und zum selben Tag, wird sie verknüpft und beim Speichern via `TimeEntryDAO::markLearningSlotCompleted()` automatisch als erledigt markiert (`is_completed = 1`).
+   * **Farbliche Markierung bei Unterschreitung:** War die auf die Lerneinheit gebuchte Zeit (`SUM(tracked_seconds)`) kürzer als die geplante Dauer des Timeslots, erhält die Einheit in der Wochenansicht (`goals.php?tab=week`) statt eines grünen Häkchens ein **gelbes Häkchen** (`.slot-check-btn.is-partial`) sowie ein gelbes Badge mit der nicht erreichten Lernzeit (z. B. `0,5 h fehlen`). Auch im Nachbuchungs-Modal wird beim Unterschreiten der geplanten Dauer live ein entsprechender gelber Hinweis angezeigt.
 4. **Dauer (`duration_hours`, `duration_minutes`):**
    * Stunden: Ganzzahl zwischen 0 und 24.
    * Minuten: Ganzzahl zwischen 0 und 59.

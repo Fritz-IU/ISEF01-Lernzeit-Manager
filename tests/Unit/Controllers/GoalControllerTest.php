@@ -626,4 +626,106 @@ final class GoalControllerTest extends TestCase
         self::assertSame([], $data['monthly_goals']);
         self::assertSame(0, $data['total_planned_all_months']);
     }
+
+    // ------------------------------------------------------------------
+    // buildWeeklyPlanningData – Unterschreitung geplanter Lerneinheiten
+    // ------------------------------------------------------------------
+
+    #[Test]
+    public function markiertNachgebuchteLerneinheitMitWenigerZeitAlsUnterschritten(): void
+    {
+        $this->dao->method('findAllMonthlyBudgetsByUserId')->willReturn([]);
+        $this->dao->method('getMonthlyPlannedHoursByUserId')->willReturn(['2026-10' => 18.0]);
+        $this->dao->method('findMonthlyGoalsByUserId')->willReturn([
+            [
+                'id'                  => 3,
+                'goal_id'             => 1,
+                'plan_month'          => '2026-10',
+                'year_month'          => '2026-10',
+                'title'               => 'Modul Software Engineering',
+                'planned_hours'       => '18.00',
+                'parent_target_hours' => '150.00',
+            ],
+        ]);
+
+        // Drei Slots am 28.10.2026 (KW 44):
+        // 1) Nachgebucht mit 1,5 h statt geplanten 2,0 h -> unterschritten (0,5 h fehlen)
+        // 2) Nachgebucht mit vollen 2,0 h -> nicht unterschritten
+        // 3) Direkt ohne Nachbuchung abgehakt (tracked_seconds = 0) -> nicht unterschritten
+        $this->dao->method('findLearningSlotsByDateRange')->willReturn([
+            [
+                'id'                         => 101,
+                'user_id'                    => self::USER_ID,
+                'monthly_goal_id'            => 3,
+                'slot_date'                  => '2026-10-28',
+                'start_time'                 => '10:00:00',
+                'end_time'                   => '12:00:00',
+                'notes'                      => 'Teilweise geschafft',
+                'is_completed'               => 1,
+                'planned_seconds'            => 7200,
+                'duration_hours'             => 2.0,
+                'tracked_seconds'            => 5400,
+                'monthly_goal_title'         => 'Modul Software Engineering',
+                'plan_month'                 => '2026-10',
+                'monthly_goal_planned_hours' => 18.0,
+                'goal_id'                    => 1,
+                'parent_goal_title'          => '3. Semester',
+            ],
+            [
+                'id'                         => 102,
+                'user_id'                    => self::USER_ID,
+                'monthly_goal_id'            => 3,
+                'slot_date'                  => '2026-10-28',
+                'start_time'                 => '14:00:00',
+                'end_time'                   => '16:00:00',
+                'notes'                      => 'Vollständig geschafft',
+                'is_completed'               => 1,
+                'planned_seconds'            => 7200,
+                'duration_hours'             => 2.0,
+                'tracked_seconds'            => 7200,
+                'monthly_goal_title'         => 'Modul Software Engineering',
+                'plan_month'                 => '2026-10',
+                'monthly_goal_planned_hours' => 18.0,
+                'goal_id'                    => 1,
+                'parent_goal_title'          => '3. Semester',
+            ],
+            [
+                'id'                         => 103,
+                'user_id'                    => self::USER_ID,
+                'monthly_goal_id'            => 3,
+                'slot_date'                  => '2026-10-28',
+                'start_time'                 => '17:00:00',
+                'end_time'                   => '18:00:00',
+                'notes'                      => 'Manuell abgehakt',
+                'is_completed'               => 1,
+                'planned_seconds'            => 3600,
+                'duration_hours'             => 1.0,
+                'tracked_seconds'            => 0,
+                'monthly_goal_title'         => 'Modul Software Engineering',
+                'plan_month'                 => '2026-10',
+                'monthly_goal_planned_hours' => 18.0,
+                'goal_id'                    => 1,
+                'parent_goal_title'          => '3. Semester',
+            ],
+        ]);
+
+        $monthlyPlanning = $this->controller->buildMonthlyPlanningData(self::USER_ID, self::lernziele(), '2026-10');
+        $weeklyPlanning = $this->controller->buildWeeklyPlanningData(self::USER_ID, $monthlyPlanning, '2026-W44', '2026-10-28');
+
+        // Mittwoch (Index 2) ist der 28.10.2026
+        $wednesdaySlots = $weeklyPlanning['days'][2]['slots'];
+        self::assertCount(3, $wednesdaySlots);
+
+        self::assertTrue($wednesdaySlots[0]['is_under_target']);
+        self::assertSame(1800, $wednesdaySlots[0]['missing_seconds']);
+        self::assertSame(0.5, $wednesdaySlots[0]['missing_hours']);
+
+        self::assertFalse($wednesdaySlots[1]['is_under_target']);
+        self::assertSame(0, $wednesdaySlots[1]['missing_seconds']);
+        self::assertSame(0.0, $wednesdaySlots[1]['missing_hours']);
+
+        self::assertFalse($wednesdaySlots[2]['is_under_target']);
+        self::assertSame(0, $wednesdaySlots[2]['missing_seconds']);
+        self::assertSame(0.0, $wednesdaySlots[2]['missing_hours']);
+    }
 }

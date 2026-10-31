@@ -144,16 +144,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (totalMinutes <= 0) {
       durationHint.className = 'form-text text-danger mt-1';
       durationHint.textContent = 'Bitte gib eine Dauer von mindestens einer Minute an.';
+      updateSlotHintText();
       return;
     }
 
     if (totalMinutes > 1440) {
       durationHint.className = 'form-text text-danger mt-1';
       durationHint.textContent = 'Maximal 24 Stunden pro Eintrag möglich.';
+      updateSlotHintText();
       return;
     }
 
     durationHint.className = 'form-text d-none';
+    updateSlotHintText();
   }
 
   /**
@@ -191,6 +194,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isCompleted) {
       slotHint.className = 'form-text text-muted';
       slotHint.textContent = 'Diese Lerneinheit ist bereits als erledigt markiert.';
+      return;
+    }
+
+    const slotMinutes = parseInt(selectedOpt.getAttribute('data-duration-minutes') || '0', 10);
+    const rawHours = hoursInput ? parseInt(hoursInput.value, 10) : 0;
+    const rawMinutes = minutesInput ? parseInt(minutesInput.value, 10) : 0;
+    const hours = Number.isNaN(rawHours) || rawHours < 0 ? 0 : rawHours;
+    const minutes = Number.isNaN(rawMinutes) || rawMinutes < 0 ? 0 : rawMinutes;
+    const totalMinutes = hours * 60 + minutes;
+
+    if (totalMinutes > 0 && slotMinutes > 0 && totalMinutes < slotMinutes) {
+      const missingHours = Math.max(0.1, Math.round(((slotMinutes - totalMinutes) / 60) * 10) / 10);
+      const missingFormatted = missingHours.toFixed(1).replace('.', ',');
+      slotHint.className = 'form-text text-warning-emphasis fw-semibold';
+      slotHint.textContent = `${missingFormatted} h weniger als geplant`;
     } else {
       slotHint.className = 'form-text text-success fw-semibold';
       slotHint.textContent = '✓ Wird beim Speichern als erledigt abgehakt.';
@@ -251,7 +269,10 @@ document.addEventListener('DOMContentLoaded', () => {
       slotSelect.value = previousSlotId;
     } else if (autoSelectOpenSlot && firstOpenOption) {
       slotSelect.value = firstOpenOption.value;
-      const slotMinutes = parseInt(firstOpenOption.getAttribute('data-duration-minutes') || '0', 10);
+      const slotMinutes = parseInt(
+        firstOpenOption.getAttribute('data-duration-minutes') || '0',
+        10
+      );
       if (slotMinutes > 0) {
         setDurationFromMinutes(slotMinutes);
       }
@@ -279,7 +300,8 @@ document.addEventListener('DOMContentLoaded', () => {
     goalSelect.querySelectorAll('optgroup').forEach((group) => {
       let visibleInGroup = 0;
       group.querySelectorAll('option[data-plan-month]').forEach((opt) => {
-        const matchesMonth = selectedMonth !== '' && opt.getAttribute('data-plan-month') === selectedMonth;
+        const matchesMonth =
+          selectedMonth !== '' && opt.getAttribute('data-plan-month') === selectedMonth;
         opt.hidden = !matchesMonth;
         opt.disabled = !matchesMonth;
 
@@ -317,7 +339,9 @@ document.addEventListener('DOMContentLoaded', () => {
         goalHint.className = 'form-text text-warning-emphasis';
         goalHint.textContent = '';
         goalHint.appendChild(
-          document.createTextNode(`Für ${formatMonthLabel(selectedMonth)} sind noch keine Module angelegt. `)
+          document.createTextNode(
+            `Für ${formatMonthLabel(selectedMonth)} sind noch keine Module angelegt. `
+          )
         );
         const link = document.createElement('a');
         link.href = `goals.php?tab=month&month=${encodeURIComponent(selectedMonth)}`;
@@ -419,7 +443,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const slotId = triggerBtn.getAttribute('data-learning-slot-id') || '';
     const note = triggerBtn.getAttribute('data-note') || '';
 
-    const currentSignature = [entryId, goalId, entryDate, durationMinAttr, trackedSecAttr, slotId].join('|');
+    const currentSignature = [
+      entryId,
+      goalId,
+      entryDate,
+      durationMinAttr,
+      trackedSecAttr,
+      slotId,
+    ].join('|');
 
     // Wenn im vorherigen Versuch ein Validierungsfehler auftrat und derselbe Button erneut geöffnet wird,
     // bleiben die vom Nutzer eingegebenen Werte erhalten (wie bei Issue #21).
@@ -453,7 +484,8 @@ document.addEventListener('DOMContentLoaded', () => {
     filterGoalsBySelectedDate();
 
     if (goalSelect) {
-      const targetOpt = goalId !== '' ? goalSelect.querySelector(`option[value="${CSS.escape(goalId)}"]`) : null;
+      const targetOpt =
+        goalId !== '' ? goalSelect.querySelector(`option[value="${CSS.escape(goalId)}"]`) : null;
       if (targetOpt && !targetOpt.disabled) {
         goalSelect.value = goalId;
       } else {

@@ -427,13 +427,22 @@ class TimeEntryController
         $durationLabel = self::formatDurationSeconds($durationMinutes * 60);
         $notes = trim((string) ($slot['notes'] ?? ''));
         $isCompleted = ((int) ($slot['is_completed'] ?? 0)) === 1;
+        $plannedSeconds = isset($slot['planned_seconds'])
+            ? (int) $slot['planned_seconds']
+            : ($durationMinutes * 60);
+        $trackedSeconds = (int) ($slot['tracked_seconds'] ?? 0);
 
         $label = $startTime . '–' . $endTime . ' Uhr · ' . $durationLabel;
         if ($notes !== '') {
             $label .= ' · ' . $notes;
         }
         if ($isCompleted) {
-            $label .= ' · erledigt';
+            if ($trackedSeconds > 0 && $trackedSeconds < $plannedSeconds) {
+                $missingHours = max(0.1, round(($plannedSeconds - $trackedSeconds) / 3600.0, 1));
+                $label .= ' · ' . number_format($missingHours, 1, ',', '.') . ' h fehlen';
+            } else {
+                $label .= ' · erledigt';
+            }
         }
 
         return $label;

@@ -329,7 +329,7 @@ class TimeEntryDAO
 
     /**
      * Liefert alle geplanten Lerneinheiten (learning_slots) eines Nutzers für die Auswahl im Nachbuchungs-Modal,
-     * inklusive der geplanten Dauer in Minuten.
+     * inklusive der geplanten Dauer in Minuten sowie der bereits darauf gebuchten Sekunden.
      *
      * @param int $userId ID des Nutzers
      * @return list<array<string, mixed>>
@@ -344,9 +344,16 @@ class TimeEntryDAO
                        ls.end_time,
                        ls.notes,
                        ls.is_completed,
-                       GREATEST(1, ROUND(TIME_TO_SEC(TIMEDIFF(ls.end_time, ls.start_time)) / 60)) AS duration_minutes
+                       TIME_TO_SEC(TIMEDIFF(ls.end_time, ls.start_time)) AS planned_seconds,
+                       GREATEST(1, ROUND(TIME_TO_SEC(TIMEDIFF(ls.end_time, ls.start_time)) / 60)) AS duration_minutes,
+                       COALESCE(SUM(te.tracked_seconds), 0) AS tracked_seconds
                 FROM learning_slots ls
+                LEFT JOIN time_entries te
+                    ON te.learning_slot_id = ls.id
+                   AND te.user_id = ls.user_id
+                   AND (te.source = 'manual' OR te.ended_at IS NOT NULL)
                 WHERE ls.user_id = :user_id
+                GROUP BY ls.id, ls.user_id, ls.monthly_goal_id, ls.slot_date, ls.start_time, ls.end_time, ls.notes, ls.is_completed
                 ORDER BY ls.slot_date DESC, ls.start_time ASC, ls.id ASC";
 
         $stmt = $this->db->prepare($sql);
