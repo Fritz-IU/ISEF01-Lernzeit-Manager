@@ -1,0 +1,226 @@
+<?php
+// includes/manual-time-modal.php
+// Wiederverwendbares Bootstrap-Modal für die manuelle Zeitnachbuchung.
+
+declare(strict_types=1);
+
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../src/Classes/User.php';
+require_once __DIR__ . '/../src/DAO/TimeEntryDAO.php';
+require_once __DIR__ . '/../src/Controllers/TimeEntryController.php';
+
+use Classes\User;
+use Controllers\TimeEntryController;
+use DAO\TimeEntryDAO;
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+if (!User::isLoggedIn()) {
+    return;
+}
+
+if (empty($_SESSION['csrf_token']) || !is_string($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$manualModalCsrfToken = $_SESSION['csrf_token'];
+
+$manualModalUserId = (int) $_SESSION['user_id'];
+$manualModalDb = isset($db) && $db instanceof PDO ? $db : getDatabaseConnection();
+$manualModalDao = new TimeEntryDAO($manualModalDb);
+$manualModalController = new TimeEntryController($manualModalDao);
+
+$manualTimeGoalGroups = $manualModalController->getSelectableGoalsGroupedBySemester($manualModalUserId);
+$manualTimeLearningSlots = $manualModalController->getSelectableLearningSlots($manualModalUserId);
+$hasSelectableManualGoals = !empty($manualTimeGoalGroups);
+$defaultManualEntryDate = date('Y-m-d');
+
+// Zugehöriges JavaScript automatisch für includes/footer.php vormerken
+$manualTimeJsPath = __DIR__ . '/../assets/js/manual-time.js';
+$manualTimeJsVersion = is_file($manualTimeJsPath) ? (string) filemtime($manualTimeJsPath) : '1';
+$manualTimeScriptTag = '<script src="assets/js/manual-time.js?v=' . $manualTimeJsVersion . '"></script>';
+if (!isset($extraScripts) || !is_string($extraScripts)) {
+    $extraScripts = $manualTimeScriptTag;
+} elseif (!str_contains($extraScripts, 'assets/js/manual-time.js')) {
+    $extraScripts .= "\n" . $manualTimeScriptTag;
+}
+?>
+
+<!-- Modal: Lernzeit manuell nachbuchen -->
+<div class="modal fade" id="manualTimeModal" tabindex="-1" aria-labelledby="manualTimeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form action="api/time-entries.php" method="POST" id="manualTimeForm" novalidate>
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($manualModalCsrfToken, ENT_QUOTES) ?>">
+                <input type="hidden" name="action" id="manual_time_action" value="create_manual_entry">
+                <input type="hidden" name="entry_id" id="manual_time_entry_id" value="">
+
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="manualTimeModalLabel">Lernzeit nachbuchen</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div id="manual-time-alert" class="alert alert-danger d-none" role="alert"></div>
+
+                    <?php if (!$hasSelectableManualGoals): ?>
+                        <div class="alert alert-light border mb-0">
+                            <strong class="text-dark d-block mb-1">Noch keine Module vorhanden</strong>
+                            <p class="text-muted small mb-3">
+                                Lege zuerst unter „Planen“ ein Semester und mindestens ein Modul an, um Lernzeiten nachbuchen zu können.
+                            </p>
+                            <a href="goals.php?tab=month" class="btn btn-sm btn-primary">
+                                Zur Planung
+                            </a>
+                        </div>
+                    <?php else: ?>
+                        <!-- 1. Datum -->
+                        <div class="mb-3">
+                            <label for="manual_time_entry_date" class="form-label fw-semibold">
+                                Datum <span class="text-danger">*</span>
+                            </label>
+                            <input
+                                type="date"
+                                class="form-control"
+                                id="manual_time_entry_date"
+                                name="entry_date"
+                                value="<?= htmlspecialchars($defaultManualEntryDate, ENT_QUOTES) ?>"
+                                max="<?= htmlspecialchars($defaultManualEntryDate, ENT_QUOTES) ?>"
+                                data-default="<?= htmlspecialchars($defaultManualEntryDate, ENT_QUOTES) ?>"
+                                required>
+                        </div>
+
+                        <!-- 2. Modul -->
+                        <div class="mb-3">
+                            <label for="manual_time_monthly_goal_id" class="form-label fw-semibold">
+                                Modul <span class="text-danger">*</span>
+                            </label>
+                            <select
+                                class="form-select"
+                                id="manual_time_monthly_goal_id"
+                                name="monthly_goal_id"
+                                required>
+                                <option value="" id="manual_time_goal_placeholder" disabled selected>Bitte Modul auswählen…</option>
+                                <?php foreach ($manualTimeGoalGroups as $group): ?>
+                                    <optgroup label="<?= htmlspecialchars((string) $group['goal_title'], ENT_QUOTES) ?>">
+                                        <?php foreach ($group['items'] as $goalItem): ?>
+                                            <option
+                                                value="<?= (int) $goalItem['id'] ?>"
+                                                data-plan-month="<?= htmlspecialchars((string) $goalItem['plan_month'], ENT_QUOTES) ?>"
+                                                data-month-label="<?= htmlspecialchars((string) $goalItem['month_label_short'], ENT_QUOTES) ?>">
+                                                <?= htmlspecialchars((string) $goalItem['option_label']) ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </optgroup>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="form-text d-none" id="manual_time_goal_hint"></div>
+                        </div>
+
+                        <!-- 3. Geplante Lerneinheit am gewählten Tag -->
+                        <div class="mb-3 d-none" id="manual_time_slot_wrapper">
+                            <label for="manual_time_learning_slot_id" class="form-label fw-semibold">
+                                Geplante Lerneinheit
+                            </label>
+                            <select
+                                class="form-select"
+                                id="manual_time_learning_slot_id"
+                                name="learning_slot_id">
+                                <option value="">Keine – als freie Lernzeit buchen</option>
+                                <?php foreach ($manualTimeLearningSlots as $slotItem): ?>
+                                    <option
+                                        value="<?= (int) $slotItem['id'] ?>"
+                                        data-slot-date="<?= htmlspecialchars((string) $slotItem['slot_date'], ENT_QUOTES) ?>"
+                                        data-monthly-goal-id="<?= (int) $slotItem['monthly_goal_id'] ?>"
+                                        data-duration-minutes="<?= (int) $slotItem['duration_minutes'] ?>"
+                                        data-is-completed="<?= (int) $slotItem['is_completed'] ?>"
+                                        data-notes="<?= htmlspecialchars((string) ($slotItem['notes'] ?? ''), ENT_QUOTES) ?>">
+                                        <?= htmlspecialchars((string) $slotItem['option_label']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="form-text" id="manual_time_slot_hint"></div>
+                        </div>
+
+                        <!-- 4. Dauer -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold mb-1">
+                                Dauer <span class="text-danger">*</span>
+                            </label>
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <div class="input-group">
+                                        <input
+                                            type="number"
+                                            class="form-control"
+                                            id="manual_time_duration_hours"
+                                            name="duration_hours"
+                                            min="0"
+                                            max="24"
+                                            step="1"
+                                            value="1"
+                                            data-default="1"
+                                            aria-label="Stunden"
+                                            required>
+                                        <span class="input-group-text">Std.</span>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="input-group">
+                                        <input
+                                            type="number"
+                                            class="form-control"
+                                            id="manual_time_duration_minutes"
+                                            name="duration_minutes"
+                                            min="0"
+                                            max="59"
+                                            step="1"
+                                            value="0"
+                                            data-default="0"
+                                            aria-label="Minuten"
+                                            required>
+                                        <span class="input-group-text">Min.</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex flex-wrap align-items-center gap-1" role="group" aria-label="Schnellauswahl für die Dauer">
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 manual-time-preset-btn" data-quick-minutes="30">0,5 Std.</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 manual-time-preset-btn" data-quick-minutes="60">1 Std.</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 manual-time-preset-btn" data-quick-minutes="90">1,5 Std.</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 manual-time-preset-btn" data-quick-minutes="120">2 Std.</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 manual-time-preset-btn" data-quick-minutes="150">2,5 Std.</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 manual-time-preset-btn" data-quick-minutes="180">3 Std.</button>
+                            </div>
+                            <div class="form-text d-none" id="manual_time_duration_hint"></div>
+                        </div>
+
+                        <!-- 5. Notiz -->
+                        <div class="mb-2">
+                            <label for="manual_time_note" class="form-label fw-semibold">
+                                Notiz
+                            </label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="manual_time_note"
+                                name="note"
+                                maxlength="255"
+                                placeholder="z. B. Kapitel 3 zusammengefasst">
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <?php if ($hasSelectableManualGoals): ?>
+                        <button type="submit" class="btn btn-primary" id="manualTimeSubmitBtn">
+                            Lernzeit speichern
+                        </button>
+                    <?php endif; ?>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

@@ -1117,9 +1117,21 @@ require_once __DIR__ . '/includes/header.php';
                                         <?php foreach ($daySlots as $slot): ?>
                                             <?php
                                             $slotCompleted = (int) $slot['is_completed'] === 1;
+                                            $slotUnderTarget = (bool) ($slot['is_under_target'] ?? false);
+                                            $slotMissingHours = max(0.1, round((float) ($slot['missing_hours'] ?? 0.0), 1));
                                             $slotOverlap = (bool) $slot['has_overlap'];
                                             $slotDur = (float) $slot['duration_hours'];
                                             $slotTimeRange = $slot['start_time_formatted'] . ' – ' . $slot['end_time_formatted'] . ' Uhr';
+                                            if ($slotUnderTarget) {
+                                                $slotCheckClass = 'is-partial';
+                                                $slotCheckTitle = 'Teilweise erledigt – als offen markieren';
+                                            } elseif ($slotCompleted) {
+                                                $slotCheckClass = 'is-completed';
+                                                $slotCheckTitle = 'Erledigt – als offen markieren';
+                                            } else {
+                                                $slotCheckClass = '';
+                                                $slotCheckTitle = 'Als erledigt abhaken';
+                                            }
                                             ?>
                                             <div class="p-2 px-3 border rounded slot-item-card d-flex align-items-start justify-content-between gap-3 <?= $slotOverlap ? 'bg-warning-subtle border-warning' : ($slotCompleted ? 'bg-light text-muted' : 'bg-white') ?>">
                                                 <div class="d-flex align-items-start gap-3 flex-grow-1 min-w-0">
@@ -1130,9 +1142,9 @@ require_once __DIR__ . '/includes/header.php';
                                                         <input type="hidden" name="slot_id" value="<?= (int) $slot['id'] ?>">
                                                         <button
                                                             type="submit"
-                                                            class="slot-check-btn <?= $slotCompleted ? 'is-completed' : '' ?>"
-                                                            title="<?= $slotCompleted ? 'Erledigt – als offen markieren' : 'Als erledigt abhaken' ?>"
-                                                            aria-label="<?= $slotCompleted ? 'Erledigt – als offen markieren' : 'Als erledigt abhaken' ?>">
+                                                            class="slot-check-btn <?= $slotCheckClass ?>"
+                                                            title="<?= htmlspecialchars($slotCheckTitle, ENT_QUOTES) ?>"
+                                                            aria-label="<?= htmlspecialchars($slotCheckTitle, ENT_QUOTES) ?>">
                                                             <?php if ($slotCompleted): ?>
                                                                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16">
                                                                     <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z" />
@@ -1148,6 +1160,11 @@ require_once __DIR__ . '/includes/header.php';
                                                                 <?= htmlspecialchars($slotTimeRange) ?>
                                                             </span>
                                                             <span class="text-muted">&middot; <?= number_format($slotDur, 1, ',', '.') ?> h</span>
+                                                            <?php if ($slotUnderTarget): ?>
+                                                                <span class="badge text-bg-warning" style="font-size: 0.68rem;" title="Die nachgebuchte Lernzeit war kürzer als für diese Einheit geplant.">
+                                                                    <?= number_format($slotMissingHours, 1, ',', '.') ?> h fehlen
+                                                                </span>
+                                                            <?php endif; ?>
                                                             <?php if ($slotOverlap): ?>
                                                                 <span class="badge text-bg-warning" style="font-size: 0.68rem;" title="Diese Lerneinheit überschneidet sich zeitlich mit einer anderen an diesem Tag.">
                                                                     Überschneidung

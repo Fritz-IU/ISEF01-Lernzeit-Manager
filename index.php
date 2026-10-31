@@ -34,6 +34,11 @@ if ($displayName === '') {
 $studyProgram = $user['study_program'] ?? null;
 $semester = $user['semester'] ?? null;
 
+$flashSuccess = isset($_SESSION['flash_success']) && is_string($_SESSION['flash_success'])
+    ? $_SESSION['flash_success']
+    : '';
+unset($_SESSION['flash_success']);
+
 $pageTitle = 'Dashboard – Lernzeit-Manager';
 $activeNav = 'dashboard';
 
@@ -42,6 +47,13 @@ require_once __DIR__ . '/includes/header.php';
 
 <div class="row justify-content-center">
     <div class="col-lg-8">
+        <?php if ($flashSuccess !== ''): ?>
+            <div class="alert alert-success alert-dismissible fade show shadow-sm mb-4" role="alert">
+                <?= htmlspecialchars($flashSuccess) ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Schließen"></button>
+            </div>
+        <?php endif; ?>
+
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-body p-4 p-md-5 text-center">
                 <h2 class="card-title h3 mb-3 text-primary">Willkommen, <?= htmlspecialchars((string) $displayName) ?>!</h2>
@@ -69,7 +81,14 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
 
                 <div class="d-flex justify-content-center gap-3 flex-wrap">
-                    <a href="goals.php" class="btn btn-primary px-4">
+                    <button
+                        type="button"
+                        class="btn btn-primary px-4"
+                        data-bs-toggle="modal"
+                        data-bs-target="#manualTimeModal">
+                        + Lernzeit nachbuchen
+                    </button>
+                    <a href="goals.php" class="btn btn-outline-primary px-4">
                         Planen
                     </a>
                     <a href="profile.php" class="btn btn-outline-secondary">
@@ -82,5 +101,6 @@ require_once __DIR__ . '/includes/header.php';
 </div>
 
 <?php
+require_once __DIR__ . '/includes/manual-time-modal.php';
 require_once __DIR__ . '/includes/footer.php';
 ?>

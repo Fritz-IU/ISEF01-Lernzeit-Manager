@@ -279,6 +279,16 @@ main {
   border-color: var(--bs-success);
 }
 
+.slot-check-btn.is-partial {
+  background-color: var(--bs-warning);
+  border-color: var(--bs-warning);
+  color: #212529;
+}
+
+.slot-check-btn.is-partial:hover {
+  border-color: #d39e00;
+}
+
 .row-action-menu-btn:hover {
   color: var(--bs-dark) !important;
   background-color: rgba(0, 0, 0, 0.05);

@@ -541,7 +541,8 @@ class GoalDAO
 
     /**
      * Liefert alle Lern-Timeslots eines Nutzers in einem Datumszeitraum,
-     * inklusive der Angaben des Zwischenziels und des übergeordneten 6-Monats-Ziels.
+     * inklusive der Angaben des Zwischenziels, des übergeordneten 6-Monats-Ziels
+     * sowie der auf den jeweiligen Slot gebuchten Lernzeit in Sekunden.
      *
      * @param int $userId ID des Nutzers
      * @param string $startDate Startdatum (inklusiv, YYYY-MM-DD)
@@ -559,7 +560,9 @@ class GoalDAO
                        ls.notes,
                        ls.is_completed,
                        ls.created_at,
+                       TIME_TO_SEC(TIMEDIFF(ls.end_time, ls.start_time)) AS planned_seconds,
                        ROUND(TIME_TO_SEC(TIMEDIFF(ls.end_time, ls.start_time)) / 3600.0, 2) AS duration_hours,
+                       COALESCE(SUM(te.tracked_seconds), 0) AS tracked_seconds,
                        mg.title AS monthly_goal_title,
                        mg.plan_month,
                        mg.planned_hours AS monthly_goal_planned_hours,
@@ -570,8 +573,15 @@ class GoalDAO
                     ON mg.id = ls.monthly_goal_id AND mg.user_id = ls.user_id
                 INNER JOIN learning_goals lg
                     ON lg.id = mg.goal_id AND lg.user_id = ls.user_id
+                LEFT JOIN time_entries te
+                    ON te.learning_slot_id = ls.id
+                   AND te.user_id = ls.user_id
+                   AND (te.source = 'manual' OR te.ended_at IS NOT NULL)
                 WHERE ls.user_id = :user_id
                   AND ls.slot_date BETWEEN :start_date AND :end_date
+                GROUP BY ls.id, ls.user_id, ls.monthly_goal_id, ls.slot_date, ls.start_time, ls.end_time,
+                         ls.notes, ls.is_completed, ls.created_at,
+                         mg.title, mg.plan_month, mg.planned_hours, mg.goal_id, lg.title
                 ORDER BY ls.slot_date ASC, ls.start_time ASC, ls.end_time ASC, ls.id ASC";
 
         $stmt = $this->db->prepare($sql);
