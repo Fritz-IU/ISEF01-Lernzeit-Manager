@@ -88,6 +88,9 @@ require_once __DIR__ . '/includes/header.php';
                         data-bs-target="#manualTimeModal">
                         + Lernzeit nachbuchen
                     </button>
+                    <a href="timer.php" class="btn btn-primary px-4">
+                        Stoppuhr
+                    </a>
                     <a href="goals.php" class="btn btn-outline-primary px-4">
                         Planen
                     </a>

@@ -33,20 +33,20 @@ lernzeit-manager/
 ├── api/                     # Asynchrone Endpoints für fetch/AJAX-Anfragen (JSON-Antworten)
 ├── assets/                  # Statische Frontend-Ressourcen
 │   ├── css/                 # Custom CSS-Dateien (z. B. custom.css)
-│   ├── js/                  # JavaScript-Logik (z. B. stopwatch.js, profile.js, goals.js)
+│   ├── js/                  # JavaScript-Logik (z. B. timer.js, profile.js, goals.js)
 │   └── img/                 # Bilder, Grafiken, Logos und Icons (Favicons)
 ├── config/                  # Zentrale Konfigurationsdateien
-├── docs/                    # Dokumentation & Anleitungen fürs Team (z. B. XAMPP-Guide, goals.md)
+├── docs/                    # Dokumentation & Anleitungen fürs Team (z. B. XAMPP-Guide, goals.md, timer.md)
 ├── includes/                # Wiederverwendbare HTML/PHP-Layout-Bausteine (Header, Footer, Nav)
 ├── sql/                     # Datenbank-Skripte für MariaDB
 ├── src/                     # Objektorientierte PHP-Backend-Logik (OOP)
 │   ├── Classes/             # Fachliche Klassen & Datenmodelle (z. B. User, ValidationException)
-│   ├── Controllers/         # Controller für Anwendungslogik & Eingabevalidierung (z. B. GoalController)
-│   ├── DAO/                 # Data Access Objects für Datenbankoperationen via PDO (z. B. GoalDAO)
+│   ├── Controllers/         # Controller für Anwendungslogik & Eingabevalidierung (z. B. GoalController, TimeTrackingController)
+│   ├── DAO/                 # Data Access Objects für Datenbankoperationen via PDO (z. B. GoalDAO, TimeTrackingDAO)
 │   └── Database/            # Datenbank-Hilfsklassen / PDO-Wrapper
 ├── tests/                   # Unit-Tests (PHPUnit), Ordner spiegeln src/
 │   ├── bootstrap.php        # Autoloader für src/, wird von PHPUnit geladen
-│   └── Unit/                # Testklassen (z. B. Controllers/GoalControllerTest.php)
+│   └── Unit/                # Testklassen (z. B. Controllers/GoalControllerTest.php, TimeTrackingControllerTest.php)
 ├── tools/                   # Entwicklungswerkzeuge (phpunit.phar)
 ├── .gitignore               # Ausschluss von lokalen Temp- und Systemdateien aus Git
 ├── .htaccess                # Apache: Startseite, keine Verzeichnislisten, versteckte Dateien gesperrt
@@ -56,6 +56,7 @@ lernzeit-manager/
 ├── logout.php               # Abmelden (nur per POST)
 ├── phpunit.xml              # PHPUnit-Konfiguration
 ├── profile.php              # Profilverwaltung (Studiengang, Semester, Name)
+├── timer.php                # Stoppuhr & Zeiterfassung
 └── README.md                # Projektbeschreibung & Schnellstartanleitung
 ```
 

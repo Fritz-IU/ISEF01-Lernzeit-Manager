@@ -628,6 +628,311 @@ final class GoalControllerTest extends TestCase
     }
 
     // ------------------------------------------------------------------
+    // buildMonthlyPlanningData: Ist-Zeit der Stoppuhr
+    // ------------------------------------------------------------------
+
+    /**
+     * Mock-Daten: Ein Zwischenziel über 2 h im November 2026, zusätzliche Felder lassen sich setzen.
+     *
+     * @param array<string, mixed> $overrides
+     */
+    private function daoLiefertZwischenziel(array $overrides): void
+    {
+        $this->dao->method('findAllMonthlyBudgetsByUserId')->willReturn([]);
+        $this->dao->method('getMonthlyPlannedHoursByUserId')->willReturn(['2026-11' => 2.0]);
+        $this->dao->method('findMonthlyGoalsByUserId')->willReturn([
+            array_merge(
+                ['id' => 11, 'goal_id' => 1, 'plan_month' => '2026-11', 'year_month' => '2026-11', 'title' => 'Analysis', 'planned_hours' => '2.00', 'parent_target_hours' => '30.00'],
+                $overrides
+            ),
+        ]);
+    }
+
+    #[Test]
+    public function ergaenztZwischenzielUmGestoppteIstZeit(): void
+    {
+        $this->daoLiefertZwischenziel(['tracked_seconds' => '5400']);
+
+        $data = $this->controller->buildMonthlyPlanningData(self::USER_ID, self::lernziele(), '2026-11');
+        $goal = $data['monthly_goals'][0];
+
+        self::assertSame(5400, $goal['tracked_seconds']);
+        self::assertSame(1.5, $goal['tracked_hours']);
+        self::assertSame('1 Std. 30 Min.', $goal['tracked_formatted']);
+        self::assertSame(75.0, $goal['tracked_percent']);
+        self::assertSame(1.5, $data['selected_month_data']['tracked_hours']);
+    }
+
+    #[Test]
+    public function begrenztIstZeitAnteilDesZwischenzielsAuf100Prozent(): void
+    {
+        $this->daoLiefertZwischenziel(['tracked_seconds' => 10800]);
+
+        $data = $this->controller->buildMonthlyPlanningData(self::USER_ID, self::lernziele(), '2026-11');
+
+        self::assertSame(100.0, $data['monthly_goals'][0]['tracked_percent']);
+    }
+
+    /**
+     * @return array<string, array{array<string, mixed>, bool}>
+     */
+    public static function erledigtStatusZwischenzielProvider(): array
+    {
+        return [
+            'keine Ist-Zeit'            => [[], false],
+            '1 Sekunde unter Soll'      => [['tracked_seconds' => 7199], false],
+            'Soll exakt erreicht'       => [['tracked_seconds' => 7200], true],
+            'Soll überschritten'        => [['tracked_seconds' => 9000], true],
+            'in der Datenbank erledigt' => [['tracked_seconds' => 0, 'completed_at' => '2026-11-15'], true],
+            'keine Soll-Zeit'           => [['tracked_seconds' => 3600, 'planned_hours' => '0.00'], false],
+        ];
+    }
+
+    #[Test]
+    #[DataProvider('erledigtStatusZwischenzielProvider')]
+    public function bestimmtErledigtStatusDesZwischenziels(array $overrides, bool $expected): void
+    {
+        $this->daoLiefertZwischenziel($overrides);
+
+        $data = $this->controller->buildMonthlyPlanningData(self::USER_ID, self::lernziele(), '2026-11');
+
+        self::assertSame($expected, $data['monthly_goals'][0]['is_completed']);
+    }
+
+    // ------------------------------------------------------------------
+    // buildWeeklyPlanningData: Ist-Zeit der Stoppuhr
+    // ------------------------------------------------------------------
+
+    /** Kalenderwoche 45 (02.11. bis 08.11.2026) ist die erste Woche des Testmonats */
+    private const TEST_WEEK = '2026-W45';
+    private const TEST_MONDAY = '2026-11-02';
+
+    /**
+     * Timeslot über 1 h am Montag der Testwoche, einzelne Felder lassen sich überschreiben.
+     *
+     * @param array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
+    private static function timeslot(int $id, array $overrides = []): array
+    {
+        return array_merge([
+            'id'              => $id,
+            'monthly_goal_id' => 11,
+            'slot_date'       => self::TEST_MONDAY,
+            'start_time'      => sprintf('%02d:00:00', 8 + $id),
+            'end_time'        => sprintf('%02d:00:00', 9 + $id),
+            'planned_seconds' => 3600,
+            'duration_hours'  => '1.00',
+            'is_completed'    => 0,
+        ], $overrides);
+    }
+
+    /**
+     * Ruft die Wochenplanung für die Testwoche mit den übergebenen Slots und Zeiteinträgen auf.
+     *
+     * @param list<array<string, mixed>> $slots
+     * @param list<array<string, mixed>> $trackedRows
+     * @return array<string, mixed>
+     */
+    private function baueTestwoche(array $slots, array $trackedRows): array
+    {
+        $this->dao->method('findLearningSlotsByDateRange')->willReturn($slots);
+        $this->dao->method('findTrackedSecondsByDateRange')->willReturn($trackedRows);
+
+        return $this->controller->buildWeeklyPlanningData(self::USER_ID, [
+            'selected_month'      => '2026-11',
+            'selected_month_data' => ['budget_hours' => null, 'planned_hours' => 10.0],
+            'monthly_goals'       => [],
+            'prev_month'          => '2026-10',
+            'next_month'          => '2026-12',
+        ], self::TEST_WEEK);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function zeiteintrag(
+        int $seconds,
+        int $monthlyGoalId = 11,
+        string $date = self::TEST_MONDAY,
+        ?int $unassignedSeconds = null
+    ): array {
+        return [
+            'entry_date'         => $date,
+            'monthly_goal_id'    => $monthlyGoalId,
+            'tracked_seconds'    => (string) $seconds,
+            'unassigned_seconds' => (string) ($unassignedSeconds ?? $seconds),
+        ];
+    }
+
+    #[Test]
+    public function verteiltIstZeitChronologischAufTimeslotsDesselbenZwischenziels(): void
+    {
+        $data = $this->baueTestwoche([self::timeslot(1), self::timeslot(2)], [self::zeiteintrag(5400)]);
+        [$erster, $zweiter] = $data['days'][0]['slots'];
+
+        self::assertSame(3600, $erster['tracked_seconds']);
+        self::assertTrue($erster['is_target_reached']);
+        self::assertSame(100.0, $erster['progress_percent']);
+
+        self::assertSame(1800, $zweiter['tracked_seconds']);
+        self::assertFalse($zweiter['is_target_reached']);
+        self::assertSame(50.0, $zweiter['progress_percent']);
+    }
+
+    #[Test]
+    public function schreibtUeberschussDemLetztenTimeslotZu(): void
+    {
+        $data = $this->baueTestwoche([self::timeslot(1), self::timeslot(2)], [self::zeiteintrag(9000)]);
+        [$erster, $zweiter] = $data['days'][0]['slots'];
+
+        self::assertSame(3600, $erster['tracked_seconds']);
+        self::assertSame(5400, $zweiter['tracked_seconds']);
+        self::assertSame(100.0, $zweiter['progress_percent']);
+    }
+
+    #[Test]
+    public function rechnetIstZeitNurDemPassendenZwischenzielZu(): void
+    {
+        $data = $this->baueTestwoche(
+            [self::timeslot(1), self::timeslot(2, ['monthly_goal_id' => 12])],
+            [self::zeiteintrag(1800, 12)]
+        );
+        [$fremd, $passend] = $data['days'][0]['slots'];
+
+        self::assertSame(0, $fremd['tracked_seconds']);
+        self::assertSame(1800, $passend['tracked_seconds']);
+    }
+
+    #[Test]
+    public function laesstErledigtStatusBeimAnzeigenUnveraendert(): void
+    {
+        // Die Einheit hat ihre Soll-Zeit erreicht, wurde aber bewusst wieder geöffnet
+        $this->dao->expects(self::never())->method('setLearningSlotCompleted');
+
+        $data = $this->baueTestwoche([self::timeslot(1)], [self::zeiteintrag(3600)]);
+        $slot = $data['days'][0]['slots'][0];
+
+        self::assertSame(0, $slot['is_completed']);
+        self::assertTrue($slot['is_target_reached']);
+    }
+
+    #[Test]
+    public function verteiltVerknuepfteZeitNichtAufAndereTimeslots(): void
+    {
+        $data = $this->baueTestwoche(
+            [self::timeslot(1), self::timeslot(2, ['tracked_seconds' => 1800])],
+            [self::zeiteintrag(1800, 11, self::TEST_MONDAY, 0)]
+        );
+        [$erster, $zweiter] = $data['days'][0]['slots'];
+
+        self::assertSame(0, $erster['tracked_seconds']);
+        self::assertSame(1800, $zweiter['tracked_seconds']);
+    }
+
+    #[Test]
+    public function fuelltVerknuepfteZeitMitStoppuhrZeitBisZurSollzeitAuf(): void
+    {
+        // 30 Min. sind auf Slot 1 nachgebucht, 1 Std. Stoppuhr-Zeit hat keine Verknüpfung
+        $data = $this->baueTestwoche(
+            [self::timeslot(1, ['tracked_seconds' => 1800]), self::timeslot(2)],
+            [self::zeiteintrag(5400, 11, self::TEST_MONDAY, 3600)]
+        );
+        [$erster, $zweiter] = $data['days'][0]['slots'];
+
+        self::assertSame(3600, $erster['tracked_seconds']);
+        self::assertSame(1800, $zweiter['tracked_seconds']);
+        self::assertSame(5400, $data['days'][0]['tracked_seconds']);
+    }
+
+    #[Test]
+    public function zeigtUnterschreitungAuchBeiStoppuhrZeit(): void
+    {
+        $data = $this->baueTestwoche([self::timeslot(1, ['is_completed' => 1])], [self::zeiteintrag(1800)]);
+        $slot = $data['days'][0]['slots'][0];
+
+        self::assertTrue($slot['is_under_target']);
+        self::assertSame(1800, $slot['missing_seconds']);
+    }
+
+    #[Test]
+    public function berechnetSollzeitDesTimeslotsAusDauerWennSekundenFehlen(): void
+    {
+        $data = $this->baueTestwoche(
+            [self::timeslot(1, ['planned_seconds' => null, 'duration_hours' => '0.50'])],
+            [self::zeiteintrag(900)]
+        );
+        $slot = $data['days'][0]['slots'][0];
+
+        self::assertSame(1800, $slot['planned_seconds']);
+        self::assertSame(50.0, $slot['progress_percent']);
+    }
+
+    #[Test]
+    public function summiertIstZeitJeTagUndWocheAuchOhneTimeslots(): void
+    {
+        $data = $this->baueTestwoche([], [
+            self::zeiteintrag(3600),
+            self::zeiteintrag(600, 12),
+            self::zeiteintrag(1200, 11, '2026-11-04'),
+            self::zeiteintrag(900, 11, '2026-11-09'),
+        ]);
+
+        self::assertSame(4200, $data['days'][0]['tracked_seconds']);
+        self::assertSame('1 Std. 10 Min.', $data['days'][0]['tracked_formatted']);
+        self::assertSame(1200, $data['days'][2]['tracked_seconds']);
+        self::assertSame(0, $data['days'][1]['tracked_seconds']);
+
+        self::assertSame(5400, $data['week_summary']['tracked_seconds']);
+        self::assertSame(1.5, $data['week_summary']['tracked_hours']);
+        self::assertSame('1 Std. 30 Min.', $data['week_summary']['tracked_formatted']);
+
+        self::assertSame(5400, $data['weeks_window'][self::TEST_WEEK]['tracked_seconds']);
+        self::assertSame(900, $data['weeks_window']['2026-W46']['tracked_seconds']);
+    }
+
+    #[Test]
+    public function fragtIstZeitFuerAlleWochenDesMonatsAb(): void
+    {
+        $this->dao->expects(self::once())
+            ->method('findTrackedSecondsByDateRange')
+            ->with(self::USER_ID, self::TEST_MONDAY, '2026-11-29')
+            ->willReturn([]);
+
+        $this->baueTestwoche([], []);
+    }
+
+    // ------------------------------------------------------------------
+    // formatTrackedDuration
+    // ------------------------------------------------------------------
+
+    /**
+     * @return array<string, array{int, string}>
+     */
+    public static function istZeitFormate(): array
+    {
+        return [
+            'negativ'                 => [-5, '0 Min.'],
+            'null'                    => [0, '0 Min.'],
+            'unter einer Minute'      => [45, '45 Sek.'],
+            'genau eine Minute'       => [60, '1 Min.'],
+            'rundet Minuten ab'       => [89, '1 Min.'],
+            'rundet Minuten auf'      => [90, '2 Min.'],
+            'volle Stunde'            => [3600, '1 Std.'],
+            'Stunde und Minuten'      => [5400, '1 Std. 30 Min.'],
+            'rundet zur vollen Stunde' => [3599, '1 Std.'],
+            'Übertrag auf Stunden'    => [7170, '2 Std.'],
+        ];
+    }
+
+    #[Test]
+    #[DataProvider('istZeitFormate')]
+    public function formatiertIstZeitLesbar(int $seconds, string $expected): void
+    {
+        self::assertSame($expected, GoalController::formatTrackedDuration($seconds));
+    }
+
+    // ------------------------------------------------------------------
     // buildWeeklyPlanningData – Unterschreitung geplanter Lerneinheiten
     // ------------------------------------------------------------------
 
