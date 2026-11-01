@@ -73,11 +73,12 @@ Vorlage zum Kopieren: [`tests/Unit/Controllers/GoalControllerTest.php`](../tests
 
 ## Vorhandene Tests
 
-| Testklasse                                      | Geprüfte Methoden                                                                                                                                    |
-| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Testklasse                                           | Geprüfte Methoden                                                                                                                                    |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `tests/Unit/Controllers/GoalControllerTest.php`         | `formatYearMonth`, `validateYearMonth`, `validateAndParseInput`, `validateAndParseMonthlyGoalInput`, `saveMonthlyBudget`, `buildMonthlyPlanningData`, `buildWeeklyPlanningData` (nur Ist-Zeit), `formatTrackedDuration` |
+| `tests/Unit/Controllers/TimeEntryControllerTest.php` | `formatDurationSeconds`, `formatLearningSlotOptionLabel`, `validateAndParseManualEntryInput`, `createManualEntry`, `updateManualEntry`, `deleteEntry`, `listRecentEntries`, `getSelectableLearningSlots`, `getSelectableGoalsGroupedBySemester`, `groupMonthlyGoalsBySemester` |
 | `tests/Unit/Controllers/TimeTrackingControllerTest.php` | `calculateDuration`, `validateAndParseInput`, `startStopwatch`, `pauseStopwatch`, `resumeStopwatch`, `stopAndSaveStopwatch`, `discardStopwatch`, `evaluateAndCompleteGoals`, `hasReachedTargetTime`, `resolvePlannedSeconds`, `getCurrentStopwatch`, `deleteTimeEntry`, `formatSecondsToTime`, `formatSecondsHuman` |
-| `tests/Unit/Classes/UserTest.php`                       | `parseProfileInput`, `isLoggedIn`, `currentNavName`, `currentShortNavName`                                                                           |
+| `tests/Unit/Classes/UserTest.php`                    | `parseProfileInput`, `isLoggedIn`, `currentNavName`, `currentShortNavName`                                                                           |
 
 Zwei Sonderfälle, die in den Tests gelöst sind und als Muster dienen:
 
