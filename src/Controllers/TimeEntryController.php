@@ -244,18 +244,12 @@ class TimeEntryController
             ? trim($monthlyGoal['plan_month'])
             : '';
 
-        if ($goalPlanMonth !== '' && $goalPlanMonth !== $entryMonth) {
-            throw new ValidationException(
-                'Das ausgewählte Modul gehört zum ' . GoalController::formatYearMonth($goalPlanMonth) . ' und passt nicht zum gewählten Datum.',
-                'monthly_goal_id'
-            );
-        }
-
         // 3. Optionale Verknüpfung zu einer geplanten Lerneinheit (learning_slot_id) prüfen
         $rawSlotId = isset($input['learning_slot_id']) && is_scalar($input['learning_slot_id'])
             ? trim((string) $input['learning_slot_id'])
             : '';
         $learningSlotId = null;
+        $slotIsOnEntryDate = false;
 
         if ($rawSlotId !== '' && $rawSlotId !== '0') {
             if (!preg_match('/^[1-9]\d*$/', $rawSlotId)) {
@@ -292,6 +286,15 @@ class TimeEntryController
             }
 
             $learningSlotId = $slotId;
+            $slotIsOnEntryDate = $slotDate === $entryDate;
+        }
+
+        // Lerneinheiten dürfen in Kalenderwochen am Monatsrand liegen, nur sie erlauben daher einen anderen Monat
+        if ($goalPlanMonth !== '' && $goalPlanMonth !== $entryMonth && !$slotIsOnEntryDate) {
+            throw new ValidationException(
+                'Das ausgewählte Modul gehört zum ' . GoalController::formatYearMonth($goalPlanMonth) . ' und passt nicht zum gewählten Datum.',
+                'monthly_goal_id'
+            );
         }
 
         // 4. Dauer (duration_hours / duration_minutes) prüfen und in Sekunden umrechnen

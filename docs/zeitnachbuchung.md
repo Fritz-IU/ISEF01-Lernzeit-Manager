@@ -41,7 +41,7 @@ lernzeit-manager/
 │   └── DAO/
 │       └── TimeEntryDAO.php     # PDO Prepared Statements mit Mandantenisolation über user_id
 └── tests/Unit/Controllers/
-    └── TimeEntryControllerTest.php # 107 PHPUnit-Tests für Validierung und Berechnungen
+    └── TimeEntryControllerTest.php # 110 PHPUnit-Tests für Validierung und Berechnungen
 ```
 
 ---
@@ -68,7 +68,7 @@ Manuelle Buchungen nutzen die vorbereitete Tabelle `time_entries` aus Issue #29:
    * Darf nicht vor dem Jahr 2000 liegen.
 2. **Modul (`monthly_goal_id`):**
    * Pflichtfeld. Muss dem eingeloggten Nutzer gehören (Schutz vor IDOR).
-   * Muss zum Monat des gewählten Datums gehören (Konsistenz zwischen Lerntag und Modulplanung).
+   * Muss zum Monat des gewählten Datums gehören (Konsistenz zwischen Lerntag und Modulplanung). Ausnahme: Ist eine Lerneinheit des Moduls genau an diesem Tag gewählt, darf der Monat abweichen, weil Lerneinheiten auch in Kalenderwochen am Monatsrand geplant werden können.
 3. **Geplante Lerneinheit (`learning_slot_id`):**
    * Optional. Gehört die gewählte Einheit zum selben Modul und zum selben Tag, wird sie verknüpft und beim Speichern via `TimeEntryDAO::markLearningSlotCompleted()` automatisch als erledigt markiert (`is_completed = 1`).
    * **Farbliche Markierung bei Unterschreitung:** War die auf die Lerneinheit gebuchte Zeit (`SUM(tracked_seconds)`) kürzer als die geplante Dauer des Timeslots, erhält die Einheit in der Wochenansicht (`goals.php?tab=week`) statt eines grünen Häkchens ein **gelbes Häkchen** (`.slot-check-btn.is-partial`) sowie ein gelbes Badge mit der nicht erreichten Lernzeit (z. B. `0,5 h fehlen`). Auch im Nachbuchungs-Modal wird beim Unterschreiten der geplanten Dauer live ein entsprechender gelber Hinweis angezeigt.
@@ -96,7 +96,7 @@ Manuelle Buchungen nutzen die vorbereitete Tabelle `time_entries` aus Issue #29:
   * `500 Internal Server Error`: Technischer Fehler (Details nur im Server-Log).
 
 ### [assets/js/manual-time.js](../assets/js/manual-time.js)
-* **Dynamische Datumsfilterung:** Beim Ändern des Datums werden die Module im Dropdown auf den jeweiligen Kalendermonat gefiltert.
+* **Dynamische Datumsfilterung:** Beim Ändern des Datums werden die Module im Dropdown auf den jeweiligen Kalendermonat gefiltert. Module eines anderen Monats erscheinen nur, wenn an diesem Tag eine Lerneinheit für sie geplant ist, und tragen dann ihren Monat im Namen.
 * **Automatische Erkennung geplanter Einheiten:** Existiert für das gewählte Modul am gewählten Tag ein offener Timeslot, blendet sich die Auswahlliste ein und schlägt die geplante Dauer vor.
 * **Schnellwahl:** Buttons für `0,5 Std.`, `1 Std.`, `1,5 Std.`, `2 Std.`, `2,5 Std.` und `3 Std.` befüllen die Stunden- und Minutenfelder mit einem Klick.
 * **Fehlerbehandlung:** Markiert fehlerhafte Eingabefelder rot (`is-invalid`) und entfernt die Markierung live bei Nutzereingabe.

@@ -284,7 +284,26 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
+   * Prüft, ob für das Modul am gewählten Lerntag eine Lerneinheit geplant ist.
+   * @param {string} goalId
+   * @param {string} dateVal
+   * @returns {boolean}
+   */
+  function hasSlotOnDate(goalId, dateVal) {
+    if (!slotSelect || dateVal === '') {
+      return false;
+    }
+
+    return Array.from(slotSelect.querySelectorAll('option[data-slot-date]')).some(
+      (opt) =>
+        opt.getAttribute('data-slot-date') === dateVal &&
+        opt.getAttribute('data-monthly-goal-id') === goalId
+    );
+  }
+
+  /**
    * Filtert die Optionen im Modul-Dropdown (monthly_goal_id) auf den Monat (YYYY-MM) des gewählten Lerntags.
+   * Module eines anderen Monats erscheinen nur mit einer an diesem Tag geplanten Lerneinheit (Monatsrand).
    */
   function filterGoalsBySelectedDate() {
     if (!dateInput || !goalSelect) {
@@ -300,12 +319,19 @@ document.addEventListener('DOMContentLoaded', () => {
     goalSelect.querySelectorAll('optgroup').forEach((group) => {
       let visibleInGroup = 0;
       group.querySelectorAll('option[data-plan-month]').forEach((opt) => {
-        const matchesMonth =
+        const isInMonth =
           selectedMonth !== '' && opt.getAttribute('data-plan-month') === selectedMonth;
-        opt.hidden = !matchesMonth;
-        opt.disabled = !matchesMonth;
+        const isOtherMonthWithSlot = !isInMonth && hasSlotOnDate(opt.value, dateVal);
+        const isVisible = isInMonth || isOtherMonthWithSlot;
+        opt.hidden = !isVisible;
+        opt.disabled = !isVisible;
 
-        if (matchesMonth) {
+        opt.dataset.baseLabel = opt.dataset.baseLabel || opt.textContent.trim();
+        opt.textContent = isOtherMonthWithSlot
+          ? `${opt.dataset.baseLabel} (${opt.getAttribute('data-month-label')})`
+          : opt.dataset.baseLabel;
+
+        if (isVisible) {
           visibleInGroup += 1;
           totalVisible += 1;
           if (opt.value === previousGoalId) {

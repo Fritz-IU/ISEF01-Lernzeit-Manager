@@ -469,6 +469,67 @@ final class TimeEntryControllerTest extends TestCase
         );
     }
 
+    #[Test]
+    public function akzeptiertGeplanteLerneinheitAnDerMonatsgrenze(): void
+    {
+        $this->daoLiefertModul(); // Modul 5 gehört zu '2026-10'
+        $this->dao->method('findLearningSlotByIdAndUserId')->willReturn(
+            array_merge(self::LEARNING_SLOT, ['id' => 9, 'slot_date' => '2026-11-01'])
+        );
+
+        $this->dao->expects(self::once())
+            ->method('createManualEntry')
+            ->with(self::USER_ID, 5, '2026-11-01', 5400, 'Scheduling-Aufgaben wiederholt', 9)
+            ->willReturn(22);
+        $this->dao->expects(self::once())
+            ->method('markLearningSlotCompleted')
+            ->with(9, self::USER_ID)
+            ->willReturn(true);
+
+        $result = $this->controller->createManualEntry(
+            self::USER_ID,
+            self::nachbuchungEingabe(['entry_date' => '2026-11-01', 'learning_slot_id' => '9']),
+            '2026-11-01'
+        );
+
+        self::assertSame(9, $result['learning_slot_id']);
+        self::assertTrue($result['slot_completed']);
+    }
+
+    #[Test]
+    public function lehntLerneinheitAnDerMonatsgrenzeAnEinemAnderenTagAb(): void
+    {
+        $this->daoLiefertModul();
+        $this->dao->method('findLearningSlotByIdAndUserId')->willReturn(self::LEARNING_SLOT);
+
+        $this->erwartetValidierungsfehler(
+            fn () => $this->controller->validateAndParseManualEntryInput(
+                self::USER_ID,
+                self::nachbuchungEingabe(['entry_date' => '2026-11-01', 'learning_slot_id' => '6']),
+                '2026-11-01'
+            ),
+            'learning_slot_id'
+        );
+    }
+
+    #[Test]
+    public function lehntAnderenMonatBeiLerneinheitOhneDatumAb(): void
+    {
+        $this->daoLiefertModul();
+        $this->dao->method('findLearningSlotByIdAndUserId')->willReturn(
+            array_merge(self::LEARNING_SLOT, ['slot_date' => ''])
+        );
+
+        $this->erwartetValidierungsfehler(
+            fn () => $this->controller->validateAndParseManualEntryInput(
+                self::USER_ID,
+                self::nachbuchungEingabe(['entry_date' => '2026-11-01', 'learning_slot_id' => '6']),
+                '2026-11-01'
+            ),
+            'monthly_goal_id'
+        );
+    }
+
     /**
      * @return array<string, array{0: string}>
      */
