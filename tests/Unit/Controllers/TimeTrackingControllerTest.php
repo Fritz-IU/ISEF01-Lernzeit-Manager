@@ -721,5 +721,382 @@ final class TimeTrackingControllerTest extends TestCase
     {
         self::assertSame($expected, TimeTrackingController::hasReachedTargetTime($trackedSeconds, $targetSeconds));
     }
+
+    /**
+     * Geplantes Tagesziel für das Standard-Lernziel am 30.10.2026.
+     *
+     * @return array<string, mixed>
+     */
+    private static function tagesziel(int $id, int $plannedSeconds, int $isCompleted = 0): array
+    {
+        return [
+            'id'              => $id,
+            'user_id'         => self::USER_ID,
+            'monthly_goal_id' => self::VALID_GOAL_ID,
+            'slot_date'       => '2026-10-30',
+            'planned_seconds' => $plannedSeconds,
+            'is_completed'    => $isCompleted,
+        ];
+    }
+
+    /**
+     * Mock-Daten: Am 30.10.2026 sind $trackedSeconds gestoppt und die übergebenen Tagesziele geplant.
+     *
+     * @param list<array<string, mixed>> $slots
+     */
+    private function daoLiefertTagesdaten(int $trackedSeconds, array $slots): void
+    {
+        $this->dao->method('getTrackedSecondsForGoalAndDate')->willReturn($trackedSeconds);
+        $this->dao->method('findLearningSlotsByGoalAndDate')->willReturn($slots);
+    }
+
+    #[Test]
+    public function verteiltTageszeitNacheinanderAufMehrereTagesziele(): void
+    {
+        // 1,5 h reichen nur für das erste von zwei Tageszielen zu je 1 h
+        $this->daoLiefertTagesdaten(5400, [self::tagesziel(1, 3600), self::tagesziel(2, 3600)]);
+
+        $this->dao->expects(self::once())
+            ->method('markLearningSlotCompleted')
+            ->with(1, self::USER_ID, true)
+            ->willReturn(true);
+
+        self::assertTrue($this->controller->evaluateAndCompleteGoals(self::USER_ID, self::VALID_GOAL_ID, '2026-10-30'));
+    }
+
+    #[Test]
+    public function erledigtMehrereTageszieleWennZeitFuerAlleReicht(): void
+    {
+        $this->daoLiefertTagesdaten(7200, [self::tagesziel(1, 3600), self::tagesziel(2, 3600)]);
+
+        $this->dao->expects(self::exactly(2))
+            ->method('markLearningSlotCompleted')
+            ->willReturn(true);
+
+        self::assertTrue($this->controller->evaluateAndCompleteGoals(self::USER_ID, self::VALID_GOAL_ID, '2026-10-30'));
+    }
+
+    #[Test]
+    public function schreibtBereitsErledigtesTageszielNichtErneut(): void
+    {
+        $this->daoLiefertTagesdaten(3600, [self::tagesziel(1, 3600, 1)]);
+
+        $this->dao->expects(self::never())->method('markLearningSlotCompleted');
+
+        self::assertTrue($this->controller->evaluateAndCompleteGoals(self::USER_ID, self::VALID_GOAL_ID, '2026-10-30'));
+    }
+
+    #[Test]
+    public function bereitsErledigtesTageszielVerbrauchtSeineZeit(): void
+    {
+        // Slot 1 ist schon erledigt und belegt die volle Stunde, für Slot 2 bleibt nichts übrig
+        $this->daoLiefertTagesdaten(3600, [self::tagesziel(1, 3600, 1), self::tagesziel(2, 3600)]);
+
+        $this->dao->expects(self::never())->method('markLearningSlotCompleted');
+
+        $this->controller->evaluateAndCompleteGoals(self::USER_ID, self::VALID_GOAL_ID, '2026-10-30');
+    }
+
+    #[Test]
+    public function ignoriertTageszielOhneSollzeit(): void
+    {
+        $this->daoLiefertTagesdaten(3600, [self::tagesziel(1, 0)]);
+
+        $this->dao->expects(self::never())->method('markLearningSlotCompleted');
+
+        self::assertFalse($this->controller->evaluateAndCompleteGoals(self::USER_ID, self::VALID_GOAL_ID, '2026-10-30'));
+    }
+
+    #[Test]
+    public function nutztAktuelleEinheitWennTagessummeNiedrigerIst(): void
+    {
+        $this->daoLiefertTagesdaten(0, [self::tagesziel(1, 3600)]);
+
+        $this->dao->expects(self::once())
+            ->method('markLearningSlotCompleted')
+            ->with(1, self::USER_ID, true)
+            ->willReturn(true);
+
+        self::assertTrue($this->controller->evaluateAndCompleteGoals(self::USER_ID, self::VALID_GOAL_ID, '2026-10-30', 3600));
+    }
+
+    #[Test]
+    public function liefertFalseOhneTageszielUndOhneMonatsziel(): void
+    {
+        $this->daoLiefertTagesdaten(3600, []);
+        $this->dao->method('findGoalByIdAndUserId')->willReturn(null);
+
+        $this->dao->expects(self::never())->method('markMonthlyGoalCompleted');
+
+        self::assertFalse($this->controller->evaluateAndCompleteGoals(self::USER_ID, self::VALID_GOAL_ID, '2026-10-30'));
+    }
+
+    #[Test]
+    public function markiertMonatszielNichtWennSollzeitNochNichtErreicht(): void
+    {
+        $this->daoLiefertTagesdaten(3600, []);
+        $this->dao->method('findGoalByIdAndUserId')->willReturn(['planned_hours' => 2.0, 'completed_at' => null]);
+        $this->dao->method('getTotalTrackedSecondsByUserId')->willReturn(7199);
+
+        $this->dao->expects(self::never())->method('markMonthlyGoalCompleted');
+
+        self::assertFalse($this->controller->evaluateAndCompleteGoals(self::USER_ID, self::VALID_GOAL_ID, '2026-10-30'));
+    }
+
+    /**
+     * @return array<string, array{array<string, mixed>}>
+     */
+    public static function bereitsErledigteMonatszieleProvider(): array
+    {
+        return [
+            'completed_at gesetzt' => [['planned_hours' => 1.0, 'completed_at' => '2026-10-29']],
+            'is_completed gesetzt' => [['planned_hours' => 1.0, 'completed_at' => null, 'is_completed' => 1]],
+        ];
+    }
+
+    #[Test]
+    #[DataProvider('bereitsErledigteMonatszieleProvider')]
+    public function schreibtBereitsErledigtesMonatszielNichtErneut(array $goal): void
+    {
+        $this->daoLiefertTagesdaten(3600, []);
+        $this->dao->method('findGoalByIdAndUserId')->willReturn($goal);
+        $this->dao->method('getTotalTrackedSecondsByUserId')->willReturn(3600);
+
+        $this->dao->expects(self::never())->method('markMonthlyGoalCompleted');
+
+        self::assertTrue($this->controller->evaluateAndCompleteGoals(self::USER_ID, self::VALID_GOAL_ID, '2026-10-30'));
+    }
+
+    /**
+     * @return array<string, array{array<string, mixed>, int}>
+     */
+    public static function sollzeitQuellenProvider(): array
+    {
+        return [
+            'planned_seconds'                  => [['planned_seconds' => 1800], 1800],
+            'planned_seconds als Text'         => [['planned_seconds' => '1800'], 1800],
+            'planned_seconds hat Vorrang'      => [['planned_seconds' => 1800, 'duration_hours' => 2.0], 1800],
+            'negative Sekunden werden zu 0'    => [['planned_seconds' => -5], 0],
+            'target_seconds'                   => [['target_seconds' => 900], 900],
+            'duration_hours'                   => [['duration_hours' => 1.5], 5400],
+            'planned_hours als Text'           => [['planned_hours' => '2.00'], 7200],
+            'target_hours'                     => [['target_hours' => 0.5], 1800],
+            'Zeitspanne aus Start und Ende'    => [['start_time' => '14:00:00', 'end_time' => '15:30:00'], 5400],
+            'Ende vor Start'                   => [['start_time' => '15:00:00', 'end_time' => '14:00:00'], 0],
+            'nicht numerischer Wert'           => [['planned_seconds' => 'abc'], 0],
+            'keine Angabe'                     => [[], 0],
+        ];
+    }
+
+    #[Test]
+    #[DataProvider('sollzeitQuellenProvider')]
+    public function ermitteltSollzeitAusDatensatz(array $goalOrSlot, int $expected): void
+    {
+        self::assertSame($expected, TimeTrackingController::resolvePlannedSeconds($goalOrSlot));
+    }
+
+    // =========================================================================
+    // 8. Randfälle der Stoppuhr
+    // =========================================================================
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function aktionenOhneOffeneStoppuhrProvider(): array
+    {
+        return [
+            'Pausieren'  => ['pauseStopwatch'],
+            'Fortsetzen' => ['resumeStopwatch'],
+            'Stoppen'    => ['stopAndSaveStopwatch'],
+            'Verwerfen'  => ['discardStopwatch'],
+        ];
+    }
+
+    #[Test]
+    #[DataProvider('aktionenOhneOffeneStoppuhrProvider')]
+    public function lehntAktionOhneOffeneStoppuhrAb(string $method): void
+    {
+        $this->dao->method('findOpenStopwatch')->willReturn(null);
+
+        $this->erwartetValidierungsfehler(
+            fn () => $this->controller->$method(self::USER_ID),
+            'stopwatch'
+        );
+    }
+
+    #[Test]
+    public function setztLaufendeStoppuhrNichtErneutFort(): void
+    {
+        $runningEntry = ['id' => 10, 'resumed_at' => '2026-10-30 10:00:00', 'tracked_seconds' => 0];
+        $this->dao->method('findOpenStopwatch')->willReturn($runningEntry);
+
+        $this->dao->expects(self::never())->method('resumeStopwatch');
+
+        self::assertSame($runningEntry, $this->controller->resumeStopwatch(self::USER_ID, '2026-10-30 10:05:00'));
+    }
+
+    #[Test]
+    public function addiertBeimStoppenEinerPausiertenStoppuhrKeineZeit(): void
+    {
+        $this->dao->method('findOpenStopwatch')->willReturn([
+            'id'              => 10,
+            'monthly_goal_id' => self::VALID_GOAL_ID,
+            'entry_date'      => '2026-10-30',
+            'resumed_at'      => null,
+            'tracked_seconds' => 600,
+        ]);
+
+        $this->dao->expects(self::once())
+            ->method('stopStopwatch')
+            ->with(10, self::USER_ID, '2026-10-30 12:00:00', 0, null)
+            ->willReturn(true);
+
+        $result = $this->controller->stopAndSaveStopwatch(self::USER_ID, [], '2026-10-30 12:00:00');
+
+        self::assertSame(600, $result['tracked_seconds']);
+    }
+
+    #[Test]
+    public function akzeptiertStoppuhrMitGenau24Stunden(): void
+    {
+        $this->dao->method('findOpenStopwatch')->willReturn([
+            'id'              => 10,
+            'resumed_at'      => null,
+            'tracked_seconds' => TimeTrackingController::MAX_DURATION_SECONDS,
+        ]);
+
+        $this->dao->expects(self::once())->method('stopStopwatch')->willReturn(true);
+
+        $this->controller->stopAndSaveStopwatch(self::USER_ID, [], '2026-10-30 12:00:00');
+    }
+
+    #[Test]
+    public function lehntStoppuhrUeber24StundenAbOhneZuSpeichern(): void
+    {
+        $this->dao->method('findOpenStopwatch')->willReturn([
+            'id'              => 10,
+            'resumed_at'      => '2026-10-30 12:00:00',
+            'tracked_seconds' => TimeTrackingController::MAX_DURATION_SECONDS,
+        ]);
+
+        $this->dao->expects(self::never())->method('stopStopwatch');
+
+        $this->erwartetValidierungsfehler(
+            fn () => $this->controller->stopAndSaveStopwatch(self::USER_ID, [], '2026-10-30 12:00:01'),
+            'tracked_seconds'
+        );
+    }
+
+    #[Test]
+    public function lehntZuLangeNotizBeimStoppenAbOhneZuSpeichern(): void
+    {
+        $this->dao->method('findOpenStopwatch')->willReturn([
+            'id'              => 10,
+            'resumed_at'      => null,
+            'tracked_seconds' => 60,
+        ]);
+
+        $this->dao->expects(self::never())->method('stopStopwatch');
+
+        $this->erwartetValidierungsfehler(
+            fn () => $this->controller->stopAndSaveStopwatch(
+                self::USER_ID,
+                ['note' => str_repeat('a', TimeTrackingController::MAX_NOTE_LENGTH + 1)]
+            ),
+            'note'
+        );
+    }
+
+    #[Test]
+    public function wertetZieleBeimStoppenNurMitLernzielAus(): void
+    {
+        $this->dao->method('findOpenStopwatch')->willReturn([
+            'id'              => 10,
+            'resumed_at'      => null,
+            'tracked_seconds' => 60,
+        ]);
+        $this->dao->method('stopStopwatch')->willReturn(true);
+
+        $this->dao->expects(self::never())->method('getTrackedSecondsForGoalAndDate');
+
+        $result = $this->controller->stopAndSaveStopwatch(self::USER_ID, [], '2026-10-30 12:00:00');
+
+        self::assertFalse($result['goal_completed']);
+    }
+
+    #[Test]
+    public function leitetDatumDerZielauswertungAusStartzeitAb(): void
+    {
+        $this->dao->method('findOpenStopwatch')->willReturn([
+            'id'              => 10,
+            'monthly_goal_id' => self::VALID_GOAL_ID,
+            'started_at'      => '2026-10-29 23:30:00',
+            'resumed_at'      => null,
+            'tracked_seconds' => 60,
+        ]);
+        $this->dao->method('stopStopwatch')->willReturn(true);
+
+        $this->dao->expects(self::once())
+            ->method('getTrackedSecondsForGoalAndDate')
+            ->with(self::USER_ID, self::VALID_GOAL_ID, '2026-10-29')
+            ->willReturn(60);
+
+        $this->controller->stopAndSaveStopwatch(self::USER_ID, [], '2026-10-30 00:30:00');
+    }
+
+    #[Test]
+    public function liefertNullWennKeineStoppuhrOffenIst(): void
+    {
+        $this->dao->method('findOpenStopwatch')->willReturn(null);
+
+        self::assertNull($this->controller->getCurrentStopwatch(self::USER_ID));
+    }
+
+    #[Test]
+    public function liefertPausierteStoppuhrOhneWeitereLaufzeit(): void
+    {
+        $this->dao->method('findOpenStopwatch')->willReturn([
+            'id'              => 10,
+            'resumed_at'      => null,
+            'tracked_seconds' => 120,
+        ]);
+
+        $current = $this->controller->getCurrentStopwatch(self::USER_ID, '2026-10-30 12:00:00');
+
+        self::assertNotNull($current);
+        self::assertFalse($current['is_running']);
+        self::assertTrue($current['is_paused']);
+        self::assertSame(120, $current['current_tracked_seconds']);
+    }
+
+    // =========================================================================
+    // 9. Zeiteintrag löschen
+    // =========================================================================
+
+    #[Test]
+    public function loeschtEigenenZeiteintrag(): void
+    {
+        $this->dao->method('findByIdAndUserId')->with(5, self::USER_ID)->willReturn(['id' => 5]);
+
+        $this->dao->expects(self::once())
+            ->method('delete')
+            ->with(5, self::USER_ID)
+            ->willReturn(true);
+
+        self::assertTrue($this->controller->deleteTimeEntry(5, self::USER_ID));
+    }
+
+    #[Test]
+    public function lehntLoeschenFremdenZeiteintragsAb(): void
+    {
+        $this->dao->method('findByIdAndUserId')->willReturn(null);
+
+        $this->dao->expects(self::never())->method('delete');
+
+        $this->erwartetValidierungsfehler(
+            fn () => $this->controller->deleteTimeEntry(5, self::USER_ID),
+            'id'
+        );
+    }
 }
 

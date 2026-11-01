@@ -110,11 +110,12 @@ CREATE TABLE time_entries (
 
 ## 6. Unit-Tests ([TimeTrackingControllerTest.php](../tests/Unit/Controllers/TimeTrackingControllerTest.php))
 
-Die Testsuite umfasst 55 isolierte Tests (125 Assertions) ohne Datenbankzugriff:
+Die Testsuite umfasst 92 isolierte Tests (234 Assertions) ohne Datenbankzugriff:
 * **Pflichtfeldprüfungen & Grenzwerte:** `#[DataProvider]` für fehlende/ungültige `goal_id`, ungültige Start-/Endzeiten, Notizlängen und negative Zeiten.
 * **Plausibilitätsprüfung:** `lehntEndzeitVorStartzeitAb` verifiziert, dass verkehrte Zeitfolgen abgewiesen werden.
 * **Dauerberechnung:** Verifiziert `calculateDuration` über mehrere Szenarien (exakte Minuten, über Mitternacht, HTML-Datetimes).
-* **Zustandsübergänge der Stoppuhr:** Testet Starten, Pausieren, Fortsetzen, Stoppen, Verwerfen und das Verhindern von Mehrfachstarts.
-* **Auto-Completion & Soll-Ist-Abgleich:** `markiertZielAlsErledigtWennSollzeitErreicht`, `markiertZielNichtAlsErledigtWennSollzeitNochNichtErreicht`, `markiertMonatszielAlsErledigtWennAufsummierteZeitSollzeitUeberschreitet` sowie `bewertetErreichenDerSollzeitKorrekt` prüfen, ob Ziele bei Erreichen oder Überschreiten der geplanten Soll-Zeit automatisch als erledigt markiert werden.
+* **Zustandsübergänge der Stoppuhr:** Testet Starten, Pausieren, Fortsetzen, Stoppen, Verwerfen und das Verhindern von Mehrfachstarts sowie Randfälle (keine offene Stoppuhr, 24-Stunden-Grenze, zu lange Notiz beim Stoppen).
+* **Auto-Completion & Soll-Ist-Abgleich:** `markiertZielAlsErledigtWennSollzeitErreicht`, `markiertZielNichtAlsErledigtWennSollzeitNochNichtErreicht`, `markiertMonatszielAlsErledigtWennAufsummierteZeitSollzeitUeberschreitet` sowie `bewertetErreichenDerSollzeitKorrekt` prüfen, ob Ziele bei Erreichen oder Überschreiten der geplanten Soll-Zeit automatisch als erledigt markiert werden. Weitere Tests decken mehrere Tagesziele an einem Tag, bereits erledigte Ziele und die Ermittlung der Soll-Zeit (`resolvePlannedSeconds`) ab.
+* **Ist-Zeit in der Planung:** [`GoalControllerTest.php`](../tests/Unit/Controllers/GoalControllerTest.php) prüft die Verteilung der gestoppten Zeit auf Lerneinheiten, die Summen je Tag und Woche, den Erledigt-Status der Zwischenziele und `formatTrackedDuration`.
 * **Formatierungsfunktionen:** Prüft `formatSecondsToTime` (`00:00:00`) und `formatSecondsHuman` (`1 Std. 30 Min.`).
 
