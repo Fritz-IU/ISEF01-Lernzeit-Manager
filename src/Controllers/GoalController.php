@@ -1088,17 +1088,19 @@ class GoalController
         $allWindowSlots = $this->goalDAO->findLearningSlotsByDateRange($userId, $windowStartDate, $windowEndDate);
         $trackedRows = $this->goalDAO->findTrackedSecondsByDateRange($userId, $windowStartDate, $windowEndDate);
 
-        $trackedByDateAndGoal = [];
+        $unassignedByDateAndGoal = [];
         $trackedByDateTotal = [];
         foreach ($trackedRows as $tRow) {
             $dKey = (string) $tRow['entry_date'];
             $mgKey = (int) $tRow['monthly_goal_id'];
             $sec = max(0, (int) $tRow['tracked_seconds']);
-            $trackedByDateAndGoal[$dKey][$mgKey] = ($trackedByDateAndGoal[$dKey][$mgKey] ?? 0) + $sec;
+            $unassignedSec = max(0, (int) $tRow['unassigned_seconds']);
+            $unassignedByDateAndGoal[$dKey][$mgKey] = ($unassignedByDateAndGoal[$dKey][$mgKey] ?? 0) + $unassignedSec;
             $trackedByDateTotal[$dKey] = ($trackedByDateTotal[$dKey] ?? 0) + $sec;
         }
 
-        // Slots nach Datum gruppieren und gestoppte Ist-Zeiten chronologisch zuordnen
+        // Slots nach Datum gruppieren. Verknüpfte Buchungen bleiben bei ihrem Slot, nicht
+        // verknüpfte Ist-Zeiten (Stoppuhr) werden chronologisch auf die Slots verteilt.
         $rawSlotsByDate = [];
         foreach ($allWindowSlots as $slot) {
             $d = (string) $slot['slot_date'];
@@ -1113,7 +1115,7 @@ class GoalController
                 $goalCountsOnDay[$mgId] = ($goalCountsOnDay[$mgId] ?? 0) + 1;
             }
 
-            $remainingByGoal = $trackedByDateAndGoal[$d] ?? [];
+            $remainingByGoal = $unassignedByDateAndGoal[$d] ?? [];
             $seenByGoal = [];
 
             foreach ($dateSlots as $ds) {
@@ -1124,25 +1126,23 @@ class GoalController
                 $plannedSec = isset($ds['planned_seconds']) && (int) $ds['planned_seconds'] > 0
                     ? (int) $ds['planned_seconds']
                     : (int) round(((float) $ds['duration_hours']) * 3600);
+                $linkedSec = max(0, (int) ($ds['tracked_seconds'] ?? 0));
                 $availableSec = $remainingByGoal[$mgId] ?? 0;
-                $allocatedSec = $isLastForGoal ? $availableSec : min($plannedSec, $availableSec);
+                $allocatedSec = $isLastForGoal ? $availableSec : min(max(0, $plannedSec - $linkedSec), $availableSec);
                 $remainingByGoal[$mgId] = max(0, $availableSec - $allocatedSec);
+                $slotTrackedSec = $linkedSec + $allocatedSec;
 
-                $targetReached = ($plannedSec > 0 && $allocatedSec >= $plannedSec);
-                if ($targetReached && (int) $ds['is_completed'] === 0) {
-                    $ds['is_completed'] = 1;
-                    $this->goalDAO->setLearningSlotCompleted((int) $ds['id'], $userId, true);
-                }
+                $targetReached = ($plannedSec > 0 && $slotTrackedSec >= $plannedSec);
 
                 $isDone = (int) $ds['is_completed'] === 1;
                 $progressPct = $plannedSec > 0
-                    ? min(100.0, round(($allocatedSec / $plannedSec) * 100, 1))
+                    ? min(100.0, round(($slotTrackedSec / $plannedSec) * 100, 1))
                     : ($isDone ? 100.0 : 0.0);
 
                 $ds['planned_seconds'] = $plannedSec;
-                $ds['tracked_seconds'] = $allocatedSec;
-                $ds['tracked_hours'] = round($allocatedSec / 3600.0, 2);
-                $ds['tracked_formatted'] = self::formatTrackedDuration($allocatedSec);
+                $ds['tracked_seconds'] = $slotTrackedSec;
+                $ds['tracked_hours'] = round($slotTrackedSec / 3600.0, 2);
+                $ds['tracked_formatted'] = self::formatTrackedDuration($slotTrackedSec);
                 $ds['progress_percent'] = $progressPct;
                 $ds['is_target_reached'] = $targetReached;
 

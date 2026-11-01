@@ -605,6 +605,7 @@ class GoalDAO
     /**
      * Liefert die aufsummierten gestoppten / erfassten Lernzeiten (time_entries) eines Nutzers
      * in einem Datumszeitraum, gruppiert nach Datum und monatlichem Zwischenziel.
+     * unassigned_seconds enthält nur die Zeit ohne Verknüpfung zu einem Lern-Timeslot.
      *
      * @param int $userId ID des Nutzers
      * @param string $startDate Startdatum (inklusiv, YYYY-MM-DD)
@@ -615,7 +616,8 @@ class GoalDAO
     {
         $sql = "SELECT te.entry_date,
                        te.monthly_goal_id,
-                       COALESCE(SUM(te.tracked_seconds), 0) AS tracked_seconds
+                       COALESCE(SUM(te.tracked_seconds), 0) AS tracked_seconds,
+                       COALESCE(SUM(CASE WHEN te.learning_slot_id IS NULL THEN te.tracked_seconds ELSE 0 END), 0) AS unassigned_seconds
                 FROM time_entries te
                 WHERE te.user_id = :user_id
                   AND te.entry_date BETWEEN :start_date AND :end_date
