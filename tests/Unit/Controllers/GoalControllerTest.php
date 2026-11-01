@@ -626,4 +626,169 @@ final class GoalControllerTest extends TestCase
         self::assertSame([], $data['monthly_goals']);
         self::assertSame(0, $data['total_planned_all_months']);
     }
+
+    // ------------------------------------------------------------------
+    // buildWeeklyPlanningData – Unterschreitung geplanter Lerneinheiten
+    // ------------------------------------------------------------------
+
+    /**
+     * Erledigte Lerneinheit von 2,0 h am 28.10.2026 (KW 44), einzelne Felder lassen sich überschreiben.
+     *
+     * @param array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
+    private static function lerneinheit(array $overrides = []): array
+    {
+        return array_merge([
+            'id'                         => 101,
+            'user_id'                    => self::USER_ID,
+            'monthly_goal_id'            => 3,
+            'slot_date'                  => '2026-10-28',
+            'start_time'                 => '10:00:00',
+            'end_time'                   => '12:00:00',
+            'notes'                      => null,
+            'is_completed'               => 1,
+            'planned_seconds'            => 7200,
+            'duration_hours'             => 2.0,
+            'tracked_seconds'            => 7200,
+            'monthly_goal_title'         => 'Modul Software Engineering',
+            'plan_month'                 => '2026-10',
+            'monthly_goal_planned_hours' => 18.0,
+            'goal_id'                    => 1,
+            'parent_goal_title'          => '3. Semester',
+        ], $overrides);
+    }
+
+    /**
+     * Baut die Wochenplanung der KW 44 mit den übergebenen Lerneinheiten auf.
+     *
+     * @param list<array<string, mixed>> $slots
+     * @return array<string, mixed>
+     */
+    private function wochenplanungMit(array $slots): array
+    {
+        $this->dao->method('findAllMonthlyBudgetsByUserId')->willReturn([]);
+        $this->dao->method('getMonthlyPlannedHoursByUserId')->willReturn(['2026-10' => 18.0]);
+        $this->dao->method('findMonthlyGoalsByUserId')->willReturn([
+            [
+                'id'                  => 3,
+                'goal_id'             => 1,
+                'plan_month'          => '2026-10',
+                'year_month'          => '2026-10',
+                'title'               => 'Modul Software Engineering',
+                'planned_hours'       => '18.00',
+                'parent_target_hours' => '150.00',
+            ],
+        ]);
+        $this->dao->method('findLearningSlotsByDateRange')->willReturn($slots);
+
+        $monthlyPlanning = $this->controller->buildMonthlyPlanningData(self::USER_ID, self::lernziele(), '2026-10');
+
+        return $this->controller->buildWeeklyPlanningData(self::USER_ID, $monthlyPlanning, '2026-W44', '2026-10-28');
+    }
+
+    #[Test]
+    public function markiertNachgebuchteLerneinheitMitWenigerZeitAlsUnterschritten(): void
+    {
+        // Drei Slots am 28.10.2026 (KW 44):
+        // 1) Nachgebucht mit 1,5 h statt geplanten 2,0 h -> unterschritten (0,5 h fehlen)
+        // 2) Nachgebucht mit vollen 2,0 h -> nicht unterschritten
+        // 3) Direkt ohne Nachbuchung abgehakt (tracked_seconds = 0) -> nicht unterschritten
+        $weeklyPlanning = $this->wochenplanungMit([
+            self::lerneinheit(['id' => 101, 'tracked_seconds' => 5400]),
+            self::lerneinheit(['id' => 102, 'start_time' => '14:00:00', 'end_time' => '16:00:00']),
+            self::lerneinheit([
+                'id'              => 103,
+                'start_time'      => '17:00:00',
+                'end_time'        => '18:00:00',
+                'planned_seconds' => 3600,
+                'duration_hours'  => 1.0,
+                'tracked_seconds' => 0,
+            ]),
+        ]);
+
+        // Mittwoch (Index 2) ist der 28.10.2026
+        $wednesdaySlots = $weeklyPlanning['days'][2]['slots'];
+        self::assertCount(3, $wednesdaySlots);
+
+        self::assertTrue($wednesdaySlots[0]['is_under_target']);
+        self::assertSame(1800, $wednesdaySlots[0]['missing_seconds']);
+        self::assertSame(0.5, $wednesdaySlots[0]['missing_hours']);
+
+        self::assertFalse($wednesdaySlots[1]['is_under_target']);
+        self::assertSame(0, $wednesdaySlots[1]['missing_seconds']);
+        self::assertSame(0.0, $wednesdaySlots[1]['missing_hours']);
+
+        self::assertFalse($wednesdaySlots[2]['is_under_target']);
+        self::assertSame(0, $wednesdaySlots[2]['missing_seconds']);
+        self::assertSame(0.0, $wednesdaySlots[2]['missing_hours']);
+    }
+
+    /**
+     * @return array<string, array{0: array<string, mixed>, 1: bool, 2: int}>
+     */
+    public static function lerneinheitenFuerUnterschreitung(): array
+    {
+        return [
+            'Offen mit zu wenig gebuchter Zeit' => [
+                ['is_completed' => 0, 'tracked_seconds' => 3600],
+                false,
+                0,
+            ],
+            'Mehr als geplant gebucht' => [
+                ['tracked_seconds' => 9000],
+                false,
+                0,
+            ],
+            'Eine Sekunde zu wenig' => [
+                ['tracked_seconds' => 7199],
+                true,
+                1,
+            ],
+            'Geplante Zeit aus duration_hours abgeleitet' => [
+                ['planned_seconds' => null, 'duration_hours' => 1.5, 'tracked_seconds' => 3600],
+                true,
+                1800,
+            ],
+            'Ohne gebuchte Zeit' => [
+                ['tracked_seconds' => null],
+                false,
+                0,
+            ],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $slotOverrides
+     */
+    #[Test]
+    #[DataProvider('lerneinheitenFuerUnterschreitung')]
+    public function erkenntUnterschreitungJeNachLerneinheit(
+        array $slotOverrides,
+        bool $expectedUnderTarget,
+        int $expectedMissingSeconds
+    ): void {
+        $weeklyPlanning = $this->wochenplanungMit([self::lerneinheit($slotOverrides)]);
+
+        $slot = $weeklyPlanning['days'][2]['slots'][0];
+        self::assertSame($expectedUnderTarget, $slot['is_under_target']);
+        self::assertSame($expectedMissingSeconds, $slot['missing_seconds']);
+    }
+
+    #[Test]
+    public function rundetGebuchteStundenDerLerneinheitAufZweiStellen(): void
+    {
+        $weeklyPlanning = $this->wochenplanungMit([self::lerneinheit(['tracked_seconds' => 4000])]);
+
+        self::assertSame(1.11, $weeklyPlanning['days'][2]['slots'][0]['tracked_hours']);
+    }
+
+    #[Test]
+    public function zaehltUnterschritteneLerneinheitWeiterAlsErledigt(): void
+    {
+        $weeklyPlanning = $this->wochenplanungMit([self::lerneinheit(['tracked_seconds' => 3600])]);
+
+        self::assertSame(2.0, $weeklyPlanning['week_summary']['completed_hours']);
+        self::assertSame(1, $weeklyPlanning['week_summary']['completed_slot_count']);
+    }
 }

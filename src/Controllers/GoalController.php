@@ -1167,10 +1167,25 @@ class GoalController
                 $dayHours += $dur;
                 $selectedWeekScheduled += $dur;
                 $selectedWeekSlotCount++;
-                if ((int) $sItem['is_completed'] === 1) {
+                $isCompleted = (int) $sItem['is_completed'] === 1;
+                if ($isCompleted) {
                     $selectedWeekCompleted += $dur;
                     $selectedWeekCompletedSlotCount++;
                 }
+
+                $plannedSeconds = isset($sItem['planned_seconds'])
+                    ? (int) $sItem['planned_seconds']
+                    : (int) round($dur * 3600);
+                $trackedSeconds = (int) ($sItem['tracked_seconds'] ?? 0);
+                $isUnderTarget = $isCompleted && $trackedSeconds > 0 && $trackedSeconds < $plannedSeconds;
+                $missingSeconds = $isUnderTarget ? max(0, $plannedSeconds - $trackedSeconds) : 0;
+
+                $sItem['planned_seconds'] = $plannedSeconds;
+                $sItem['tracked_seconds'] = $trackedSeconds;
+                $sItem['tracked_hours'] = round($trackedSeconds / 3600.0, 2);
+                $sItem['is_under_target'] = $isUnderTarget;
+                $sItem['missing_seconds'] = $missingSeconds;
+                $sItem['missing_hours'] = $isUnderTarget ? round($missingSeconds / 3600.0, 2) : 0.0;
                 $sItem['start_time_formatted'] = substr((string) $sItem['start_time'], 0, 5);
                 $sItem['end_time_formatted'] = substr((string) $sItem['end_time'], 0, 5);
             }
