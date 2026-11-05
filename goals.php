@@ -119,13 +119,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['goals_success'] = 'Die Lerneinheit wurde erfolgreich gelöscht.';
             header('Location: goals.php?tab=week&month=' . urlencode($slotResult['year_month']) . '&week=' . urlencode($slotResult['iso_week']) . '&day=' . urlencode($slotResult['slot_date']));
             exit;
-        } elseif ($action === 'toggle_learning_slot') {
-            $slotId = isset($_POST['slot_id']) && is_scalar($_POST['slot_id']) ? (int) $_POST['slot_id'] : 0;
-            $slotResult = $goalController->toggleLearningSlotCompleted($slotId, $userId);
-            $_SESSION['goals_success'] = $slotResult['is_completed']
-                ? 'Die Lerneinheit wurde als erledigt markiert.'
-                : 'Die Lerneinheit wurde wieder als offen markiert.';
-            header('Location: goals.php?tab=week&month=' . urlencode($slotResult['year_month']) . '&week=' . urlencode($slotResult['iso_week']) . '&day=' . urlencode($slotResult['slot_date']));
+        } elseif (in_array($action, ['toggle_learning_slot', 'toggle_week', 'toggle_monthly_goal', 'toggle_goal', 'toggle_completion'], true)) {
+            $toggleResult = $goalController->toggleCompletion($userId, $_POST);
+            $_SESSION['goals_success'] = $toggleResult['message'];
+            header('Location: ' . $toggleResult['redirect']);
             exit;
         } else {
             $errorMessage = 'Ungültige Aktion.';
@@ -315,6 +312,7 @@ require_once __DIR__ . '/includes/header.php';
         role="tabpanel"
         aria-labelledby="tab-semester-btn"
         tabindex="0">
+        <section id="semesterplanung">
         <?php if (empty($goals)): ?>
             <div class="card shadow-sm border-0 text-center py-5 mb-4">
                 <div class="card-body">
@@ -371,6 +369,14 @@ require_once __DIR__ . '/includes/header.php';
                                 $targetHoursRow = (float) $goal['target_hours'];
                                 $allocatedHoursRow = (float) ($goal['allocated_hours'] ?? 0.0);
                                 $monthlyGoalCount = (int) ($goal['monthly_goal_count'] ?? 0);
+                                $completedMonthlyGoalCount = (int) ($goal['completed_monthly_goal_count'] ?? 0);
+                                $goalCompleted = (bool) ($goal['is_completed'] ?? false);
+                                $goalCompletedDate = isset($goal['completed_at_formatted']) && is_string($goal['completed_at_formatted'])
+                                    ? $goal['completed_at_formatted']
+                                    : null;
+                                $goalCheckTitle = $goalCompleted
+                                    ? 'Lernziel erledigt – als offen markieren'
+                                    : 'Lernziel als erledigt abhaken';
                                 $isGoalOverAllocated = $allocatedHoursRow > $targetHoursRow;
                                 $allocPercent = $targetHoursRow > 0 ? round(($allocatedHoursRow / $targetHoursRow) * 100, 1) : 0.0;
                                 $allocBarWidth = min(100.0, $allocPercent);
@@ -378,7 +384,7 @@ require_once __DIR__ . '/includes/header.php';
                                 if ($isGoalOverAllocated) {
                                     $allocBarClass = 'bg-warning';
                                     $allocTextClass = 'text-warning-emphasis fw-bold';
-                                } elseif ($allocPercent >= 100.0) {
+                                } elseif ($allocPercent >= 100.0 || $goalCompleted) {
                                     $allocBarClass = 'bg-success';
                                     $allocTextClass = 'text-success fw-semibold';
                                 } else {
@@ -388,12 +394,40 @@ require_once __DIR__ . '/includes/header.php';
                                 ?>
                                 <tr class="<?= $isGoalOverAllocated ? 'table-warning' : '' ?>">
                                     <td class="td-mobile-header" data-label="Lernziel">
-                                        <strong class="text-dark d-block"><?= htmlspecialchars((string) $goal['title']) ?></strong>
-                                        <?php if (!empty($goal['description'])): ?>
-                                            <p class="text-muted small mb-0 mt-1">
-                                                <?= nl2br(htmlspecialchars((string) $goal['description'])) ?>
-                                            </p>
-                                        <?php endif; ?>
+                                        <div class="d-flex align-items-start gap-2">
+                                            <form action="goals.php" method="POST" class="m-0 pt-1 flex-shrink-0" data-ajax-form>
+                                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
+                                                <input type="hidden" name="action" value="toggle_goal">
+                                                <input type="hidden" name="goal_id" value="<?= (int) $goal['id'] ?>">
+                                                <input type="hidden" name="redirect_month" value="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>">
+                                                <button
+                                                    type="submit"
+                                                    class="slot-check-btn <?= $goalCompleted ? 'is-completed' : '' ?>"
+                                                    title="<?= htmlspecialchars($goalCheckTitle, ENT_QUOTES) ?>"
+                                                    aria-label="<?= htmlspecialchars($goalCheckTitle, ENT_QUOTES) ?>">
+                                                    <?php if ($goalCompleted): ?>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16">
+                                                            <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z" />
+                                                        </svg>
+                                                    <?php endif; ?>
+                                                </button>
+                                            </form>
+                                            <div class="min-w-0">
+                                                <div class="d-flex align-items-center flex-wrap gap-2">
+                                                    <strong class="<?= $goalCompleted ? 'text-muted text-decoration-line-through' : 'text-dark' ?>"><?= htmlspecialchars((string) $goal['title']) ?></strong>
+                                                    <?php if ($goalCompleted): ?>
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 0.7rem;">
+                                                            &#10003; Erledigt<?= $goalCompletedDate !== null ? ' am ' . htmlspecialchars($goalCompletedDate) : '' ?>
+                                                        </span>
+                                                    <?php endif; ?>
+                                                </div>
+                                                <?php if (!empty($goal['description'])): ?>
+                                                    <p class="text-muted small mb-0 mt-1">
+                                                        <?= nl2br(htmlspecialchars((string) $goal['description'])) ?>
+                                                    </p>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
                                     </td>
                                     <td class="td-mobile-block" data-label="Auf Monate verteilt">
                                         <div class="d-flex justify-content-between align-items-baseline small mb-1">
@@ -410,6 +444,9 @@ require_once __DIR__ . '/includes/header.php';
                                         </div>
                                         <div class="mt-1 small text-muted">
                                             <?= $monthlyGoalCount ?> Zwischenziel<?= $monthlyGoalCount === 1 ? '' : 'e' ?>
+                                            <?php if ($monthlyGoalCount > 0): ?>
+                                                &middot; <span class="<?= $completedMonthlyGoalCount === $monthlyGoalCount ? 'text-success fw-semibold' : 'text-muted' ?>"><?= $completedMonthlyGoalCount ?>/<?= $monthlyGoalCount ?> erledigt</span>
+                                            <?php endif; ?>
                                             <?php if ($isGoalOverAllocated): ?>
                                                 &middot; <span class="text-warning-emphasis fw-semibold">+<?= number_format($allocatedHoursRow - $targetHoursRow, 1, ',', '.') ?> h über Ziel</span>
                                             <?php endif; ?>
@@ -483,6 +520,7 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
             </div>
         <?php endif; ?>
+        </section>
     </div>
 
     <!-- ================================================================== -->
@@ -691,31 +729,57 @@ require_once __DIR__ . '/includes/header.php';
                                         $mgTrackedSeconds = (int) ($mGoal['tracked_seconds'] ?? 0);
                                         $mgTrackedPct = (float) ($mGoal['tracked_percent'] ?? 0.0);
                                         $mgCompleted = (bool) ($mGoal['is_completed'] ?? false);
+                                        $mgCompletedDate = isset($mGoal['completed_at_formatted']) && is_string($mGoal['completed_at_formatted'])
+                                            ? $mGoal['completed_at_formatted']
+                                            : null;
+                                        $mgCheckTitle = $mgCompleted
+                                            ? 'Zwischenziel erledigt – als offen markieren'
+                                            : 'Zwischenziel als erledigt abhaken';
                                         $mgSlotCount = (int) ($mGoal['slot_count'] ?? 0);
                                         $isMgOverScheduled = (bool) ($mGoal['is_over_scheduled'] ?? false);
                                         $mgSchedPct = $mgHours > 0 ? min(100.0, $mgScheduled / $mgHours * 100) : 0.0;
                                         ?>
                                         <tr class="<?= ($isParentOver || $isMgOverScheduled) ? 'table-warning' : '' ?>">
                                             <td class="td-mobile-header" data-label="Zwischenziel">
-                                                <div class="d-flex align-items-center flex-wrap gap-2">
-                                                    <strong class="text-dark"><?= htmlspecialchars((string) $mGoal['title']) ?></strong>
-                                                    <?php if ($mgCompleted): ?>
-                                                        <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 0.7rem;">
-                                                            &#10003; Erledigt
+                                                <div class="d-flex align-items-start gap-2">
+                                                    <form action="goals.php" method="POST" class="m-0 pt-1 flex-shrink-0" data-ajax-form>
+                                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
+                                                        <input type="hidden" name="action" value="toggle_monthly_goal">
+                                                        <input type="hidden" name="monthly_goal_id" value="<?= (int) $mGoal['id'] ?>">
+                                                        <button
+                                                            type="submit"
+                                                            class="slot-check-btn <?= $mgCompleted ? 'is-completed' : '' ?>"
+                                                            title="<?= htmlspecialchars($mgCheckTitle, ENT_QUOTES) ?>"
+                                                            aria-label="<?= htmlspecialchars($mgCheckTitle, ENT_QUOTES) ?>">
+                                                            <?php if ($mgCompleted): ?>
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16">
+                                                                    <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z" />
+                                                                </svg>
+                                                            <?php endif; ?>
+                                                        </button>
+                                                    </form>
+                                                    <div class="min-w-0">
+                                                        <div class="d-flex align-items-center flex-wrap gap-2">
+                                                            <strong class="<?= $mgCompleted ? 'text-muted text-decoration-line-through' : 'text-dark' ?>"><?= htmlspecialchars((string) $mGoal['title']) ?></strong>
+                                                            <?php if ($mgCompleted): ?>
+                                                                <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 0.7rem;">
+                                                                    &#10003; Erledigt<?= $mgCompletedDate !== null ? ' am ' . htmlspecialchars($mgCompletedDate) : '' ?>
+                                                                </span>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                        <?php if (!empty($mGoal['description'])): ?>
+                                                            <span class="text-muted small d-block"><?= nl2br(htmlspecialchars((string) $mGoal['description'])) ?></span>
+                                                        <?php endif; ?>
+                                                        <span
+                                                            class="small d-block mt-1 <?= $isParentOver ? 'text-warning-emphasis fw-semibold' : 'text-secondary' ?>"
+                                                            title="Lernziel insgesamt: <?= number_format($parentAlloc, 1, ',', '.') ?> von <?= number_format($parentTarget, 1, ',', '.') ?> h verteilt">
+                                                            &#8627; <?= htmlspecialchars((string) $mGoal['parent_goal_title']) ?>
+                                                            <?php if ($isParentOver): ?>
+                                                                &middot; Lernziel überschritten (<?= number_format($parentAlloc, 1, ',', '.') ?> / <?= number_format($parentTarget, 1, ',', '.') ?> h)
+                                                            <?php endif; ?>
                                                         </span>
-                                                    <?php endif; ?>
+                                                    </div>
                                                 </div>
-                                                <?php if (!empty($mGoal['description'])): ?>
-                                                    <span class="text-muted small d-block"><?= nl2br(htmlspecialchars((string) $mGoal['description'])) ?></span>
-                                                <?php endif; ?>
-                                                <span
-                                                    class="small d-block mt-1 <?= $isParentOver ? 'text-warning-emphasis fw-semibold' : 'text-secondary' ?>"
-                                                    title="Lernziel insgesamt: <?= number_format($parentAlloc, 1, ',', '.') ?> von <?= number_format($parentTarget, 1, ',', '.') ?> h verteilt">
-                                                    &#8627; <?= htmlspecialchars((string) $mGoal['parent_goal_title']) ?>
-                                                    <?php if ($isParentOver): ?>
-                                                        &middot; Lernziel überschritten (<?= number_format($parentAlloc, 1, ',', '.') ?> / <?= number_format($parentTarget, 1, ',', '.') ?> h)
-                                                    <?php endif; ?>
-                                                </span>
                                             </td>
                                             <td class="text-end" data-label="Geplant">
                                                 <div class="fw-bold text-primary"><?= number_format($mgHours, 1, ',', '.') ?> h</div>
@@ -849,6 +913,7 @@ require_once __DIR__ . '/includes/header.php';
                     $isWSelected = (bool) $wTab['is_selected'];
                     $wScheduled = (float) $wTab['scheduled_hours'];
                     $wSlots = (int) $wTab['slot_count'];
+                    $wTabCompleted = (bool) ($wTab['is_completed'] ?? false);
                     $wCardClasses = $isWSelected
                         ? 'border-primary bg-primary text-white shadow-sm active'
                         : 'border-light-subtle bg-white text-dark';
@@ -864,6 +929,9 @@ require_once __DIR__ . '/includes/header.php';
                             <div class="card-body p-2 text-center">
                                 <div class="d-flex justify-content-center align-items-center gap-1">
                                     <span class="fw-bold small"><?= htmlspecialchars((string) $wTab['label_short']) ?></span>
+                                    <?php if ($wTabCompleted): ?>
+                                        <span class="badge rounded-pill <?= $isWSelected ? 'bg-white text-success' : 'bg-success-subtle text-success' ?>" style="font-size: 0.65rem;" title="Woche erledigt">&#10003;</span>
+                                    <?php endif; ?>
                                     <?php if ($wTab['is_current_week']): ?>
                                         <span class="period-today-dot" title="Aktuelle Woche"></span>
                                     <?php endif; ?>
@@ -893,6 +961,13 @@ require_once __DIR__ . '/includes/header.php';
             $wSumTrackedFormatted = (string) ($weekSummary['tracked_formatted'] ?? '0 Min.');
             $wSumSlots = (int) $weekSummary['slot_count'];
             $wSumCompletedSlots = (int) $weekSummary['completed_slot_count'];
+            $wSumIsCompleted = (bool) ($weekSummary['is_completed'] ?? ($wSumSlots > 0 && $wSumCompletedSlots === $wSumSlots));
+            $wSumCompletedDate = isset($weekSummary['completed_at_formatted']) && is_string($weekSummary['completed_at_formatted'])
+                ? $weekSummary['completed_at_formatted']
+                : null;
+            $wCheckTitle = $wSumIsCompleted
+                ? 'Alle Lerneinheiten dieser Woche wieder als offen markieren'
+                : 'Alle Lerneinheiten dieser Woche als erledigt abhaken';
             $wHasOverlaps = (bool) $weekSummary['has_overlaps'];
             $wDonePct = $wSumScheduled > 0 ? min(100.0, $wSumCompleted / $wSumScheduled * 100) : 0.0;
             $monthTotalScheduled = (float) ($selectedMonthData['scheduled_hours'] ?? 0.0);
@@ -904,7 +979,31 @@ require_once __DIR__ . '/includes/header.php';
                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
                         <div>
                             <h2 class="h4 fw-bold mb-1 d-flex align-items-center flex-wrap gap-2">
+                                <?php if ($wSumSlots > 0): ?>
+                                    <form action="goals.php" method="POST" class="m-0 d-inline-flex align-items-center" data-ajax-form>
+                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
+                                        <input type="hidden" name="action" value="toggle_week">
+                                        <input type="hidden" name="iso_week" value="<?= htmlspecialchars($selectedWeek, ENT_QUOTES) ?>">
+                                        <input type="hidden" name="year_month" value="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>">
+                                        <button
+                                            type="submit"
+                                            class="slot-check-btn <?= $wSumIsCompleted ? 'is-completed' : '' ?>"
+                                            title="<?= htmlspecialchars($wCheckTitle, ENT_QUOTES) ?>"
+                                            aria-label="<?= htmlspecialchars($wCheckTitle, ENT_QUOTES) ?>">
+                                            <?php if ($wSumIsCompleted): ?>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16">
+                                                    <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z" />
+                                                </svg>
+                                            <?php endif; ?>
+                                        </button>
+                                    </form>
+                                <?php endif; ?>
                                 <span><?= htmlspecialchars((string) $selectedWeekData['label_long']) ?></span>
+                                <?php if ($wSumIsCompleted): ?>
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle fs-6 fw-normal">
+                                        &#10003; Erledigt<?= $wSumCompletedDate !== null ? ' am ' . htmlspecialchars($wSumCompletedDate) : '' ?>
+                                    </span>
+                                <?php endif; ?>
                                 <?php if ($selectedWeekData['is_current_week']): ?>
                                     <span class="badge bg-primary-subtle text-primary fs-6 fw-normal">Aktuelle Woche</span>
                                 <?php endif; ?>
@@ -1021,7 +1120,9 @@ require_once __DIR__ . '/includes/header.php';
                                                         <div class="d-flex align-items-center justify-content-between gap-1">
                                                             <strong class="small text-dark"><?= htmlspecialchars((string) $mgItem['title']) ?></strong>
                                                             <?php if ($mgItemDone): ?>
-                                                                <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 0.65rem;">&#10003; Erledigt</span>
+                                                                <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 0.65rem;">
+                                                                    &#10003; Erledigt<?= !empty($mgItem['completed_at_formatted']) ? ' am ' . htmlspecialchars((string) $mgItem['completed_at_formatted']) : '' ?>
+                                                                </span>
                                                             <?php endif; ?>
                                                         </div>
                                                         <div class="text-muted" style="font-size: 0.74rem;">
@@ -1207,7 +1308,7 @@ require_once __DIR__ . '/includes/header.php';
                                                             </span>
                                                             <span class="text-muted">&middot; Soll: <?= number_format($slotDur, 1, ',', '.') ?> h</span>
                                                             <?php if ($slotUnderTarget): ?>
-                                                                <span class="badge text-bg-warning" style="font-size: 0.68rem;" title="Die nachgebuchte Lernzeit war kürzer als für diese Einheit geplant.">
+                                                                <span class="badge text-bg-warning" style="font-size: 0.68rem;" title="Die erfasste Lernzeit ist kürzer als für diese Einheit geplant.">
                                                                     <?= number_format($slotMissingHours, 1, ',', '.') ?> h fehlen
                                                                 </span>
                                                             <?php elseif ($slotCompleted): ?>
@@ -1238,17 +1339,17 @@ require_once __DIR__ . '/includes/header.php';
                                                             <div class="d-flex justify-content-between align-items-center small mb-1" style="font-size: 0.74rem;">
                                                                 <span class="text-muted">
                                                                     ⏱️ Ist-Zeit:
-                                                                    <strong class="<?= $slotCompleted ? 'text-success' : ($slotTrackedSeconds > 0 ? 'text-primary' : 'text-dark') ?>">
+                                                                    <strong class="<?= $slotUnderTarget ? 'text-warning-emphasis' : ($slotCompleted ? 'text-success' : ($slotTrackedSeconds > 0 ? 'text-primary' : 'text-dark')) ?>">
                                                                         <?= htmlspecialchars($slotTrackedFormatted) ?>
                                                                     </strong>
                                                                     (<?= number_format($slotTrackedHours, 1, ',', '.') ?> / <?= number_format($slotDur, 1, ',', '.') ?> h)
                                                                 </span>
-                                                                <span class="fw-semibold <?= $slotCompleted ? 'text-success' : 'text-muted' ?>">
+                                                                <span class="fw-semibold <?= $slotUnderTarget ? 'text-warning-emphasis' : ($slotCompleted ? 'text-success' : 'text-muted') ?>">
                                                                     <?= number_format($slotProgressPct, 0, ',', '.') ?> %
                                                                 </span>
                                                             </div>
                                                             <div class="progress" style="height: 5px;" role="progressbar" aria-label="Gestoppte Ist-Zeit für dieses Tagesziel" aria-valuenow="<?= (int) $slotProgressPct ?>" aria-valuemin="0" aria-valuemax="100">
-                                                                <div class="progress-bar <?= $slotCompleted ? 'bg-success' : 'bg-primary' ?>" style="width: <?= $slotProgressPct ?>%"></div>
+                                                                <div class="progress-bar <?= $slotUnderTarget ? 'bg-warning' : ($slotCompleted ? 'bg-success' : 'bg-primary') ?>" style="width: <?= $slotProgressPct ?>%"></div>
                                                             </div>
                                                         </div>
                                                     </div>

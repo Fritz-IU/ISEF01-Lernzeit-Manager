@@ -145,15 +145,51 @@ try {
             'message'  => 'Die Lerneinheit wurde erfolgreich gelöscht.',
             'redirect' => 'goals.php?tab=week&month=' . urlencode($slotResult['year_month']) . '&week=' . urlencode($slotResult['iso_week']) . '&day=' . urlencode($slotResult['slot_date']),
         ];
-    } elseif ($action === 'toggle_learning_slot') {
-        $slotId = isset($input['slot_id']) && is_scalar($input['slot_id']) ? (int) $input['slot_id'] : 0;
-        $slotResult = $goalController->toggleLearningSlotCompleted($slotId, $userId);
-        $response = [
-            'message'      => $slotResult['is_completed']
+    } elseif (
+        $action === 'toggle_learning_slot'
+        || $action === 'toggle_week'
+        || $action === 'toggle_monthly_goal'
+        || $action === 'toggle_goal'
+        || $action === 'toggle_completion'
+    ) {
+        $toggleResult = $goalController->toggleCompletion($userId, $input);
+        $targetType = (string) ($toggleResult['target_type'] ?? '');
+        $isDone = (bool) ($toggleResult['is_completed'] ?? false);
+
+        if ($targetType === 'slot') {
+            $message = $isDone
                 ? 'Die Lerneinheit wurde als erledigt markiert.'
-                : 'Die Lerneinheit wurde wieder als offen markiert.',
-            'is_completed' => $slotResult['is_completed'],
-            'redirect'     => 'goals.php?tab=week&month=' . urlencode($slotResult['year_month']) . '&week=' . urlencode($slotResult['iso_week']) . '&day=' . urlencode($slotResult['slot_date']),
+                : 'Die Lerneinheit wurde wieder als offen markiert.';
+            $redirectUrl = 'goals.php?tab=week&month=' . urlencode((string) $toggleResult['year_month'])
+                . '&week=' . urlencode((string) $toggleResult['iso_week'])
+                . '&day=' . urlencode((string) $toggleResult['slot_date']);
+        } elseif ($targetType === 'week') {
+            $message = $isDone
+                ? 'Die Kalenderwoche wurde als erledigt markiert.'
+                : 'Die Kalenderwoche wurde wieder als offen markiert.';
+            $redirectUrl = 'goals.php?tab=week&month=' . urlencode((string) $toggleResult['year_month'])
+                . '&week=' . urlencode((string) $toggleResult['iso_week']);
+        } elseif ($targetType === 'monthly_goal') {
+            $message = $isDone
+                ? 'Das Monatsziel wurde als erledigt markiert.'
+                : 'Das Monatsziel wurde wieder als offen markiert.';
+            $redirectUrl = 'goals.php?tab=month&month=' . urlencode((string) $toggleResult['year_month']);
+        } else {
+            $message = $isDone
+                ? 'Das Semesterziel wurde als erledigt markiert.'
+                : 'Das Semesterziel wurde wieder als offen markiert.';
+            $redirectUrl = $semesterRedirectUrl;
+        }
+
+        $response = [
+            'message'                => $message,
+            'target_type'            => $targetType,
+            'is_completed'           => $isDone,
+            'completed_at'           => $toggleResult['completed_at'] ?? null,
+            'completed_at_formatted' => $toggleResult['completed_at_formatted'] ?? null,
+            'cascade'                => $toggleResult,
+            'redirect'               => $redirectUrl,
+            'skip_flash'             => true,
         ];
     }
 
@@ -166,8 +202,10 @@ try {
         exit;
     }
 
-    // Erfolgsmeldung für die Seite nach der Weiterleitung hinterlegen
-    $_SESSION['goals_success'] = $response['message'];
+    // Erfolgsmeldung für die Seite nach der Weiterleitung hinterlegen (außer bei direktem In-Place-Toggle)
+    if (empty($response['skip_flash'])) {
+        $_SESSION['goals_success'] = $response['message'];
+    }
 
     echo json_encode(['success' => true] + $response);
 } catch (ValidationException $e) {
