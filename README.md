@@ -20,6 +20,10 @@ Nach jedem `git pull` mit Änderungen in `sql/` den Reset erneut ausführen. Det
 
 Windows: `C:\xampp\php\php.exe tools\phpunit.phar`. Vorgehen und Konventionen: [docs/unit-tests.md](docs/unit-tests.md)
 
+## 🚀 Deployment (Alwaysdata)
+
+Die Anwendung wird unter [https://lernzeit-manager.alwaysdata.net/](https://lernzeit-manager.alwaysdata.net/) gehostet. Einrichtung, Aktualisierung per Git und Fehlerdiagnose: [docs/deployment.md](docs/deployment.md)
+
 ## 📜 Ordnerstruktur & Entwicklungsrichtlinien – Lernzeit-Manager
 
 Diese Dokumentation beschreibt die festgelegte Verzeichnisstruktur des Repositories für den **Lernzeit-Manager** (Projekt Software Engineering). Sie dient allen Teammitgliedern als verbindliche Orientierung für das Ablegen von Quellcode, Skripten, Layout-Elementen und Dokumenten im Rahmen von Meilenstein MS 4.
