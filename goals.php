@@ -121,8 +121,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         } elseif (in_array($action, ['toggle_learning_slot', 'toggle_week', 'toggle_monthly_goal', 'toggle_goal', 'toggle_completion'], true)) {
             $toggleResult = $goalController->toggleCompletion($userId, $_POST);
-            $_SESSION['goals_success'] = $toggleResult['message'];
-            header('Location: ' . $toggleResult['redirect']);
+            $feedback = GoalController::describeToggleResult($toggleResult, $semesterRedirectUrl);
+            $_SESSION['goals_success'] = $feedback['message'];
+            header('Location: ' . $feedback['redirect']);
             exit;
         } else {
             $errorMessage = 'Ungültige Aktion.';
@@ -732,9 +733,14 @@ require_once __DIR__ . '/includes/header.php';
                                         $mgCompletedDate = isset($mGoal['completed_at_formatted']) && is_string($mGoal['completed_at_formatted'])
                                             ? $mGoal['completed_at_formatted']
                                             : null;
-                                        $mgCheckTitle = $mgCompleted
-                                            ? 'Zwischenziel erledigt – als offen markieren'
-                                            : 'Zwischenziel als erledigt abhaken';
+                                        $mgCompletedByTime = (bool) ($mGoal['is_completed_by_tracked_time'] ?? false);
+                                        if ($mgCompletedByTime) {
+                                            $mgCheckTitle = 'Zwischenziel erledigt – Soll-Zeit durch Zeitbuchungen erreicht';
+                                        } elseif ($mgCompleted) {
+                                            $mgCheckTitle = 'Zwischenziel erledigt – als offen markieren';
+                                        } else {
+                                            $mgCheckTitle = 'Zwischenziel als erledigt abhaken';
+                                        }
                                         $mgSlotCount = (int) ($mGoal['slot_count'] ?? 0);
                                         $isMgOverScheduled = (bool) ($mGoal['is_over_scheduled'] ?? false);
                                         $mgSchedPct = $mgHours > 0 ? min(100.0, $mgScheduled / $mgHours * 100) : 0.0;
@@ -749,6 +755,7 @@ require_once __DIR__ . '/includes/header.php';
                                                         <button
                                                             type="submit"
                                                             class="slot-check-btn <?= $mgCompleted ? 'is-completed' : '' ?>"
+                                                            <?= $mgCompletedByTime ? 'disabled' : '' ?>
                                                             title="<?= htmlspecialchars($mgCheckTitle, ENT_QUOTES) ?>"
                                                             aria-label="<?= htmlspecialchars($mgCheckTitle, ENT_QUOTES) ?>">
                                                             <?php if ($mgCompleted): ?>

@@ -153,42 +153,16 @@ try {
         || $action === 'toggle_completion'
     ) {
         $toggleResult = $goalController->toggleCompletion($userId, $input);
-        $targetType = (string) ($toggleResult['target_type'] ?? '');
-        $isDone = (bool) ($toggleResult['is_completed'] ?? false);
-
-        if ($targetType === 'slot') {
-            $message = $isDone
-                ? 'Die Lerneinheit wurde als erledigt markiert.'
-                : 'Die Lerneinheit wurde wieder als offen markiert.';
-            $redirectUrl = 'goals.php?tab=week&month=' . urlencode((string) $toggleResult['year_month'])
-                . '&week=' . urlencode((string) $toggleResult['iso_week'])
-                . '&day=' . urlencode((string) $toggleResult['slot_date']);
-        } elseif ($targetType === 'week') {
-            $message = $isDone
-                ? 'Die Kalenderwoche wurde als erledigt markiert.'
-                : 'Die Kalenderwoche wurde wieder als offen markiert.';
-            $redirectUrl = 'goals.php?tab=week&month=' . urlencode((string) $toggleResult['year_month'])
-                . '&week=' . urlencode((string) $toggleResult['iso_week']);
-        } elseif ($targetType === 'monthly_goal') {
-            $message = $isDone
-                ? 'Das Monatsziel wurde als erledigt markiert.'
-                : 'Das Monatsziel wurde wieder als offen markiert.';
-            $redirectUrl = 'goals.php?tab=month&month=' . urlencode((string) $toggleResult['year_month']);
-        } else {
-            $message = $isDone
-                ? 'Das Semesterziel wurde als erledigt markiert.'
-                : 'Das Semesterziel wurde wieder als offen markiert.';
-            $redirectUrl = $semesterRedirectUrl;
-        }
+        $feedback = GoalController::describeToggleResult($toggleResult, $semesterRedirectUrl);
 
         $response = [
-            'message'                => $message,
-            'target_type'            => $targetType,
-            'is_completed'           => $isDone,
+            'message'                => $feedback['message'],
+            'target_type'            => (string) ($toggleResult['target_type'] ?? ''),
+            'is_completed'           => (bool) ($toggleResult['is_completed'] ?? false),
             'completed_at'           => $toggleResult['completed_at'] ?? null,
             'completed_at_formatted' => $toggleResult['completed_at_formatted'] ?? null,
             'cascade'                => $toggleResult,
-            'redirect'               => $redirectUrl,
+            'redirect'               => $feedback['redirect'],
             'skip_flash'             => true,
         ];
     }
