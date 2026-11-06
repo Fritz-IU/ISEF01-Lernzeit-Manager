@@ -1,6 +1,7 @@
 <?php
 // index.php
 // Einstiegspunkt des Projekts: Soll-Ist-Dashboard (Story #6, rein lesend).
+// Erfassen und Planen passiert auf timer.php bzw. goals.php, das Dashboard verlinkt nur dorthin.
 
 declare(strict_types=1);
 
@@ -110,10 +111,7 @@ require_once __DIR__ . '/includes/header.php';
 <!-- Kopfbereich: Begrüßung, Semesterauswahl und Schnellzugriffe -->
 <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-4">
     <div class="min-w-0">
-        <h1 class="h3 mb-1 text-primary">Hallo, <?= htmlspecialchars((string) $displayName) ?>!</h1>
-        <p class="text-muted mb-0">
-            Soll-Ist-Vergleich deiner Lernzeit &middot; Stand <?= htmlspecialchars($fmtDate($dashboard['today'])) ?>
-        </p>
+        <h1 class="h3 mb-0 text-primary">Hallo, <?= htmlspecialchars((string) $displayName) ?>!</h1>
     </div>
     <div class="d-flex flex-wrap align-items-center gap-2">
         <?php if (count($dashboard['semesters']) > 1): ?>
@@ -129,10 +127,8 @@ require_once __DIR__ . '/includes/header.php';
                 <noscript><button type="submit" class="btn btn-sm btn-outline-primary">Anzeigen</button></noscript>
             </form>
         <?php endif; ?>
-        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#manualTimeModal">
-            + Lernzeit nachbuchen
-        </button>
-        <a href="timer.php" class="btn btn-sm btn-outline-primary">Stoppuhr</a>
+        <a href="timer.php" class="btn btn-sm btn-primary">Lernzeit erfassen</a>
+        <a href="goals.php" class="btn btn-sm btn-outline-primary">Planen</a>
     </div>
 </div>
 
@@ -465,6 +461,5 @@ require_once __DIR__ . '/includes/header.php';
 <script type="application/json" id="dashboard-data"><?= json_encode($chartData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?></script>
 
 <?php
-require_once __DIR__ . '/includes/manual-time-modal.php';
 require_once __DIR__ . '/includes/footer.php';
 ?>

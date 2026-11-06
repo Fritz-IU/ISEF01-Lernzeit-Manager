@@ -30,7 +30,7 @@ lernzeit-manager/
 │   └── timer.md                           # Diese Dokumentation
 ├── includes/
 │   └── header.php                         # Hauptnavigation mit Link "Stoppuhr"
-├── index.php                              # Dashboard mit Schnellzugriff "Stoppuhr"
+├── index.php                              # Dashboard mit Link "Lernzeit erfassen"
 ├── timer.php                              # Hauptansicht für Stoppuhr, Kennzahlen und Zeithistorie
 ├── src/
 │   ├── Controllers/

@@ -139,13 +139,16 @@ require_once __DIR__ . '/includes/header.php';
 ?>
 
 <!-- Kopfzeile -->
-<div class="row align-items-center mb-4">
-    <div class="col-12">
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
         <h1 class="h3 fw-bold text-primary mb-1">Stoppuhr & Zeiterfassung</h1>
         <p class="text-muted mb-0">
-            Erfasse deine Lernzeiten live per Stoppuhr für deine Lernziele.
+            Erfasse deine Lernzeiten live per Stoppuhr oder buche sie nachträglich.
         </p>
     </div>
+    <button type="button" class="btn btn-outline-primary flex-shrink-0 align-self-start align-self-md-center" data-bs-toggle="modal" data-bs-target="#manualTimeModal">
+        + Lernzeit nachbuchen
+    </button>
 </div>
 
 <!-- Statusmeldungen -->
@@ -584,6 +587,8 @@ require_once __DIR__ . '/includes/header.php';
 
 <?php
 $extraScripts = '<script src="assets/js/timer.js?v=' . filemtime(__DIR__ . '/assets/js/timer.js') . '"></script>';
+// Modal für die manuelle Zeitnachbuchung (hängt manual-time.js an $extraScripts an)
+require_once __DIR__ . '/includes/manual-time-modal.php';
 require_once __DIR__ . '/includes/footer.php';
 ?>
 
