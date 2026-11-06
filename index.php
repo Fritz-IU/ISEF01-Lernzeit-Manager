@@ -216,7 +216,7 @@ require_once __DIR__ . '/includes/header.php';
                     <div class="dashboard-kpi-label mb-1"><?= htmlspecialchars($currentMonth['label']) ?></div>
                     <div class="dashboard-kpi-value">
                         <?= htmlspecialchars($fmtHours((float) $currentMonth['tracked_hours'])) ?>
-                        <span class="fs-6 fw-normal text-muted">/ <?= htmlspecialchars($fmtHours((float) $currentMonth['planned_hours'])) ?> Soll</span>
+                        <span class="fs-6 fw-normal text-muted">/ <?= htmlspecialchars($fmtHours((float) $currentMonth['planned_hours'])) ?></span>
                     </div>
                     <div class="d-flex justify-content-between small text-muted mb-1 mt-2">
                         <span>Zwischenziele des Monats</span>
@@ -243,7 +243,7 @@ require_once __DIR__ . '/includes/header.php';
                     <div class="dashboard-kpi-label mb-1">Diese Woche</div>
                     <div class="dashboard-kpi-value">
                         <?= htmlspecialchars($fmtHours((float) $week['tracked_hours'])) ?>
-                        <span class="fs-6 fw-normal text-muted">/ <?= htmlspecialchars($fmtHours((float) $week['scheduled_hours'])) ?> eingeplant</span>
+                        <span class="fs-6 fw-normal text-muted">/ <?= htmlspecialchars($fmtHours((float) $week['scheduled_hours'])) ?></span>
                     </div>
                     <div class="d-flex justify-content-between small text-muted mb-1 mt-2">
                         <span><?= htmlspecialchars($week['label']) ?></span>
@@ -263,17 +263,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="col-lg-8">
             <div class="card dashboard-card h-100">
                 <div class="card-body">
-                    <div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2 mb-1">
-                        <h3 class="h6 mb-0">Soll-Ist-Verlauf im Semester</h3>
-                        <span class="small text-muted">kumuliert in Stunden</span>
-                    </div>
-                    <p class="small text-muted mb-3">
-                        <?php if ($dashboard['cumulative']['soll_source'] === 'planning'): ?>
-                            Soll aus den geplanten Stunden deiner Zwischenziele, gleichmäßig über den jeweiligen Monat verteilt.
-                        <?php else: ?>
-                            Noch keine Zwischenziele geplant – das Soll ist der Zielwert, gleichmäßig über das Semester verteilt.
-                        <?php endif; ?>
-                    </p>
+                    <h3 class="h6 mb-3">Verlauf im Semester</h3>
                     <div class="dashboard-chart dashboard-chart-lg">
                         <canvas id="chartCumulative" role="img" aria-label="Kumulierte Soll- und Ist-Lernzeit im Semesterverlauf"></canvas>
                     </div>
@@ -283,8 +273,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="col-lg-4">
             <div class="card dashboard-card h-100">
                 <div class="card-body d-flex flex-column">
-                    <h3 class="h6 mb-1">Erfasste Lernzeit je Modul</h3>
-                    <p class="small text-muted mb-3">Anteil am Ist dieses Semesters</p>
+                    <h3 class="h6 mb-3">Lernzeit je Modul</h3>
                     <?php if ((float) $semester['tracked_hours'] > 0): ?>
                         <div class="dashboard-chart dashboard-chart-doughnut">
                             <canvas id="chartModules" role="img" aria-label="Verteilung der erfassten Lernzeit auf die Module"></canvas>
@@ -316,38 +305,9 @@ require_once __DIR__ . '/includes/header.php';
         <div class="col-lg-7">
             <div class="card dashboard-card h-100">
                 <div class="card-body">
-                    <div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2 mb-3">
-                        <h3 class="h6 mb-0">Soll und Ist je Monat</h3>
-                        <button class="btn btn-link btn-sm p-0 text-decoration-none" type="button" data-bs-toggle="collapse" data-bs-target="#monthlyTable" aria-expanded="false" aria-controls="monthlyTable">
-                            Als Tabelle
-                        </button>
-                    </div>
+                    <h3 class="h6 mb-3">Je Monat</h3>
                     <div class="dashboard-chart">
                         <canvas id="chartMonthly" role="img" aria-label="Geplante und erfasste Stunden je Monat mit Monatsbudget"></canvas>
-                    </div>
-                    <div class="collapse mt-3" id="monthlyTable">
-                        <div class="table-responsive">
-                            <table class="table table-sm align-middle mb-0 small">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th scope="col">Monat</th>
-                                        <th scope="col" class="text-end">Soll</th>
-                                        <th scope="col" class="text-end">Ist</th>
-                                        <th scope="col" class="text-end">Budget</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($dashboard['monthly_chart']['labels'] as $i => $label): ?>
-                                        <tr>
-                                            <td><?= htmlspecialchars($label) ?></td>
-                                            <td class="text-end"><?= htmlspecialchars($fmtHours((float) $dashboard['monthly_chart']['soll'][$i])) ?></td>
-                                            <td class="text-end"><?= htmlspecialchars($fmtHours((float) $dashboard['monthly_chart']['ist'][$i])) ?></td>
-                                            <td class="text-end"><?= $dashboard['monthly_chart']['budget'][$i] !== null ? htmlspecialchars($fmtHours((float) $dashboard['monthly_chart']['budget'][$i])) : '–' ?></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -370,13 +330,12 @@ require_once __DIR__ . '/includes/header.php';
     <!-- Zielstruktur: Semester → Module → Zwischenziele -->
     <div class="card dashboard-card mb-2">
         <div class="card-body">
-            <div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2 mb-1">
+            <div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2 mb-3">
                 <h3 class="h6 mb-0">Zielstruktur</h3>
                 <span class="small text-muted">
                     <?= (int) $semester['completed_count'] ?>/<?= (int) $semester['monthly_goal_count'] ?> Zwischenziele erledigt
                 </span>
             </div>
-            <p class="small text-muted mb-3">Semesterziel, Module und monatliche Zwischenziele mit Ist im Verhältnis zum Soll.</p>
 
             <?php if ($modules === []): ?>
                 <div class="dashboard-empty">
@@ -385,7 +344,7 @@ require_once __DIR__ . '/includes/header.php';
             <?php else: ?>
                 <div class="goal-tree">
                     <!-- Wurzel: Semesterziel -->
-                    <div class="goal-tree-node goal-tree-root">
+                    <a class="goal-tree-node goal-tree-link goal-tree-root" href="<?= htmlspecialchars(DashboardController::semesterGoalUrl((int) $semester['id']), ENT_QUOTES) ?>" title="Semesterziel in der Planung öffnen">
                         <div class="d-flex justify-content-between align-items-baseline gap-2">
                             <strong class="text-truncate"><?= htmlspecialchars($semester['title']) ?></strong>
                             <?php if ($semester['is_completed']): ?>
@@ -399,13 +358,16 @@ require_once __DIR__ . '/includes/header.php';
                         <div class="progress" style="height: 6px;" role="progressbar" aria-label="Fortschritt Semesterziel" aria-valuenow="<?= (int) min(100, $semester['progress_percent']) ?>" aria-valuemin="0" aria-valuemax="100">
                             <div class="progress-bar <?= $barClass((float) $semester['progress_percent'], $semester['is_completed']) ?>" style="width: <?= min(100.0, (float) $semester['progress_percent']) ?>%"></div>
                         </div>
-                    </div>
+                    </a>
 
                     <!-- Äste: Module -->
                     <ul class="goal-tree-branches list-unstyled mb-0">
                         <?php foreach ($modules as $module): ?>
                             <li class="goal-tree-branch">
-                                <div class="goal-tree-node goal-tree-module" style="--module-color: var(--series-<?= ((int) $module['color_index'] % 8) + 1 ?>);">
+                                <a class="goal-tree-node goal-tree-link goal-tree-module"
+                                    href="<?= htmlspecialchars(DashboardController::monthlyGoalUrl($module['target']['id'], $module['target']['year_month']), ENT_QUOTES) ?>"
+                                    title="Modul in der Planung öffnen"
+                                    style="--module-color: var(--series-<?= ((int) $module['color_index'] % 8) + 1 ?>);">
                                     <div class="d-flex justify-content-between align-items-baseline gap-2">
                                         <span class="d-inline-flex align-items-center gap-2 min-w-0">
                                             <span class="goal-tree-swatch" aria-hidden="true"></span>
@@ -424,14 +386,15 @@ require_once __DIR__ . '/includes/header.php';
                                     <div class="progress" style="height: 6px;" role="progressbar" aria-label="Fortschritt <?= htmlspecialchars($module['title'], ENT_QUOTES) ?>" aria-valuenow="<?= (int) min(100, $module['percent']) ?>" aria-valuemin="0" aria-valuemax="100">
                                         <div class="progress-bar <?= $barClass((float) $module['percent'], $module['is_completed']) ?>" style="width: <?= min(100.0, (float) $module['percent']) ?>%"></div>
                                     </div>
-                                </div>
+                                </a>
 
                                 <!-- Blätter: monatliche Zwischenziele -->
                                 <ul class="goal-tree-leaves list-unstyled mb-0">
                                     <?php foreach ($module['children'] as $child): ?>
                                         <li class="goal-tree-leaf">
-                                            <div class="goal-tree-node goal-tree-month <?= $child['is_completed'] ? 'is-completed' : '' ?>"
-                                                <?= $child['description'] !== '' ? 'title="' . htmlspecialchars($child['description'], ENT_QUOTES) . '"' : '' ?>>
+                                            <a class="goal-tree-node goal-tree-link goal-tree-month <?= $child['is_completed'] ? 'is-completed' : '' ?>"
+                                                href="<?= htmlspecialchars(DashboardController::monthlyGoalUrl($child['id'], $child['year_month']), ENT_QUOTES) ?>"
+                                                title="<?= htmlspecialchars(($child['description'] !== '' ? $child['description'] . ' – ' : '') . 'In der Planung öffnen', ENT_QUOTES) ?>">
                                                 <div class="d-flex justify-content-between align-items-center gap-2">
                                                     <span class="fw-semibold small"><?= htmlspecialchars($child['month_label']) ?></span>
                                                     <?php if ($child['is_completed']): ?>
@@ -444,7 +407,7 @@ require_once __DIR__ . '/includes/header.php';
                                                 <div class="progress" style="height: 4px;" role="progressbar" aria-label="Fortschritt <?= htmlspecialchars($child['month_label'], ENT_QUOTES) ?>" aria-valuenow="<?= (int) min(100, $child['percent']) ?>" aria-valuemin="0" aria-valuemax="100">
                                                     <div class="progress-bar <?= $barClass((float) $child['percent'], $child['is_completed']) ?>" style="width: <?= min(100.0, (float) $child['percent']) ?>%"></div>
                                                 </div>
-                                            </div>
+                                            </a>
                                         </li>
                                     <?php endforeach; ?>
                                 </ul>

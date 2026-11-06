@@ -191,6 +191,26 @@ final class DashboardControllerTest extends TestCase
         $this->assertTrue($modules[0]['children'][1]['is_completed']);
         $this->assertSame(1, $modules[0]['completed_count']);
         $this->assertFalse($modules[0]['is_completed']);
+        // Sprungziel ist das erste noch offene Zwischenziel des Moduls
+        $this->assertSame(['id' => 1, 'year_month' => '2026-10'], $modules[0]['target']);
+    }
+
+    #[Test]
+    public function erledigtesModulSpringtZumLetztenZwischenziel(): void
+    {
+        $target = DashboardController::moduleTarget([
+            ['id' => 4, 'year_month' => '2026-09', 'is_completed' => true],
+            ['id' => 9, 'year_month' => '2026-10', 'is_completed' => true],
+        ]);
+
+        $this->assertSame(['id' => 9, 'year_month' => '2026-10'], $target);
+    }
+
+    #[Test]
+    public function linksFuehrenDirektZumZielInDerPlanung(): void
+    {
+        $this->assertSame('goals.php?tab=month&month=2026-10#monthly-goal-12', DashboardController::monthlyGoalUrl(12, '2026-10'));
+        $this->assertSame('goals.php?tab=semester#goal-3', DashboardController::semesterGoalUrl(3));
     }
 
     #[Test]

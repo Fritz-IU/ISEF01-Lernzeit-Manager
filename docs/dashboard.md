@@ -8,7 +8,7 @@ Dieses Dokument beschreibt das Dashboard auf der Startseite ([`index.php`](../in
 
 - **User Story #6:** Studierende sehen auf einen Blick, ob ihre erfasste Lernzeit (Ist) mit der geplanten Lernzeit (Soll) mithält.
 - **Akzeptanzkriterium:** Beim Aufruf des Dashboards werden die tatsächlich erfassten Lernzeiten den geplanten Soll-Lernzeiten gegenübergestellt und visuell aufbereitet.
-- **Rein lesend:** Das Dashboard verändert keine Daten. Die einzige Eingabe ist die Auswahl des Semesterziels per GET-Parameter `goal`. Die Buttons „Lernzeit erfassen“ (Stoppuhr und Nachbuchen auf `timer.php`) und „Planen“ (`goals.php`) verlinken nur auf die Seiten, auf denen man Daten ändert.
+- **Rein lesend:** Das Dashboard verändert keine Daten, die Knoten der Zielstruktur sind nur Links in die Planung. Die einzige Eingabe ist die Auswahl des Semesterziels per GET-Parameter `goal`. Die Buttons „Lernzeit erfassen“ (Stoppuhr und Nachbuchen auf `timer.php`) und „Planen“ (`goals.php`) verlinken nur auf die Seiten, auf denen man Daten ändert.
 
 ---
 
@@ -58,10 +58,13 @@ Sonderfälle: *Abgeschlossen* (Semesterziel abgehakt), *Noch nicht gestartet* (v
 ## 4. Aufbau der Seite
 
 1. **Kennzahlen:** Semesterziel (Fortschrittsring), Zeitplan (Vorsprung/Rückstand in Stunden, vergangene Semesterzeit), aktueller Monat, aktuelle Woche.
-2. **Soll-Ist-Verlauf:** kumulierte Linien über alle Semestertage mit Markierung „Heute“.
-3. **Erfasste Lernzeit je Modul:** Ringdiagramm mit HTML-Legende.
-4. **Soll und Ist je Monat:** gruppierte Balken mit Monatsbudget, zusätzlich als Tabelle aufklappbar.
+2. **Verlauf im Semester:** kumulierte Linien über alle Semestertage mit Markierung „Heute“.
+3. **Lernzeit je Modul:** Ringdiagramm mit HTML-Legende.
+4. **Je Monat:** gruppierte Balken mit Monatsbudget.
 5. **Diese Woche:** eingeplante und erfasste Stunden je Wochentag.
-6. **Zielstruktur:** Baum Semesterziel → Module (Zwischenziele mit gleichem Titel) → monatliche Zwischenziele, jeweils mit Ist/Soll und Erledigt-Status.
+6. **Zielstruktur:** Baum Semesterziel → Module (Zwischenziele mit gleichem Titel) → monatliche Zwischenziele, jeweils mit Ist/Soll und Erledigt-Status. Jeder Knoten verlinkt in die Planung (`goals.php`) und springt dort per Anker zur passenden Zeile, die kurz hervorgehoben wird:
+   - Semesterziel → `goals.php?tab=semester#goal-{id}`
+   - Zwischenziel → `goals.php?tab=month&month={YYYY-MM}#monthly-goal-{id}`
+   - Modul → wie Zwischenziel, Ziel ist das erste noch offene Zwischenziel des Moduls (bei erledigten Modulen das letzte)
 
 Farben: Ist in der Markenfarbe (Bootstrap Primary), Soll neutral grau als Referenz. Module bekommen Farben in fester Reihenfolge (`--series-1` … `--series-8`), die Farbe folgt dem Modul in Ringdiagramm und Zielbaum. Status wird immer mit Icon und Text angezeigt, nie nur über die Farbe.

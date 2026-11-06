@@ -316,10 +316,47 @@ class DashboardController
             $module['percent'] = self::percent($module['tracked_hours'], $module['planned_hours']);
             $module['completed_count'] = $doneCount;
             $module['is_completed'] = $doneCount === count($module['children']);
+            $module['target'] = self::moduleTarget($module['children']);
             $result[] = $module;
         }
 
         return $result;
+    }
+
+    /**
+     * Sprungziel eines Moduls in der Planung: das erste noch offene Zwischenziel,
+     * bei komplett erledigten Modulen das letzte.
+     *
+     * @param list<array<string, mixed>> $children Zwischenziele des Moduls, chronologisch
+     * @return array{id: int, year_month: string}
+     */
+    public static function moduleTarget(array $children): array
+    {
+        $target = $children[count($children) - 1];
+        foreach ($children as $child) {
+            if (!$child['is_completed']) {
+                $target = $child;
+                break;
+            }
+        }
+
+        return ['id' => (int) $target['id'], 'year_month' => (string) $target['year_month']];
+    }
+
+    /**
+     * Liefert den Link in die Monatsplanung, der direkt zu einem Zwischenziel springt.
+     */
+    public static function monthlyGoalUrl(int $monthlyGoalId, string $yearMonth): string
+    {
+        return 'goals.php?tab=month&month=' . rawurlencode($yearMonth) . '#monthly-goal-' . $monthlyGoalId;
+    }
+
+    /**
+     * Liefert den Link in die Semesterplanung, der direkt zu einem Semesterziel springt.
+     */
+    public static function semesterGoalUrl(int $goalId): string
+    {
+        return 'goals.php?tab=semester#goal-' . $goalId;
     }
 
     /**

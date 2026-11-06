@@ -129,7 +129,7 @@
         labels: c.labels,
         datasets: [
           {
-            label: 'Ist (erfasst)',
+            label: 'Ist',
             data: c.ist,
             borderColor: COLORS.ist,
             backgroundColor: COLORS.istFill,
@@ -141,7 +141,7 @@
             spanGaps: false,
           },
           {
-            label: 'Soll (geplant)',
+            label: 'Soll',
             data: c.soll,
             borderColor: COLORS.soll,
             borderDash: [6, 4],
@@ -265,7 +265,7 @@
         labels: days.map((d) => d.label.split(' ')[0]),
         datasets: [
           {
-            label: 'Eingeplant',
+            label: 'Soll',
             data: days.map((d) => d.scheduled_hours),
             backgroundColor: COLORS.sollBar,
             borderRadius: 4,
@@ -273,7 +273,7 @@
             maxBarThickness: 22,
           },
           {
-            label: 'Erfasst',
+            label: 'Ist',
             data: days.map((d) => d.tracked_hours),
             backgroundColor: COLORS.ist,
             borderRadius: 4,
