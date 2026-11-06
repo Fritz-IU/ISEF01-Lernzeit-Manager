@@ -87,14 +87,31 @@ class GoalController
     }
 
     /**
-     * Liefert alle Lernziele eines Nutzers.
+     * Liefert alle Lernziele eines Nutzers inklusive Erledigt-Status und formatiertem Abschlussdatum.
      *
      * @param int $userId ID des Nutzers
      * @return list<array<string, mixed>>
      */
     public function listGoals(int $userId): array
     {
-        return $this->goalDAO->findAllByUserId($userId);
+        $goals = $this->goalDAO->findAllByUserId($userId);
+
+        foreach ($goals as &$goal) {
+            $completedAt = !empty($goal['completed_at']) && is_string($goal['completed_at'])
+                ? trim($goal['completed_at'])
+                : null;
+            $completedMonthlyCount = (int) ($goal['completed_monthly_goal_count'] ?? 0);
+
+            // Maßgeblich ist allein das gespeicherte Abschlussdatum: Die Kaskade setzt es automatisch,
+            // sobald alle Monatsziele erledigt sind. So lässt sich ein Semesterziel auch wieder öffnen.
+            $goal['completed_at'] = $completedAt;
+            $goal['is_completed'] = $completedAt !== null;
+            $goal['completed_at_formatted'] = self::formatDateGerman($completedAt);
+            $goal['completed_monthly_goal_count'] = $completedMonthlyCount;
+        }
+        unset($goal);
+
+        return $goals;
     }
 
     /**
@@ -355,6 +372,9 @@ class GoalController
             $validated['planned_hours']
         );
 
+        // Ein neues (offenes) Monatsziel setzt das übergeordnete Semesterziel wieder auf offen
+        $this->goalDAO->setGoalCompleted($validated['goal_id'], $userId, null);
+
         return $validated['year_month'];
     }
 
@@ -385,6 +405,10 @@ class GoalController
             $validated['description'],
             $validated['planned_hours']
         );
+
+        if (empty($existing['completed_at'])) {
+            $this->goalDAO->setGoalCompleted($validated['goal_id'], $userId, null);
+        }
 
         return $validated['year_month'];
     }
@@ -658,10 +682,19 @@ class GoalController
             $scheduledHours = (float) ($mg['scheduled_hours'] ?? 0.0);
             $completedHours = (float) ($mg['completed_hours'] ?? 0.0);
             $slotCount = (int) ($mg['slot_count'] ?? 0);
+            $completedSlotCount = (int) ($mg['completed_slot_count'] ?? 0);
             $trackedSeconds = (int) ($mg['tracked_seconds'] ?? 0);
             $trackedHours = round($trackedSeconds / 3600.0, 2);
             $plannedSeconds = (int) round($pHours * 3600);
-            $isGoalCompleted = !empty($mg['completed_at']) || ($plannedSeconds > 0 && $trackedSeconds >= $plannedSeconds);
+            $completedAt = !empty($mg['completed_at']) && is_string($mg['completed_at'])
+                ? trim($mg['completed_at'])
+                : null;
+            // Ohne eingeplante Lerneinheiten gilt ein Zwischenziel mit erreichter Soll-Zeit als erledigt.
+            // Dieser Status ergibt sich aus den Zeitbuchungen und lässt sich nicht per Häkchen zurücknehmen.
+            $isCompletedByTrackedTime = $slotCount === 0 && $plannedSeconds > 0 && $trackedSeconds >= $plannedSeconds;
+            // Sonst zählt nur das gespeicherte Abschlussdatum (von Kaskade oder Häkchen gesetzt),
+            // damit ein Monatsziel auch bei lauter erledigten Lerneinheiten wieder geöffnet werden kann.
+            $isGoalCompleted = $completedAt !== null || $isCompletedByTrackedTime;
 
             $totalScheduledInMonth += $scheduledHours;
             $totalTrackedInMonth += $trackedHours;
@@ -674,8 +707,12 @@ class GoalController
             $mg['tracked_hours'] = $trackedHours;
             $mg['tracked_formatted'] = self::formatTrackedDuration($trackedSeconds);
             $mg['tracked_percent'] = $pHours > 0 ? min(100.0, round(($trackedHours / $pHours) * 100, 1)) : 0.0;
+            $mg['completed_at'] = $completedAt;
+            $mg['completed_at_formatted'] = self::formatDateGerman($completedAt);
             $mg['is_completed'] = $isGoalCompleted;
+            $mg['is_completed_by_tracked_time'] = $isCompletedByTrackedTime;
             $mg['slot_count'] = $slotCount;
+            $mg['completed_slot_count'] = $completedSlotCount;
             $mg['is_over_scheduled'] = $scheduledHours > $pHours;
             $mg['scheduled_percent'] = $pHours > 0 ? round(($scheduledHours / $pHours) * 100, 1) : 0.0;
             $mg['share_of_month_budget_percent'] = ($selectedBudget !== null && $selectedBudget > 0)
@@ -723,6 +760,16 @@ class GoalController
             $validated['notes']
         );
 
+        // Eine neu angelegte (offene) Lerneinheit setzt alle darüberliegenden Ebenen
+        // (Woche, Monatsziel, Semesterziel) wieder auf offen
+        if (isset($_SESSION) && is_array($_SESSION)) {
+            unset($_SESSION['completed_weeks'][$userId][$validated['iso_week']]);
+        }
+        $this->goalDAO->setMonthlyGoalCompleted($validated['monthly_goal_id'], $userId, null);
+        if ($validated['goal_id'] > 0) {
+            $this->goalDAO->setGoalCompleted($validated['goal_id'], $userId, null);
+        }
+
         return [
             'slot_id'    => $slotId,
             'slot_date'  => $validated['slot_date'],
@@ -759,6 +806,16 @@ class GoalController
             $validated['notes']
         );
 
+        if ((int) ($existing['is_completed'] ?? 0) === 0) {
+            if (isset($_SESSION) && is_array($_SESSION)) {
+                unset($_SESSION['completed_weeks'][$userId][$validated['iso_week']]);
+            }
+            $this->goalDAO->setMonthlyGoalCompleted($validated['monthly_goal_id'], $userId, null);
+            if ($validated['goal_id'] > 0) {
+                $this->goalDAO->setGoalCompleted($validated['goal_id'], $userId, null);
+            }
+        }
+
         return [
             'slot_id'    => $slotId,
             'slot_date'  => $validated['slot_date'],
@@ -789,6 +846,15 @@ class GoalController
 
         $this->goalDAO->deleteLearningSlot($slotId, $userId);
 
+        // Wurde die letzte offene Lerneinheit gelöscht, sind Monatsziel und ggf. Semesterziel jetzt erfüllt
+        if ((int) ($existing['is_completed'] ?? 0) === 0) {
+            $this->completeParentsIfAllDone(
+                (int) ($existing['monthly_goal_id'] ?? 0),
+                (int) ($existing['goal_id'] ?? 0),
+                $userId
+            );
+        }
+
         return [
             'slot_date'  => $slotDate,
             'iso_week'   => $isoWeek,
@@ -797,34 +863,697 @@ class GoalController
     }
 
     /**
-     * Schaltet den Erledigt-Status (is_completed) eines Lern-Timeslots um.
+     * Zentrale Umschalt- und Kaskadenlogik (US-5) zum manuellen und automatischen Abhaken
+     * von Lerneinheiten (slot), Kalenderwochen (week), Monatszielen (monthly_goal) und Semesterzielen (goal).
+     * Prüft bei vorhandener Session das CSRF-Token und gewährleistet strikte Mandantenisolation.
+     *
+     * @param int $userId ID des angemeldeten Nutzers
+     * @param array<string, mixed> $input Eingabedaten (type/action, ID bzw. iso_week, ggf. csrf_token)
+     * @param string|null $today Optionales Referenzdatum (YYYY-MM-DD) für deterministische Unit-Tests
+     * @return array<string, mixed>
+     * @throws ValidationException Bei ungültigen Eingaben, fehlerhaftem CSRF-Token oder fremdem Datensatz
+     */
+    public function toggleCompletion(int $userId, array $input, ?string $today = null): array
+    {
+        // CSRF-Prüfung, sobald ein Session-Token vorliegt oder ein Token im Request übergeben wurde
+        $sessionCsrf = isset($_SESSION['csrf_token']) && is_string($_SESSION['csrf_token'])
+            ? $_SESSION['csrf_token']
+            : null;
+        if ($sessionCsrf !== null && $sessionCsrf !== '') {
+            $submittedCsrf = isset($input['csrf_token']) && is_string($input['csrf_token'])
+                ? $input['csrf_token']
+                : '';
+            if (!hash_equals($sessionCsrf, $submittedCsrf)) {
+                throw new ValidationException(
+                    'Ungültige Sitzungsanfrage. Bitte lade die Seite neu und versuche es erneut.',
+                    'csrf_token'
+                );
+            }
+        } elseif (array_key_exists('csrf_token', $input)) {
+            $submittedCsrf = $input['csrf_token'];
+            if (!is_string($submittedCsrf) || trim($submittedCsrf) === '') {
+                throw new ValidationException(
+                    'Ungültige Sitzungsanfrage. Bitte lade die Seite neu und versuche es erneut.',
+                    'csrf_token'
+                );
+            }
+        }
+
+        $rawType = $input['target_type'] ?? $input['type'] ?? $input['action'] ?? '';
+        $type = is_string($rawType) ? strtolower(trim($rawType)) : '';
+
+        if ($type === '') {
+            if (isset($input['slot_id'])) {
+                $type = 'slot';
+            } elseif (isset($input['iso_week']) || isset($input['week'])) {
+                $type = 'week';
+            } elseif (isset($input['monthly_goal_id'])) {
+                $type = 'monthly_goal';
+            } elseif (isset($input['goal_id'])) {
+                $type = 'goal';
+            }
+        }
+
+        if ($type === 'slot' || $type === 'learning_slot' || $type === 'toggle_learning_slot') {
+            $slotId = $this->parsePositiveId($input['slot_id'] ?? $input['id'] ?? null, 'slot_id', 'Bitte wähle eine gültige Lerneinheit aus.');
+            return $this->toggleLearningSlotCompleted($slotId, $userId, $today);
+        }
+
+        if ($type === 'week' || $type === 'toggle_week') {
+            $isoWeekRaw = $input['iso_week'] ?? $input['week'] ?? null;
+            $isoWeek = is_string($isoWeekRaw) ? trim($isoWeekRaw) : '';
+            $reqMonth = isset($input['year_month']) && is_string($input['year_month'])
+                ? trim($input['year_month'])
+                : (isset($input['redirect_month']) && is_string($input['redirect_month']) ? trim($input['redirect_month']) : null);
+            return $this->toggleWeekCompleted($userId, $isoWeek, $reqMonth, $today);
+        }
+
+        if ($type === 'monthly_goal' || $type === 'toggle_monthly_goal') {
+            $monthlyGoalId = $this->parsePositiveId($input['monthly_goal_id'] ?? $input['id'] ?? null, 'monthly_goal_id', 'Bitte wähle ein gültiges Monatsziel aus.');
+            return $this->toggleMonthlyGoalCompleted($monthlyGoalId, $userId, $today);
+        }
+
+        if ($type === 'goal' || $type === 'semester_goal' || $type === 'learning_goal' || $type === 'toggle_goal') {
+            $goalId = $this->parsePositiveId($input['goal_id'] ?? $input['id'] ?? null, 'goal_id', 'Bitte wähle ein gültiges Lernziel aus.');
+            return $this->toggleGoalCompleted($goalId, $userId, $today);
+        }
+
+        throw new ValidationException('Bitte gib eine gültige Zielebene zum Abhaken an.', 'target_type');
+    }
+
+    /**
+     * Schaltet den Erledigt-Status (completed_at) eines 6-Monats-Semesterziels (learning_goals) um.
+     *
+     * @param int $goalId ID des Lernziels
+     * @param int $userId ID des Nutzers
+     * @param string|null $today Optionales Referenzdatum (YYYY-MM-DD)
+     * @return array{target_type: string, goal_id: int, is_completed: bool, completed_at: ?string, completed_at_formatted: ?string}
+     * @throws ValidationException Wenn das Lernziel nicht existiert oder fremd ist
+     */
+    public function toggleGoalCompleted(int $goalId, int $userId, ?string $today = null): array
+    {
+        if ($goalId <= 0) {
+            throw new ValidationException('Bitte wähle ein gültiges Lernziel aus.', 'goal_id');
+        }
+
+        $existing = $this->goalDAO->findByIdAndUserId($goalId, $userId);
+        if ($existing === null) {
+            throw new ValidationException('Das angegebene Lernziel existiert nicht oder gehört einem anderen Benutzer.', 'goal_id');
+        }
+
+        $effectiveDate = self::resolveCompletionDate($today);
+        $isCurrentlyCompleted = !empty($existing['completed_at']);
+        $newStatus = !$isCurrentlyCompleted;
+        $completedAt = $newStatus ? $effectiveDate : null;
+
+        $this->goalDAO->setGoalCompleted($goalId, $userId, $completedAt);
+
+        return [
+            'target_type'            => 'goal',
+            'goal_id'                => $goalId,
+            'is_completed'           => $newStatus,
+            'completed_at'           => $completedAt,
+            'completed_at_formatted' => self::formatDateGerman($completedAt),
+        ];
+    }
+
+    /**
+     * Schaltet den Erledigt-Status (completed_at) eines monatlichen Zwischenziels (monthly_goals) um
+     * und kaskadiert den Status automatisch auf das übergeordnete Semesterziel.
+     *
+     * @param int $monthlyGoalId ID des Zwischenziels
+     * @param int $userId ID des Nutzers
+     * @param string|null $today Optionales Referenzdatum (YYYY-MM-DD)
+     * @return array<string, mixed>
+     * @throws ValidationException Wenn das Zwischenziel nicht existiert oder fremd ist
+     */
+    public function toggleMonthlyGoalCompleted(int $monthlyGoalId, int $userId, ?string $today = null): array
+    {
+        if ($monthlyGoalId <= 0) {
+            throw new ValidationException('Bitte wähle ein gültiges Monatsziel aus.', 'monthly_goal_id');
+        }
+
+        $existing = $this->goalDAO->findMonthlyGoalByIdAndUserId($monthlyGoalId, $userId);
+        if ($existing === null) {
+            throw new ValidationException('Das angegebene Zwischenziel existiert nicht oder gehört einem anderen Benutzer.', 'monthly_goal_id');
+        }
+
+        $effectiveDate = self::resolveCompletionDate($today);
+        $isCurrentlyCompleted = !empty($existing['completed_at']);
+        $newStatus = !$isCurrentlyCompleted;
+        $completedAt = $newStatus ? $effectiveDate : null;
+
+        $this->goalDAO->setMonthlyGoalCompleted($monthlyGoalId, $userId, $completedAt);
+
+        $goalId = (int) ($existing['goal_id'] ?? 0);
+        $semesterCascade = $this->syncSemesterGoalCompletion(
+            $goalId,
+            $userId,
+            $effectiveDate,
+            [$monthlyGoalId => $completedAt]
+        );
+
+        $yearMonth = (string) ($existing['year_month'] ?? $existing['plan_month'] ?? '');
+
+        return [
+            'target_type'             => 'monthly_goal',
+            'monthly_goal_id'         => $monthlyGoalId,
+            'year_month'              => $yearMonth,
+            'is_completed'            => $newStatus,
+            'completed_at'            => $completedAt,
+            'completed_at_formatted'  => self::formatDateGerman($completedAt),
+            'goal_id'                 => $goalId,
+            'goal_completed'          => $semesterCascade['is_completed'],
+            'semester_goal_completed' => $semesterCascade['is_completed'],
+            'goal_completed_at'       => $semesterCascade['completed_at'],
+        ];
+    }
+
+    /**
+     * Schaltet den Erledigt-Status einer gesamten Kalenderwoche (alle Lerneinheiten der Woche) um
+     * und kaskadiert den Status automatisch auf die betroffenen Monatsziele und Semesterziele.
+     *
+     * @param int $userId ID des Nutzers
+     * @param string $isoWeek Kalenderwoche im Format YYYY-Www
+     * @param string|null $requestedMonth Optionaler Planungsmonat (YYYY-MM)
+     * @param string|null $today Optionales Referenzdatum (YYYY-MM-DD)
+     * @return array<string, mixed>
+     * @throws ValidationException Bei ungültiger Kalenderwoche oder wenn keine Lerneinheiten in der Woche liegen
+     */
+    public function toggleWeekCompleted(
+        int $userId,
+        string $isoWeek,
+        ?string $requestedMonth = null,
+        ?string $today = null
+    ): array {
+        $weekMonday = self::parseIsoWeek($isoWeek);
+        if ($weekMonday === null) {
+            throw new ValidationException('Bitte gib eine gültige Kalenderwoche im Format JJJJ-Www an.', 'iso_week');
+        }
+
+        $normalizedWeek = $weekMonday->format('o-\WW');
+        $weekSunday = $weekMonday->modify('+6 days');
+        $startDate = $weekMonday->format('Y-m-d');
+        $endDate = $weekSunday->format('Y-m-d');
+
+        $weekSlots = $this->goalDAO->findLearningSlotsByDateRange($userId, $startDate, $endDate);
+        if (empty($weekSlots)) {
+            throw new ValidationException('Für diese Kalenderwoche sind noch keine Lerneinheiten eingeplant.', 'iso_week');
+        }
+
+        $effectiveDate = self::resolveCompletionDate($today);
+        $currentlyAllCompleted = self::areAllSlotsCompleted($weekSlots);
+        $newWeekStatus = !$currentlyAllCompleted;
+        $completedAt = $newWeekStatus ? $effectiveDate : null;
+
+        $this->goalDAO->setLearningSlotsCompletedByDateRange($userId, $startDate, $endDate, $newWeekStatus);
+
+        if (isset($_SESSION) && is_array($_SESSION)) {
+            if ($newWeekStatus) {
+                $_SESSION['completed_weeks'][$userId][$normalizedWeek] = $effectiveDate;
+            } else {
+                unset($_SESSION['completed_weeks'][$userId][$normalizedWeek]);
+            }
+        }
+
+        $slotOverrides = [];
+        $affectedMonthlyGoals = [];
+        foreach ($weekSlots as $slot) {
+            $sId = (int) ($slot['id'] ?? 0);
+            $mgId = (int) ($slot['monthly_goal_id'] ?? 0);
+            $gId = (int) ($slot['goal_id'] ?? 0);
+            if ($sId > 0) {
+                $slotOverrides[$sId] = $newWeekStatus;
+            }
+            if ($mgId > 0) {
+                $affectedMonthlyGoals[$mgId] = $gId;
+            }
+        }
+
+        $monthlyGoalOverrides = [];
+        $affectedSemesterGoals = [];
+        foreach ($affectedMonthlyGoals as $mgId => $fallbackGoalId) {
+            $mgCascade = $this->syncMonthlyGoalCompletion($mgId, $userId, $effectiveDate, $slotOverrides, $fallbackGoalId);
+            $monthlyGoalOverrides[$mgId] = $mgCascade['completed_at'];
+            $resolvedGoalId = $mgCascade['goal_id'] > 0 ? $mgCascade['goal_id'] : $fallbackGoalId;
+            if ($resolvedGoalId > 0) {
+                $affectedSemesterGoals[$resolvedGoalId] = true;
+            }
+        }
+
+        $completedGoalIds = [];
+        foreach (array_keys($affectedSemesterGoals) as $gId) {
+            $semCascade = $this->syncSemesterGoalCompletion($gId, $userId, $effectiveDate, $monthlyGoalOverrides);
+            if ($semCascade['is_completed']) {
+                $completedGoalIds[] = $gId;
+            }
+        }
+
+        $weekMonth = self::resolveMonthForWeek($requestedMonth, $normalizedWeek)
+            ?? $weekMonday->modify('+3 days')->format('Y-m');
+
+        return [
+            'target_type'            => 'week',
+            'iso_week'               => $normalizedWeek,
+            'year_month'             => $weekMonth,
+            'is_completed'           => $newWeekStatus,
+            'week_completed'         => $newWeekStatus,
+            'completed_at'           => $completedAt,
+            'completed_at_formatted' => self::formatDateGerman($completedAt),
+            'updated_slot_count'     => count($weekSlots),
+            'completed_goal_ids'     => $completedGoalIds,
+        ];
+    }
+
+    /**
+     * Schaltet den Erledigt-Status (is_completed) eines Lern-Timeslots um
+     * und kaskadiert den Status automatisch auf die Woche, das Monatsziel und das Semesterziel.
      *
      * @param int $slotId ID des Timeslots
      * @param int $userId ID des Nutzers
-     * @return array{slot_date: string, iso_week: string, year_month: string, is_completed: bool}
+     * @param string|null $today Optionales Referenzdatum (YYYY-MM-DD)
+     * @return array<string, mixed>
      * @throws ValidationException Wenn Timeslot nicht existiert
      */
-    public function toggleLearningSlotCompleted(int $slotId, int $userId): array
+    public function toggleLearningSlotCompleted(int $slotId, int $userId, ?string $today = null): array
     {
-        $existing = $this->goalDAO->findLearningSlotByIdAndUserId($slotId, $userId);
-        if ($existing === null) {
-            throw new ValidationException("Der angegebene Timeslot existiert nicht oder gehört einem anderen Benutzer.");
+        if ($slotId <= 0) {
+            throw new ValidationException("Der angegebene Timeslot existiert nicht oder gehört einem anderen Benutzer.", 'slot_id');
         }
 
+        $existing = $this->goalDAO->findLearningSlotByIdAndUserId($slotId, $userId);
+        if ($existing === null) {
+            throw new ValidationException("Der angegebene Timeslot existiert nicht oder gehört einem anderen Benutzer.", 'slot_id');
+        }
+
+        $effectiveDate = self::resolveCompletionDate($today);
         $newStatus = !((int) $existing['is_completed'] === 1);
         $this->goalDAO->setLearningSlotCompleted($slotId, $userId, $newStatus);
 
         $slotDate = (string) $existing['slot_date'];
         $slotDt = DateTimeImmutable::createFromFormat('Y-m-d', $slotDate) ?: new DateTimeImmutable('today');
         $isoWeek = $slotDt->format('o-\WW');
-        $weekMonth = self::resolveMonthForWeek((string) $existing['plan_month'], $isoWeek) ?? (string) $existing['plan_month'];
+        $weekMonth = self::resolveMonthForWeek((string) ($existing['plan_month'] ?? ''), $isoWeek)
+            ?? (string) ($existing['plan_month'] ?? $slotDt->format('Y-m'));
+
+        // Prüfen, ob damit alle Lerneinheiten der Kalenderwoche erledigt sind
+        $weekMonday = $slotDt->modify('monday this week');
+        $weekSunday = $weekMonday->modify('+6 days');
+        $weekSlots = $this->goalDAO->findLearningSlotsByDateRange(
+            $userId,
+            $weekMonday->format('Y-m-d'),
+            $weekSunday->format('Y-m-d')
+        );
+        foreach ($weekSlots as &$ws) {
+            if ((int) ($ws['id'] ?? 0) === $slotId) {
+                $ws['is_completed'] = $newStatus ? 1 : 0;
+            }
+        }
+        unset($ws);
+
+        $weekCompleted = !empty($weekSlots) ? self::areAllSlotsCompleted($weekSlots) : $newStatus;
+        $weekCompletedAt = $weekCompleted ? $effectiveDate : null;
+
+        if (isset($_SESSION) && is_array($_SESSION)) {
+            if ($weekCompleted) {
+                $_SESSION['completed_weeks'][$userId][$isoWeek] = $effectiveDate;
+            } else {
+                unset($_SESSION['completed_weeks'][$userId][$isoWeek]);
+            }
+        }
+
+        // Kaskadierung nach oben: Monatsziel -> Semesterziel
+        $monthlyGoalId = (int) ($existing['monthly_goal_id'] ?? 0);
+        $fallbackGoalId = (int) ($existing['goal_id'] ?? 0);
+        $monthlyCascade = $this->syncMonthlyGoalCompletion(
+            $monthlyGoalId,
+            $userId,
+            $effectiveDate,
+            [$slotId => $newStatus],
+            $fallbackGoalId
+        );
+
+        $goalId = $monthlyCascade['goal_id'] > 0 ? $monthlyCascade['goal_id'] : $fallbackGoalId;
+        $semesterCascade = $this->syncSemesterGoalCompletion(
+            $goalId,
+            $userId,
+            $effectiveDate,
+            [$monthlyGoalId => $monthlyCascade['completed_at']]
+        );
+
+        $slotCompletedAt = $newStatus ? $effectiveDate : null;
 
         return [
-            'slot_date'    => $slotDate,
-            'iso_week'     => $isoWeek,
-            'year_month'   => $weekMonth,
-            'is_completed' => $newStatus,
+            'target_type'               => 'slot',
+            'slot_id'                   => $slotId,
+            'slot_date'                 => $slotDate,
+            'iso_week'                  => $isoWeek,
+            'year_month'                => $weekMonth,
+            'is_completed'              => $newStatus,
+            'completed_at'              => $slotCompletedAt,
+            'completed_at_formatted'    => self::formatDateGerman($slotCompletedAt),
+            'week_completed'            => $weekCompleted,
+            'week_completed_at'         => $weekCompletedAt,
+            'monthly_goal_id'           => $monthlyGoalId,
+            'monthly_goal_completed'    => $monthlyCascade['is_completed'],
+            'monthly_goal_completed_at' => $monthlyCascade['completed_at'],
+            'goal_id'                   => $goalId,
+            'goal_completed'            => $semesterCascade['is_completed'],
+            'semester_goal_completed'   => $semesterCascade['is_completed'],
+            'goal_completed_at'         => $semesterCascade['completed_at'],
         ];
+    }
+
+    /**
+     * Prüft anhand aller zugeordneten Lerneinheiten (Wocheneinheiten), ob ein Monatsziel
+     * vollständig erfüllt ist, und setzt bzw. entfernt automatisch dessen completed_at-Datum.
+     *
+     * @param int $monthlyGoalId ID des Monatsziels
+     * @param int $userId ID des Nutzers
+     * @param string|null $today Optionales Referenzdatum (YYYY-MM-DD)
+     * @param array<int, bool> $slotOverrides In-Memory-Überschreibungen soeben geänderter Slot-Status
+     * @param int $fallbackGoalId Optionale ID des übergeordneten Semesterziels
+     * @return array{is_completed: bool, completed_at: ?string, goal_id: int}
+     */
+    public function syncMonthlyGoalCompletion(
+        int $monthlyGoalId,
+        int $userId,
+        ?string $today = null,
+        array $slotOverrides = [],
+        int $fallbackGoalId = 0
+    ): array {
+        if ($monthlyGoalId <= 0) {
+            return [
+                'is_completed' => false,
+                'completed_at' => null,
+                'goal_id'      => $fallbackGoalId,
+            ];
+        }
+
+        $effectiveDate = self::resolveCompletionDate($today);
+        $monthlyGoal = $this->goalDAO->findMonthlyGoalByIdAndUserId($monthlyGoalId, $userId);
+        $goalId = (int) ($monthlyGoal['goal_id'] ?? $fallbackGoalId);
+        $existingCompletedAt = !empty($monthlyGoal['completed_at']) && is_string($monthlyGoal['completed_at'])
+            ? trim($monthlyGoal['completed_at'])
+            : null;
+
+        $slots = $this->goalDAO->findLearningSlotsByMonthlyGoalId($monthlyGoalId, $userId);
+        foreach ($slots as &$slot) {
+            $sId = (int) ($slot['id'] ?? 0);
+            if ($sId > 0 && array_key_exists($sId, $slotOverrides)) {
+                $slot['is_completed'] = $slotOverrides[$sId] ? 1 : 0;
+            }
+        }
+        unset($slot);
+
+        if (empty($slots)) {
+            return [
+                'is_completed' => $existingCompletedAt !== null,
+                'completed_at' => $existingCompletedAt,
+                'goal_id'      => $goalId,
+            ];
+        }
+
+        if (self::areAllSlotsCompleted($slots)) {
+            $completedAt = $existingCompletedAt ?? $effectiveDate;
+            if ($existingCompletedAt === null) {
+                $this->goalDAO->setMonthlyGoalCompleted($monthlyGoalId, $userId, $completedAt);
+            }
+
+            return [
+                'is_completed' => true,
+                'completed_at' => $completedAt,
+                'goal_id'      => $goalId,
+            ];
+        }
+
+        if ($existingCompletedAt !== null) {
+            $this->goalDAO->setMonthlyGoalCompleted($monthlyGoalId, $userId, null);
+        }
+
+        return [
+            'is_completed' => false,
+            'completed_at' => null,
+            'goal_id'      => $goalId,
+        ];
+    }
+
+    /**
+     * Prüft anhand aller zugeordneten Monatsziele, ob ein übergeordnetes Semesterziel (learning_goals)
+     * vollständig erfüllt ist, und setzt bzw. entfernt automatisch dessen completed_at-Datum.
+     *
+     * @param int $goalId ID des Semesterziels
+     * @param int $userId ID des Nutzers
+     * @param string|null $today Optionales Referenzdatum (YYYY-MM-DD)
+     * @param array<int, ?string> $monthlyGoalOverrides In-Memory-Überschreibungen soeben geänderter Monatsziele
+     * @return array{is_completed: bool, completed_at: ?string}
+     */
+    public function syncSemesterGoalCompletion(
+        int $goalId,
+        int $userId,
+        ?string $today = null,
+        array $monthlyGoalOverrides = []
+    ): array {
+        if ($goalId <= 0) {
+            return [
+                'is_completed' => false,
+                'completed_at' => null,
+            ];
+        }
+
+        $effectiveDate = self::resolveCompletionDate($today);
+        $parentGoal = $this->goalDAO->findByIdAndUserId($goalId, $userId);
+        $existingCompletedAt = !empty($parentGoal['completed_at']) && is_string($parentGoal['completed_at'])
+            ? trim($parentGoal['completed_at'])
+            : null;
+
+        $monthlyGoals = $this->goalDAO->findMonthlyGoalsByGoalId($goalId, $userId);
+        foreach ($monthlyGoals as &$mg) {
+            $mgId = (int) ($mg['id'] ?? 0);
+            if ($mgId > 0 && array_key_exists($mgId, $monthlyGoalOverrides)) {
+                $mg['completed_at'] = $monthlyGoalOverrides[$mgId];
+                $mg['is_completed'] = $monthlyGoalOverrides[$mgId] !== null;
+            }
+        }
+        unset($mg);
+
+        if (empty($monthlyGoals)) {
+            return [
+                'is_completed' => $existingCompletedAt !== null,
+                'completed_at' => $existingCompletedAt,
+            ];
+        }
+
+        if (self::areAllMonthlyGoalsCompleted($monthlyGoals)) {
+            $completedAt = $existingCompletedAt ?? $effectiveDate;
+            if ($existingCompletedAt === null) {
+                $this->goalDAO->setGoalCompleted($goalId, $userId, $completedAt);
+            }
+
+            return [
+                'is_completed' => true,
+                'completed_at' => $completedAt,
+            ];
+        }
+
+        if ($existingCompletedAt !== null) {
+            $this->goalDAO->setGoalCompleted($goalId, $userId, null);
+        }
+
+        return [
+            'is_completed' => false,
+            'completed_at' => null,
+        ];
+    }
+
+    /**
+     * Hakt Monatsziel und Semesterziel automatisch ab, wenn alle untergeordneten Einheiten erledigt sind.
+     * Setzt im Gegensatz zu syncMonthlyGoalCompletion() nie etwas auf offen zurück
+     * (z. B. nach dem Löschen der letzten offenen Lerneinheit).
+     *
+     * @param int $monthlyGoalId ID des Monatsziels
+     * @param int $fallbackGoalId ID des Semesterziels, falls das Monatsziel keine liefert
+     * @param int $userId ID des Nutzers
+     */
+    private function completeParentsIfAllDone(int $monthlyGoalId, int $fallbackGoalId, int $userId): void
+    {
+        if ($monthlyGoalId <= 0) {
+            return;
+        }
+
+        $remainingSlots = $this->goalDAO->findLearningSlotsByMonthlyGoalId($monthlyGoalId, $userId);
+        if (!self::areAllSlotsCompleted($remainingSlots)) {
+            return;
+        }
+
+        $monthlyCascade = $this->syncMonthlyGoalCompletion($monthlyGoalId, $userId, null, [], $fallbackGoalId);
+        $goalId = $monthlyCascade['goal_id'] > 0 ? $monthlyCascade['goal_id'] : $fallbackGoalId;
+        if ($goalId <= 0) {
+            return;
+        }
+
+        $monthlyGoalOverrides = [$monthlyGoalId => $monthlyCascade['completed_at']];
+        $siblings = $this->goalDAO->findMonthlyGoalsByGoalId($goalId, $userId);
+        foreach ($siblings as &$sibling) {
+            $siblingId = (int) ($sibling['id'] ?? 0);
+            if (array_key_exists($siblingId, $monthlyGoalOverrides)) {
+                $sibling['completed_at'] = $monthlyGoalOverrides[$siblingId];
+            }
+        }
+        unset($sibling);
+
+        if (self::areAllMonthlyGoalsCompleted($siblings)) {
+            $this->syncSemesterGoalCompletion($goalId, $userId, null, $monthlyGoalOverrides);
+        }
+    }
+
+    /**
+     * Baut aus dem Ergebnis von toggleCompletion() die Erfolgsmeldung und die Ziel-URL für die Weiterleitung.
+     * Wird vom JSON-Endpunkt (api/goals.php) und vom Formular-Fallback (goals.php) gemeinsam genutzt.
+     *
+     * @param array<string, mixed> $toggleResult Rückgabe von toggleCompletion()
+     * @param string $semesterRedirectUrl Ziel-URL für Semesterziele
+     * @return array{message: string, redirect: string}
+     */
+    public static function describeToggleResult(array $toggleResult, string $semesterRedirectUrl): array
+    {
+        $targetType = (string) ($toggleResult['target_type'] ?? '');
+        $isDone = (bool) ($toggleResult['is_completed'] ?? false);
+        $yearMonth = urlencode((string) ($toggleResult['year_month'] ?? ''));
+        $isoWeek = urlencode((string) ($toggleResult['iso_week'] ?? ''));
+
+        if ($targetType === 'slot') {
+            return [
+                'message'  => $isDone
+                    ? 'Die Lerneinheit wurde als erledigt markiert.'
+                    : 'Die Lerneinheit wurde wieder als offen markiert.',
+                'redirect' => 'goals.php?tab=week&month=' . $yearMonth . '&week=' . $isoWeek
+                    . '&day=' . urlencode((string) ($toggleResult['slot_date'] ?? '')),
+            ];
+        }
+
+        if ($targetType === 'week') {
+            return [
+                'message'  => $isDone
+                    ? 'Die Kalenderwoche wurde als erledigt markiert.'
+                    : 'Die Kalenderwoche wurde wieder als offen markiert.',
+                'redirect' => 'goals.php?tab=week&month=' . $yearMonth . '&week=' . $isoWeek,
+            ];
+        }
+
+        if ($targetType === 'monthly_goal') {
+            return [
+                'message'  => $isDone
+                    ? 'Das Monatsziel wurde als erledigt markiert.'
+                    : 'Das Monatsziel wurde wieder als offen markiert.',
+                'redirect' => 'goals.php?tab=month&month=' . $yearMonth,
+            ];
+        }
+
+        return [
+            'message'  => $isDone
+                ? 'Das Semesterziel wurde als erledigt markiert.'
+                : 'Das Semesterziel wurde wieder als offen markiert.',
+            'redirect' => $semesterRedirectUrl,
+        ];
+    }
+
+    /**
+     * Prüft, ob in einer nicht-leeren Liste von Lern-Timeslots alle Einheiten als erledigt markiert sind.
+     *
+     * @param list<array<string, mixed>> $slots
+     * @return bool
+     */
+    public static function areAllSlotsCompleted(array $slots): bool
+    {
+        if (empty($slots)) {
+            return false;
+        }
+
+        foreach ($slots as $slot) {
+            $done = ($slot['is_completed'] ?? 0) === true || (int) ($slot['is_completed'] ?? 0) === 1;
+            if (!$done) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Prüft, ob in einer nicht-leeren Liste von Monatszielen alle Ziele als erledigt markiert sind.
+     *
+     * @param list<array<string, mixed>> $monthlyGoals
+     * @return bool
+     */
+    public static function areAllMonthlyGoalsCompleted(array $monthlyGoals): bool
+    {
+        if (empty($monthlyGoals)) {
+            return false;
+        }
+
+        foreach ($monthlyGoals as $mg) {
+            $done = !empty($mg['completed_at']) || !empty($mg['is_completed']);
+            if (!$done) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Formatiert ein ISO-Datum (YYYY-MM-DD) in das deutsche Datumsformat (TT.MM.JJJJ).
+     */
+    public static function formatDateGerman(?string $date): ?string
+    {
+        if ($date === null || trim($date) === '') {
+            return null;
+        }
+        $dt = DateTimeImmutable::createFromFormat('!Y-m-d', trim($date));
+        if (!$dt || $dt->format('Y-m-d') !== trim($date)) {
+            return null;
+        }
+
+        return $dt->format('d.m.Y');
+    }
+
+    /**
+     * Ermittelt das gültige Abschlussdatum im Format YYYY-MM-DD (Fallback: aktuelles Tagesdatum).
+     */
+    private static function resolveCompletionDate(?string $today = null): string
+    {
+        if ($today !== null && trim($today) !== '') {
+            $trimmed = trim($today);
+            $dt = DateTimeImmutable::createFromFormat('!Y-m-d', $trimmed);
+            if ($dt !== false && $dt->format('Y-m-d') === $trimmed) {
+                return $trimmed;
+            }
+        }
+
+        return date('Y-m-d');
+    }
+
+    /**
+     * Liest und prüft eine positive Ganzzahl-ID aus Benutzereingaben.
+     *
+     * @throws ValidationException
+     */
+    private function parsePositiveId(mixed $rawId, string $field, string $errorMessage): int
+    {
+        if (is_int($rawId)) {
+            $id = $rawId;
+        } elseif (is_string($rawId) && preg_match('/^[1-9]\d*$/', trim($rawId))) {
+            $id = (int) trim($rawId);
+        } else {
+            $id = 0;
+        }
+
+        if ($id <= 0) {
+            throw new ValidationException($errorMessage, $field);
+        }
+
+        return $id;
     }
 
     /**
@@ -957,6 +1686,7 @@ class GoalController
 
         return [
             'monthly_goal_id' => $monthlyGoalId,
+            'goal_id'         => (int) ($monthlyGoal['goal_id'] ?? 0),
             'year_month'      => $weekMonth,
             'slot_date'       => $slotDate,
             'iso_week'        => $isoWeek,
@@ -1166,6 +1896,7 @@ class GoalController
             $weekCompletedHours = 0.0;
             $weekTrackedSeconds = 0;
             $weekSlotCount = 0;
+            $weekCompletedSlotCount = 0;
 
             for ($dIdx = 0; $dIdx < 7; $dIdx++) {
                 $dStr = $mondayDt->modify("+{$dIdx} days")->format('Y-m-d');
@@ -1175,27 +1906,41 @@ class GoalController
                     $weekHours += $dur;
                     if ((int) $s['is_completed'] === 1) {
                         $weekCompletedHours += $dur;
+                        $weekCompletedSlotCount++;
                     }
                     $weekSlotCount++;
                 }
             }
 
+            $isWeekCompleted = $weekSlotCount > 0 && $weekCompletedSlotCount === $weekSlotCount;
+            $weekCompletedAt = null;
+            if ($isWeekCompleted) {
+                $sessionWeekDate = isset($_SESSION['completed_weeks'][$userId][$isoW]) && is_string($_SESSION['completed_weeks'][$userId][$isoW])
+                    ? $_SESSION['completed_weeks'][$userId][$isoW]
+                    : null;
+                $weekCompletedAt = $sessionWeekDate ?? $todayStr;
+            }
+
             $weekNum = (int) $mondayDt->format('W');
             $weeksWindow[$isoW] = [
-                'iso_week'          => $isoW,
-                'week_number'       => $weekNum,
-                'label_short'       => 'KW ' . $weekNum,
-                'label_long'        => sprintf('KW %d (%s – %s)', $weekNum, $mondayDt->format('d.m.'), $sundayDt->format('d.m.Y')),
-                'date_range_short'  => sprintf('%s – %s', $mondayDt->format('d.m.'), $sundayDt->format('d.m.')),
-                'start_date'        => $mondayDt->format('Y-m-d'),
-                'end_date'          => $sundayDt->format('Y-m-d'),
-                'is_current_week'   => ($isoW === $currentIsoWeek),
-                'is_selected'       => ($isoW === $selectedIsoWeek),
-                'scheduled_hours'   => round($weekHours, 2),
-                'completed_hours'   => round($weekCompletedHours, 2),
-                'tracked_seconds'   => $weekTrackedSeconds,
-                'tracked_hours'     => round($weekTrackedSeconds / 3600.0, 2),
-                'slot_count'        => $weekSlotCount,
+                'iso_week'               => $isoW,
+                'week_number'            => $weekNum,
+                'label_short'            => 'KW ' . $weekNum,
+                'label_long'             => sprintf('KW %d (%s – %s)', $weekNum, $mondayDt->format('d.m.'), $sundayDt->format('d.m.Y')),
+                'date_range_short'       => sprintf('%s – %s', $mondayDt->format('d.m.'), $sundayDt->format('d.m.')),
+                'start_date'             => $mondayDt->format('Y-m-d'),
+                'end_date'               => $sundayDt->format('Y-m-d'),
+                'is_current_week'        => ($isoW === $currentIsoWeek),
+                'is_selected'            => ($isoW === $selectedIsoWeek),
+                'scheduled_hours'        => round($weekHours, 2),
+                'completed_hours'        => round($weekCompletedHours, 2),
+                'tracked_seconds'        => $weekTrackedSeconds,
+                'tracked_hours'          => round($weekTrackedSeconds / 3600.0, 2),
+                'slot_count'             => $weekSlotCount,
+                'completed_slot_count'   => $weekCompletedSlotCount,
+                'is_completed'           => $isWeekCompleted,
+                'completed_at'           => $weekCompletedAt,
+                'completed_at_formatted' => self::formatDateGerman($weekCompletedAt),
             ];
         }
 
@@ -1252,7 +1997,7 @@ class GoalController
                     ? (int) $sItem['planned_seconds']
                     : (int) round($dur * 3600);
                 $trackedSeconds = (int) ($sItem['tracked_seconds'] ?? 0);
-                $isUnderTarget = $isCompleted && $trackedSeconds > 0 && $trackedSeconds < $plannedSeconds;
+                $isUnderTarget = $isCompleted && $plannedSeconds > 0 && $trackedSeconds < $plannedSeconds;
                 $missingSeconds = $isUnderTarget ? max(0, $plannedSeconds - $trackedSeconds) : 0;
 
                 $sItem['planned_seconds'] = $plannedSeconds;
@@ -1367,6 +2112,9 @@ class GoalController
                 'tracked_formatted'              => self::formatTrackedDuration($selectedWeekTrackedSeconds),
                 'slot_count'                     => $selectedWeekSlotCount,
                 'completed_slot_count'           => $selectedWeekCompletedSlotCount,
+                'is_completed'                   => (bool) ($weeksWindow[$selectedIsoWeek]['is_completed'] ?? false),
+                'completed_at'                   => $weeksWindow[$selectedIsoWeek]['completed_at'] ?? null,
+                'completed_at_formatted'         => $weeksWindow[$selectedIsoWeek]['completed_at_formatted'] ?? null,
                 'has_overlaps'                   => $weekHasOverlaps,
                 'share_of_month_planned_percent' => $shareOfMonthPlannedPercent,
                 'share_of_month_budget_percent'  => $shareOfMonthBudgetPercent,

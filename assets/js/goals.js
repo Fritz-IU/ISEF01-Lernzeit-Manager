@@ -142,12 +142,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Alle Formularfelder inkl. CSRF-Token und Aktion übernehmen
       const payload = Object.fromEntries(new FormData(form).entries());
+      const isToggleAction = [
+        'toggle_learning_slot',
+        'toggle_week',
+        'toggle_monthly_goal',
+        'toggle_goal',
+        'toggle_completion',
+      ].includes(String(payload.action || ''));
 
       const originalBtnHtml = submitBtn ? submitBtn.innerHTML : '';
       if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML =
-          '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Speichern…';
+        if (!isToggleAction && !submitBtn.classList.contains('slot-check-btn')) {
+          submitBtn.innerHTML =
+            '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Speichern…';
+        }
       }
 
       try {
@@ -171,6 +180,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (response.ok && result.success) {
+          if (isToggleAction) {
+            const refreshUrl = result.redirect || window.location.href;
+            const htmlResponse = await fetch(refreshUrl, {
+              headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            if (htmlResponse.ok) {
+              const html = await htmlResponse.text();
+              const parser = new DOMParser();
+              const doc = parser.parseFromString(html, 'text/html');
+              applyPlanningSectionsFromDocument(doc);
+              return;
+            }
+          }
           window.location.href = result.redirect || 'goals.php';
           return;
         }
@@ -730,12 +752,19 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   /**
-   * Synchronisiert die Bereiche #monatsplanung und #wochenplanung sowie die Auswahlfelder
+   * Synchronisiert die Bereiche #semesterplanung, #monatsplanung und #wochenplanung sowie die Auswahlfelder
    * der Timeslot-Modals aus einem per fetch() nachgeladenen HTML-Dokument.
    *
    * @param {Document} doc Geparstes HTML-Dokument
    */
   function applyPlanningSectionsFromDocument(doc) {
+    const semesterSection = document.getElementById('semesterplanung');
+    const newSemesterSection = doc.getElementById('semesterplanung');
+    if (semesterSection && newSemesterSection) {
+      semesterSection.replaceChildren(...newSemesterSection.childNodes);
+      semesterSection.querySelectorAll('form[data-ajax-form]').forEach(setupAjaxForm);
+    }
+
     const monthSection = document.getElementById('monatsplanung');
     const newMonthSection = doc.getElementById('monatsplanung');
     if (monthSection && newMonthSection) {
@@ -752,6 +781,7 @@ document.addEventListener('DOMContentLoaded', () => {
           tabMonthBadge.textContent = newMonthShort;
         }
       }
+      monthSection.querySelectorAll('form[data-ajax-form]').forEach(setupAjaxForm);
     }
 
     const weekSection = document.getElementById('wochenplanung');

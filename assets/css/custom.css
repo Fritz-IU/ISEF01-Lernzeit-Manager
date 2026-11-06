@@ -279,6 +279,11 @@ main {
   border-color: var(--bs-success);
 }
 
+.slot-check-btn:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+
 .slot-check-btn.is-partial {
   background-color: var(--bs-warning);
   border-color: var(--bs-warning);

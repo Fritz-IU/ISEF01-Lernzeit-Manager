@@ -145,15 +145,25 @@ try {
             'message'  => 'Die Lerneinheit wurde erfolgreich gelöscht.',
             'redirect' => 'goals.php?tab=week&month=' . urlencode($slotResult['year_month']) . '&week=' . urlencode($slotResult['iso_week']) . '&day=' . urlencode($slotResult['slot_date']),
         ];
-    } elseif ($action === 'toggle_learning_slot') {
-        $slotId = isset($input['slot_id']) && is_scalar($input['slot_id']) ? (int) $input['slot_id'] : 0;
-        $slotResult = $goalController->toggleLearningSlotCompleted($slotId, $userId);
+    } elseif (
+        $action === 'toggle_learning_slot'
+        || $action === 'toggle_week'
+        || $action === 'toggle_monthly_goal'
+        || $action === 'toggle_goal'
+        || $action === 'toggle_completion'
+    ) {
+        $toggleResult = $goalController->toggleCompletion($userId, $input);
+        $feedback = GoalController::describeToggleResult($toggleResult, $semesterRedirectUrl);
+
         $response = [
-            'message'      => $slotResult['is_completed']
-                ? 'Die Lerneinheit wurde als erledigt markiert.'
-                : 'Die Lerneinheit wurde wieder als offen markiert.',
-            'is_completed' => $slotResult['is_completed'],
-            'redirect'     => 'goals.php?tab=week&month=' . urlencode($slotResult['year_month']) . '&week=' . urlencode($slotResult['iso_week']) . '&day=' . urlencode($slotResult['slot_date']),
+            'message'                => $feedback['message'],
+            'target_type'            => (string) ($toggleResult['target_type'] ?? ''),
+            'is_completed'           => (bool) ($toggleResult['is_completed'] ?? false),
+            'completed_at'           => $toggleResult['completed_at'] ?? null,
+            'completed_at_formatted' => $toggleResult['completed_at_formatted'] ?? null,
+            'cascade'                => $toggleResult,
+            'redirect'               => $feedback['redirect'],
+            'skip_flash'             => true,
         ];
     }
 
@@ -166,8 +176,10 @@ try {
         exit;
     }
 
-    // Erfolgsmeldung für die Seite nach der Weiterleitung hinterlegen
-    $_SESSION['goals_success'] = $response['message'];
+    // Erfolgsmeldung für die Seite nach der Weiterleitung hinterlegen (außer bei direktem In-Place-Toggle)
+    if (empty($response['skip_flash'])) {
+        $_SESSION['goals_success'] = $response['message'];
+    }
 
     echo json_encode(['success' => true] + $response);
 } catch (ValidationException $e) {

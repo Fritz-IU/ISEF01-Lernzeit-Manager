@@ -37,8 +37,14 @@ final class GoalControllerTest extends TestCase
     protected function setUp(): void
     {
         // Vorbereiten: Controller mit einem Mock statt der echten Datenbankzugriffsschicht
+        $_SESSION = [];
         $this->dao = $this->createMock(GoalDAO::class);
         $this->controller = new GoalController($this->dao);
+    }
+
+    protected function tearDown(): void
+    {
+        $_SESSION = [];
     }
 
     /**
@@ -685,7 +691,48 @@ final class GoalControllerTest extends TestCase
             'Soll überschritten'        => [['tracked_seconds' => 9000], true],
             'in der Datenbank erledigt' => [['tracked_seconds' => 0, 'completed_at' => '2026-11-15'], true],
             'keine Soll-Zeit'           => [['tracked_seconds' => 3600, 'planned_hours' => '0.00'], false],
+            // Ein wieder geöffnetes Monatsziel bleibt offen, auch wenn alle Lerneinheiten erledigt sind
+            'alle Lerneinheiten erledigt, wieder geöffnet' => [['slot_count' => 2, 'completed_slot_count' => 2, 'completed_at' => null], false],
+            'Soll erreicht, aber Lerneinheiten eingeplant' => [['tracked_seconds' => 7200, 'slot_count' => 1], false],
         ];
+    }
+
+    #[Test]
+    public function kennzeichnetUeberIstZeitErledigtesZwischenzielAlsNichtUmschaltbar(): void
+    {
+        $this->daoLiefertZwischenziel(['tracked_seconds' => 7200]);
+
+        $data = $this->controller->buildMonthlyPlanningData(self::USER_ID, self::lernziele(), '2026-11');
+
+        self::assertTrue($data['monthly_goals'][0]['is_completed_by_tracked_time']);
+    }
+
+    #[Test]
+    public function kennzeichnetAbgehaktesZwischenzielAlsUmschaltbar(): void
+    {
+        $this->daoLiefertZwischenziel(['completed_at' => '2026-11-15', 'slot_count' => 1, 'completed_slot_count' => 1]);
+
+        $data = $this->controller->buildMonthlyPlanningData(self::USER_ID, self::lernziele(), '2026-11');
+
+        self::assertTrue($data['monthly_goals'][0]['is_completed']);
+        self::assertFalse($data['monthly_goals'][0]['is_completed_by_tracked_time']);
+    }
+
+    #[Test]
+    public function zeigtWiederGeoeffnetesSemesterzielAlsOffenAuchWennAlleMonatszieleErledigtSind(): void
+    {
+        $this->dao->method('findAllByUserId')->willReturn([
+            array_merge(self::PARENT_GOAL, [
+                'completed_at'                 => null,
+                'monthly_goal_count'           => 2,
+                'completed_monthly_goal_count' => 2,
+            ]),
+        ]);
+
+        $goals = $this->controller->listGoals(self::USER_ID);
+
+        self::assertFalse($goals[0]['is_completed']);
+        self::assertSame(2, $goals[0]['completed_monthly_goal_count']);
     }
 
     #[Test]
@@ -998,7 +1045,7 @@ final class GoalControllerTest extends TestCase
         // Drei Slots am 28.10.2026 (KW 44):
         // 1) Nachgebucht mit 1,5 h statt geplanten 2,0 h -> unterschritten (0,5 h fehlen)
         // 2) Nachgebucht mit vollen 2,0 h -> nicht unterschritten
-        // 3) Direkt ohne Nachbuchung abgehakt (tracked_seconds = 0) -> nicht unterschritten
+        // 3) Direkt ohne erfasste Zeit abgehakt (tracked_seconds = 0) -> unterschritten (volle 1,0 h fehlen)
         $weeklyPlanning = $this->wochenplanungMit([
             self::lerneinheit(['id' => 101, 'tracked_seconds' => 5400]),
             self::lerneinheit(['id' => 102, 'start_time' => '14:00:00', 'end_time' => '16:00:00']),
@@ -1024,9 +1071,9 @@ final class GoalControllerTest extends TestCase
         self::assertSame(0, $wednesdaySlots[1]['missing_seconds']);
         self::assertSame(0.0, $wednesdaySlots[1]['missing_hours']);
 
-        self::assertFalse($wednesdaySlots[2]['is_under_target']);
-        self::assertSame(0, $wednesdaySlots[2]['missing_seconds']);
-        self::assertSame(0.0, $wednesdaySlots[2]['missing_hours']);
+        self::assertTrue($wednesdaySlots[2]['is_under_target']);
+        self::assertSame(3600, $wednesdaySlots[2]['missing_seconds']);
+        self::assertSame(1.0, $wednesdaySlots[2]['missing_hours']);
     }
 
     /**
@@ -1055,10 +1102,15 @@ final class GoalControllerTest extends TestCase
                 true,
                 1800,
             ],
-            'Ohne gebuchte Zeit' => [
+            'Manuell abgehakt ohne erfasste Zeit (tracked_seconds = 0)' => [
+                ['tracked_seconds' => 0],
+                true,
+                7200,
+            ],
+            'Manuell abgehakt ohne gebuchte Zeit (tracked_seconds = null)' => [
                 ['tracked_seconds' => null],
-                false,
-                0,
+                true,
+                7200,
             ],
         ];
     }
@@ -1095,5 +1147,594 @@ final class GoalControllerTest extends TestCase
 
         self::assertSame(2.0, $weeklyPlanning['week_summary']['completed_hours']);
         self::assertSame(1, $weeklyPlanning['week_summary']['completed_slot_count']);
+    }
+
+    // ------------------------------------------------------------------
+    // US-5: Lernziele als erledigt markieren & hierarchische Kaskadierung
+    // ------------------------------------------------------------------
+
+    #[Test]
+    public function markiertMonatszielAlsErledigtWennAlleWochenzieleErledigtSind(): void
+    {
+        $completionDate = '2026-11-05';
+
+        // Ausgangslage: Lerneinheit 101 ist noch offen (is_completed = 0)
+        $this->dao->method('findLearningSlotByIdAndUserId')
+            ->with(101, self::USER_ID)
+            ->willReturn([
+                'id'              => 101,
+                'user_id'         => self::USER_ID,
+                'monthly_goal_id' => 3,
+                'slot_date'       => '2026-11-04',
+                'is_completed'    => 0,
+            ]);
+
+        $this->dao->expects($this->once())
+            ->method('setLearningSlotCompleted')
+            ->with(101, self::USER_ID, true)
+            ->willReturn(true);
+
+        // Alle Einheiten der Woche KW 45 sind nach dem Abhaken erledigt
+        $this->dao->method('findLearningSlotsByDateRange')
+            ->with(self::USER_ID, '2026-11-02', '2026-11-08')
+            ->willReturn([
+                ['id' => 100, 'monthly_goal_id' => 3, 'is_completed' => 1],
+                ['id' => 101, 'monthly_goal_id' => 3, 'is_completed' => 1],
+            ]);
+
+        // Monatsziel 3 ist bisher noch offen (completed_at = null)
+        $this->dao->method('findMonthlyGoalByIdAndUserId')
+            ->with(3, self::USER_ID)
+            ->willReturn([
+                'id'           => 3,
+                'goal_id'      => 7,
+                'user_id'      => self::USER_ID,
+                'plan_month'   => '2026-11',
+                'year_month'   => '2026-11',
+                'title'        => 'Kapitel 1 bis 3',
+                'completed_at' => null,
+            ]);
+
+        // Alle Wocheneinheiten des Monatsziels 3 sind erledigt -> Monatsziel muss automatisch erledigt werden
+        $this->dao->method('findLearningSlotsByMonthlyGoalId')
+            ->with(3, self::USER_ID)
+            ->willReturn([
+                ['id' => 100, 'is_completed' => 1],
+                ['id' => 101, 'is_completed' => 1],
+            ]);
+
+        $this->dao->expects($this->once())
+            ->method('setMonthlyGoalCompleted')
+            ->with(3, self::USER_ID, $completionDate)
+            ->willReturn(true);
+
+        // Semesterziel 7 hat noch ein weiteres offenes Monatsziel -> bleibt offen
+        $this->dao->method('findByIdAndUserId')
+            ->with(7, self::USER_ID)
+            ->willReturn(array_merge(self::PARENT_GOAL, ['completed_at' => null]));
+
+        $this->dao->method('findMonthlyGoalsByGoalId')
+            ->with(7, self::USER_ID)
+            ->willReturn([
+                ['id' => 3, 'completed_at' => $completionDate],
+                ['id' => 4, 'completed_at' => null],
+            ]);
+
+        $this->dao->expects($this->never())->method('setGoalCompleted');
+
+        $result = $this->controller->toggleLearningSlotCompleted(101, self::USER_ID, $completionDate);
+
+        self::assertTrue($result['is_completed']);
+        self::assertTrue($result['week_completed']);
+        self::assertTrue($result['monthly_goal_completed']);
+        self::assertFalse($result['semester_goal_completed']);
+        self::assertSame($completionDate, $result['completed_at']);
+    }
+
+    #[Test]
+    public function markiertSemesterzielAlsErledigtWennAlleMonatszieleErledigtSind(): void
+    {
+        $completionDate = '2026-11-05';
+
+        // Monatsziel 4 wird abgehakt (war bisher offen)
+        $this->dao->method('findMonthlyGoalByIdAndUserId')
+            ->with(4, self::USER_ID)
+            ->willReturn([
+                'id'           => 4,
+                'goal_id'      => 7,
+                'user_id'      => self::USER_ID,
+                'plan_month'   => '2026-12',
+                'year_month'   => '2026-12',
+                'title'        => 'Kapitel 4 bis 6',
+                'completed_at' => null,
+            ]);
+
+        $this->dao->expects($this->once())
+            ->method('setMonthlyGoalCompleted')
+            ->with(4, self::USER_ID, $completionDate)
+            ->willReturn(true);
+
+        // Übergeordnetes Semesterziel 7 ist noch offen
+        $this->dao->method('findByIdAndUserId')
+            ->with(7, self::USER_ID)
+            ->willReturn(array_merge(self::PARENT_GOAL, ['completed_at' => null]));
+
+        // Alle Monatsziele zu Semesterziel 7 sind nun erledigt -> Semesterziel kaskadiert auf erledigt
+        $this->dao->method('findMonthlyGoalsByGoalId')
+            ->with(7, self::USER_ID)
+            ->willReturn([
+                ['id' => 3, 'completed_at' => '2026-10-28'],
+                ['id' => 4, 'completed_at' => $completionDate],
+            ]);
+
+        $this->dao->expects($this->once())
+            ->method('setGoalCompleted')
+            ->with(7, self::USER_ID, $completionDate)
+            ->willReturn(true);
+
+        $result = $this->controller->toggleMonthlyGoalCompleted(4, self::USER_ID, $completionDate);
+
+        self::assertTrue($result['is_completed']);
+        self::assertTrue($result['semester_goal_completed']);
+        self::assertSame($completionDate, $result['completed_at']);
+        self::assertSame('05.11.2026', $result['completed_at_formatted']);
+    }
+
+    /**
+     * @return array<string, array{0: list<array<string, mixed>>, 1: list<array<string, mixed>>}>
+     */
+    public static function offeneUntergeordneteEinheitenSzenarien(): array
+    {
+        return [
+            'Eine Wocheneinheit des Monatsziels ist noch offen' => [
+                [
+                    ['id' => 101, 'is_completed' => 1],
+                    ['id' => 102, 'is_completed' => 0],
+                ],
+                [
+                    ['id' => 3, 'completed_at' => null],
+                ],
+            ],
+            'Monatsziel erledigt, aber zweites Monatsziel des Semesters noch offen' => [
+                [
+                    ['id' => 101, 'is_completed' => 1],
+                ],
+                [
+                    ['id' => 3, 'completed_at' => '2026-11-05'],
+                    ['id' => 4, 'completed_at' => null],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * @param list<array<string, mixed>> $monthlySlots
+     * @param list<array<string, mixed>> $semesterMonthlyGoals
+     */
+    #[Test]
+    #[DataProvider('offeneUntergeordneteEinheitenSzenarien')]
+    public function belaesstZielAlsOffenWennMindestensEineUntergeordneteEinheitOffenIst(
+        array $monthlySlots,
+        array $semesterMonthlyGoals
+    ): void {
+        $completionDate = '2026-11-05';
+
+        $this->dao->method('findLearningSlotByIdAndUserId')
+            ->with(101, self::USER_ID)
+            ->willReturn([
+                'id'              => 101,
+                'user_id'         => self::USER_ID,
+                'monthly_goal_id' => 3,
+                'slot_date'       => '2026-11-04',
+                'is_completed'    => 0,
+            ]);
+
+        $this->dao->expects($this->once())
+            ->method('setLearningSlotCompleted')
+            ->with(101, self::USER_ID, true)
+            ->willReturn(true);
+
+        $this->dao->method('findLearningSlotsByDateRange')
+            ->willReturn($monthlySlots);
+
+        $this->dao->method('findMonthlyGoalByIdAndUserId')
+            ->with(3, self::USER_ID)
+            ->willReturn([
+                'id'           => 3,
+                'goal_id'      => 7,
+                'user_id'      => self::USER_ID,
+                'plan_month'   => '2026-11',
+                'year_month'   => '2026-11',
+                'title'        => 'Kapitel 1 bis 3',
+                'completed_at' => null,
+            ]);
+
+        $this->dao->method('findLearningSlotsByMonthlyGoalId')
+            ->with(3, self::USER_ID)
+            ->willReturn($monthlySlots);
+
+        $this->dao->method('findByIdAndUserId')
+            ->with(7, self::USER_ID)
+            ->willReturn(array_merge(self::PARENT_GOAL, ['completed_at' => null]));
+
+        $this->dao->method('findMonthlyGoalsByGoalId')
+            ->with(7, self::USER_ID)
+            ->willReturn($semesterMonthlyGoals);
+
+        // Das Semesterziel darf in keinem der Fälle als erledigt markiert werden
+        $this->dao->expects($this->never())->method('setGoalCompleted');
+
+        $result = $this->controller->toggleLearningSlotCompleted(101, self::USER_ID, $completionDate);
+
+        self::assertFalse($result['semester_goal_completed']);
+
+        // Wenn noch eine Wocheneinheit offen ist, müssen auch Woche und Monatsziel offen bleiben
+        if (count($monthlySlots) > 1) {
+            self::assertFalse($result['week_completed']);
+            self::assertFalse($result['monthly_goal_completed']);
+        }
+    }
+
+    #[Test]
+    public function speichertAktuellesDatumBeimAbhaken(): void
+    {
+        $today = date('Y-m-d');
+        $todayFormatted = date('d.m.Y');
+
+        $this->dao->method('findByIdAndUserId')
+            ->with(7, self::USER_ID)
+            ->willReturn(array_merge(self::PARENT_GOAL, ['completed_at' => null]));
+
+        $this->dao->expects($this->once())
+            ->method('setGoalCompleted')
+            ->with(7, self::USER_ID, $today)
+            ->willReturn(true);
+
+        // Ohne explizite Datumsübergabe wird automatisch das aktuelle Tagesdatum (completed_at) gespeichert
+        $result = $this->controller->toggleGoalCompleted(7, self::USER_ID);
+
+        self::assertTrue($result['is_completed']);
+        self::assertSame($today, $result['completed_at']);
+        self::assertSame($todayFormatted, $result['completed_at_formatted']);
+    }
+
+    #[Test]
+    public function setztUebergeordnetesZielWiederAufOffenWennUntergeordneteEinheitGeoeffnetWird(): void
+    {
+        // Ausgangslage: Lerneinheit 101, Monatsziel 3 und Semesterziel 7 waren bereits erledigt
+        $this->dao->method('findLearningSlotByIdAndUserId')
+            ->with(101, self::USER_ID)
+            ->willReturn([
+                'id'              => 101,
+                'user_id'         => self::USER_ID,
+                'monthly_goal_id' => 3,
+                'slot_date'       => '2026-11-04',
+                'is_completed'    => 1,
+            ]);
+
+        $this->dao->expects($this->once())
+            ->method('setLearningSlotCompleted')
+            ->with(101, self::USER_ID, false)
+            ->willReturn(true);
+
+        $this->dao->method('findLearningSlotsByDateRange')
+            ->willReturn([['id' => 101, 'monthly_goal_id' => 3, 'is_completed' => 0]]);
+
+        $this->dao->method('findMonthlyGoalByIdAndUserId')
+            ->with(3, self::USER_ID)
+            ->willReturn([
+                'id'           => 3,
+                'goal_id'      => 7,
+                'user_id'      => self::USER_ID,
+                'plan_month'   => '2026-11',
+                'year_month'   => '2026-11',
+                'title'        => 'Kapitel 1 bis 3',
+                'completed_at' => '2026-11-04',
+            ]);
+
+        $this->dao->method('findLearningSlotsByMonthlyGoalId')
+            ->with(3, self::USER_ID)
+            ->willReturn([['id' => 101, 'is_completed' => 0]]);
+
+        // Monatsziel muss wieder auf NULL zurückgesetzt werden
+        $this->dao->expects($this->once())
+            ->method('setMonthlyGoalCompleted')
+            ->with(3, self::USER_ID, null)
+            ->willReturn(true);
+
+        $this->dao->method('findByIdAndUserId')
+            ->with(7, self::USER_ID)
+            ->willReturn(array_merge(self::PARENT_GOAL, ['completed_at' => '2026-11-04']));
+
+        $this->dao->method('findMonthlyGoalsByGoalId')
+            ->with(7, self::USER_ID)
+            ->willReturn([['id' => 3, 'completed_at' => null]]);
+
+        // Semesterziel muss ebenfalls wieder auf NULL zurückgesetzt werden
+        $this->dao->expects($this->once())
+            ->method('setGoalCompleted')
+            ->with(7, self::USER_ID, null)
+            ->willReturn(true);
+
+        $result = $this->controller->toggleLearningSlotCompleted(101, self::USER_ID, '2026-11-05');
+
+        self::assertFalse($result['is_completed']);
+        self::assertFalse($result['week_completed']);
+        self::assertFalse($result['monthly_goal_completed']);
+        self::assertFalse($result['semester_goal_completed']);
+        self::assertNull($result['completed_at']);
+    }
+
+    #[Test]
+    public function haktAlleLerneinheitenEinerWocheAbUndKaskadiertNachOben(): void
+    {
+        $_SESSION['csrf_token'] = 'gueltiges-csrf-token';
+        $completionDate = '2026-11-05';
+
+        // KW 45 (02.11.2026 – 08.11.2026) hat zwei Lerneinheiten, davon eine noch offen
+        $this->dao->method('findLearningSlotsByDateRange')
+            ->with(self::USER_ID, '2026-11-02', '2026-11-08')
+            ->willReturn([
+                ['id' => 101, 'monthly_goal_id' => 3, 'is_completed' => 1],
+                ['id' => 102, 'monthly_goal_id' => 3, 'is_completed' => 0],
+            ]);
+
+        $this->dao->expects($this->once())
+            ->method('setLearningSlotsCompletedByDateRange')
+            ->with(self::USER_ID, '2026-11-02', '2026-11-08', true)
+            ->willReturn(true);
+
+        $this->dao->method('findMonthlyGoalByIdAndUserId')
+            ->with(3, self::USER_ID)
+            ->willReturn([
+                'id'           => 3,
+                'goal_id'      => 7,
+                'user_id'      => self::USER_ID,
+                'plan_month'   => '2026-11',
+                'year_month'   => '2026-11',
+                'title'        => 'Kapitel 1 bis 3',
+                'completed_at' => null,
+            ]);
+
+        $this->dao->method('findLearningSlotsByMonthlyGoalId')
+            ->with(3, self::USER_ID)
+            ->willReturn([
+                ['id' => 101, 'is_completed' => 1],
+                ['id' => 102, 'is_completed' => 1],
+            ]);
+
+        $this->dao->expects($this->once())
+            ->method('setMonthlyGoalCompleted')
+            ->with(3, self::USER_ID, $completionDate)
+            ->willReturn(true);
+
+        $this->dao->method('findByIdAndUserId')
+            ->with(7, self::USER_ID)
+            ->willReturn(array_merge(self::PARENT_GOAL, ['completed_at' => null]));
+
+        $this->dao->method('findMonthlyGoalsByGoalId')
+            ->with(7, self::USER_ID)
+            ->willReturn([
+                ['id' => 3, 'completed_at' => $completionDate],
+            ]);
+
+        $this->dao->expects($this->once())
+            ->method('setGoalCompleted')
+            ->with(7, self::USER_ID, $completionDate)
+            ->willReturn(true);
+
+        $result = $this->controller->toggleCompletion(self::USER_ID, [
+            'csrf_token' => 'gueltiges-csrf-token',
+            'action'     => 'toggle_week',
+            'iso_week'   => '2026-W45',
+            'year_month' => '2026-11',
+        ], $completionDate);
+
+        self::assertTrue($result['is_completed']);
+        self::assertTrue($result['week_completed']);
+        self::assertSame(2, $result['updated_slot_count']);
+        self::assertSame([7], $result['completed_goal_ids']);
+    }
+
+    #[Test]
+    public function lehntToggleCompletionMitUngueltigemCsrfTokenAb(): void
+    {
+        $_SESSION['csrf_token'] = 'korrektes-token';
+
+        $this->erwartetValidierungsfehler(
+            fn () => $this->controller->toggleCompletion(self::USER_ID, [
+                'csrf_token' => 'falsches-token',
+                'action'     => 'toggle_goal',
+                'goal_id'    => 7,
+            ]),
+            'csrf_token'
+        );
+    }
+
+    #[Test]
+    public function setztSemesterzielWiederAufOffenWennNeuesMonatszielAngelegtWird(): void
+    {
+        $this->daoLiefertLernziel();
+
+        $this->dao->expects($this->once())
+            ->method('createMonthlyGoal')
+            ->with(self::USER_ID, 7, '2026-11', 'Kapitel 4', null, 15.0)
+            ->willReturn(12);
+
+        // Das übergeordnete Semesterziel (ID 7) muss beim Anlegen eines neuen Monatsziels wieder auf offen (null) gesetzt werden
+        $this->dao->expects($this->once())
+            ->method('setGoalCompleted')
+            ->with(7, self::USER_ID, null)
+            ->willReturn(true);
+
+        $yearMonth = $this->controller->createMonthlyGoal(self::USER_ID, [
+            'goal_id'       => '7',
+            'year_month'    => '2026-11',
+            'title'         => 'Kapitel 4',
+            'planned_hours' => '15',
+            'description'   => '',
+        ]);
+
+        self::assertSame('2026-11', $yearMonth);
+    }
+
+    #[Test]
+    public function setztAlleUebergeordnetenEbenenWiederAufOffenWennNeueLerneinheitAngelegtWird(): void
+    {
+        $_SESSION['completed_weeks'][self::USER_ID]['2026-W45'] = '2026-11-04';
+
+        $this->dao->method('findMonthlyGoalByIdAndUserId')
+            ->with(3, self::USER_ID)
+            ->willReturn([
+                'id'           => 3,
+                'goal_id'      => 7,
+                'user_id'      => self::USER_ID,
+                'plan_month'   => '2026-11',
+                'year_month'   => '2026-11',
+                'title'        => 'Kapitel 1 bis 3',
+                'completed_at' => '2026-11-04',
+            ]);
+
+        $this->daoLiefertLernziel();
+
+        $this->dao->expects($this->once())
+            ->method('createLearningSlot')
+            ->with(self::USER_ID, 3, '2026-11-05', '10:00:00', '12:00:00', null)
+            ->willReturn(205);
+
+        // Sowohl das Monatsziel (ID 3) als auch das Semesterziel (ID 7) müssen wieder auf offen (null) gesetzt werden
+        $this->dao->expects($this->once())
+            ->method('setMonthlyGoalCompleted')
+            ->with(3, self::USER_ID, null)
+            ->willReturn(true);
+
+        $this->dao->expects($this->once())
+            ->method('setGoalCompleted')
+            ->with(7, self::USER_ID, null)
+            ->willReturn(true);
+
+        $result = $this->controller->createLearningSlot(self::USER_ID, [
+            'monthly_goal_id' => '3',
+            'slot_date'       => '2026-11-05',
+            'start_time'      => '10:00',
+            'end_time'        => '12:00',
+            'notes'           => '',
+        ]);
+
+        self::assertSame(205, $result['slot_id']);
+        self::assertSame('2026-W45', $result['iso_week']);
+        self::assertArrayNotHasKey('2026-W45', $_SESSION['completed_weeks'][self::USER_ID] ?? []);
+    }
+
+    // ------------------------------------------------------------------
+    // deleteLearningSlot: Kaskade nach dem Löschen
+    // ------------------------------------------------------------------
+
+    /**
+     * Mock-Daten: Lerneinheit 101 (offen oder erledigt) gehört zu Monatsziel 3 von Semesterziel 7.
+     */
+    private function daoLiefertZuLoeschendeLerneinheit(int $isCompleted): void
+    {
+        $this->dao->method('findLearningSlotByIdAndUserId')
+            ->with(101, self::USER_ID)
+            ->willReturn([
+                'id'              => 101,
+                'monthly_goal_id' => 3,
+                'goal_id'         => 7,
+                'slot_date'       => '2026-11-04',
+                'plan_month'      => '2026-11',
+                'is_completed'    => $isCompleted,
+            ]);
+        $this->dao->method('findMonthlyGoalByIdAndUserId')
+            ->willReturn(['id' => 3, 'goal_id' => 7, 'plan_month' => '2026-11', 'completed_at' => null]);
+        $this->dao->method('findByIdAndUserId')
+            ->willReturn(array_merge(self::PARENT_GOAL, ['completed_at' => null]));
+        $this->dao->method('findMonthlyGoalsByGoalId')
+            ->willReturn([['id' => 3, 'completed_at' => null]]);
+        $this->dao->expects($this->once())->method('deleteLearningSlot')->with(101, self::USER_ID);
+    }
+
+    #[Test]
+    public function haktMonatsUndSemesterzielAbWennLetzteOffeneLerneinheitGeloeschtWird(): void
+    {
+        $this->daoLiefertZuLoeschendeLerneinheit(0);
+        $this->dao->method('findLearningSlotsByMonthlyGoalId')
+            ->willReturn([['id' => 100, 'is_completed' => 1]]);
+
+        $today = date('Y-m-d');
+        $this->dao->expects($this->once())->method('setMonthlyGoalCompleted')->with(3, self::USER_ID, $today);
+        $this->dao->expects($this->once())->method('setGoalCompleted')->with(7, self::USER_ID, $today);
+
+        $this->controller->deleteLearningSlot(101, self::USER_ID);
+    }
+
+    #[Test]
+    public function aendertNichtsWennNachDemLoeschenNochLerneinheitenOffenSind(): void
+    {
+        $this->daoLiefertZuLoeschendeLerneinheit(0);
+        $this->dao->method('findLearningSlotsByMonthlyGoalId')
+            ->willReturn([['id' => 100, 'is_completed' => 1], ['id' => 102, 'is_completed' => 0]]);
+
+        $this->dao->expects($this->never())->method('setMonthlyGoalCompleted');
+        $this->dao->expects($this->never())->method('setGoalCompleted');
+
+        $this->controller->deleteLearningSlot(101, self::USER_ID);
+    }
+
+    #[Test]
+    public function aendertNichtsBeimLoeschenEinerErledigtenLerneinheit(): void
+    {
+        $this->daoLiefertZuLoeschendeLerneinheit(1);
+
+        $this->dao->expects($this->never())->method('findLearningSlotsByMonthlyGoalId');
+        $this->dao->expects($this->never())->method('setMonthlyGoalCompleted');
+
+        $this->controller->deleteLearningSlot(101, self::USER_ID);
+    }
+
+    // ------------------------------------------------------------------
+    // describeToggleResult: Meldung und Weiterleitung nach dem Abhaken
+    // ------------------------------------------------------------------
+
+    /**
+     * @return array<string, array{array<string, mixed>, string, string}>
+     */
+    public static function toggleRueckmeldungProvider(): array
+    {
+        return [
+            'Lerneinheit erledigt' => [
+                ['target_type' => 'slot', 'is_completed' => true, 'year_month' => '2026-11', 'iso_week' => '2026-W45', 'slot_date' => '2026-11-04'],
+                'Die Lerneinheit wurde als erledigt markiert.',
+                'goals.php?tab=week&month=2026-11&week=2026-W45&day=2026-11-04',
+            ],
+            'Woche geöffnet' => [
+                ['target_type' => 'week', 'is_completed' => false, 'year_month' => '2026-11', 'iso_week' => '2026-W45'],
+                'Die Kalenderwoche wurde wieder als offen markiert.',
+                'goals.php?tab=week&month=2026-11&week=2026-W45',
+            ],
+            'Monatsziel erledigt' => [
+                ['target_type' => 'monthly_goal', 'is_completed' => true, 'year_month' => '2026-11'],
+                'Das Monatsziel wurde als erledigt markiert.',
+                'goals.php?tab=month&month=2026-11',
+            ],
+            'Semesterziel geöffnet' => [
+                ['target_type' => 'goal', 'is_completed' => false],
+                'Das Semesterziel wurde wieder als offen markiert.',
+                'goals.php?tab=semester&month=2026-11',
+            ],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $toggleResult
+     */
+    #[Test]
+    #[DataProvider('toggleRueckmeldungProvider')]
+    public function liefertMeldungUndWeiterleitungZumAbhaken(array $toggleResult, string $message, string $redirect): void
+    {
+        $feedback = GoalController::describeToggleResult($toggleResult, 'goals.php?tab=semester&month=2026-11');
+
+        self::assertSame($message, $feedback['message']);
+        self::assertSame($redirect, $feedback['redirect']);
     }
 }
