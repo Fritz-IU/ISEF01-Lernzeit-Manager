@@ -270,7 +270,6 @@ require_once __DIR__ . '/includes/header.php';
             aria-controls="pane-semester"
             aria-selected="<?= $activeViewTab === 'semester' ? 'true' : 'false' ?>">
             Semester
-            <span class="badge rounded-pill bg-secondary-subtle text-secondary ms-1" title="Anzahl Lernziele"><?= count($goals) ?></span>
         </button>
     </li>
     <li class="nav-item" role="presentation">
