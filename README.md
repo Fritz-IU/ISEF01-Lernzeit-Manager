@@ -55,7 +55,7 @@ lernzeit-manager/
 ├── .gitignore               # Ausschluss von lokalen Temp- und Systemdateien aus Git
 ├── .htaccess                # Apache: Startseite, keine Verzeichnislisten, versteckte Dateien gesperrt
 ├── goals.php                # 6-Monats-Lernzielplanung (Grobplanung)
-├── index.php                # Zentraler Einstiegspunkt / Dashboard
+├── index.php                # Zentraler Einstiegspunkt / Soll-Ist-Dashboard (docs/dashboard.md)
 ├── login.php                # Login- & Registrierungsseite
 ├── logout.php               # Abmelden (nur per POST)
 ├── phpunit.xml              # PHPUnit-Konfiguration
