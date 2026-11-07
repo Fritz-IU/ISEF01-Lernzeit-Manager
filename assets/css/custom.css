@@ -713,6 +713,11 @@ main {
   gap: 0.5rem;
 }
 
+/* Platzhalter für Monate ohne Zwischenziel, nur in der breiten Ansicht sichtbar */
+.goal-tree-gap {
+  display: none;
+}
+
 .goal-tree-month {
   flex: 1 1 auto;
   padding: 0.45rem 0.6rem;
@@ -811,13 +816,17 @@ main {
     grid-template-rows: subgrid;
     margin: 0 0 0 0.75rem;
     padding: 0 0 0 1rem;
+    border-left: 0;
   }
 
-  .goal-tree-leaf {
+  .goal-tree-leaf,
+  .goal-tree-gap {
     position: relative;
+    display: flex;
     grid-row: var(--tree-row, auto);
   }
 
+  /* Abzweig zum Zwischenziel */
   .goal-tree-leaf::before {
     content: '';
     position: absolute;
@@ -825,6 +834,25 @@ main {
     top: 1.2rem;
     width: 1rem;
     border-top: 2px dashed var(--tree-line);
+  }
+
+  /*
+   * Senkrechte Linie stückweise je Zeile (inkl. Zeilenabstand darüber),
+   * damit sie beim letzten Zwischenziel am Abzweig endet statt bis zum Kartenende zu laufen.
+   */
+  .goal-tree-leaf::after,
+  .goal-tree-gap::after {
+    content: '';
+    position: absolute;
+    left: -1rem;
+    top: -0.5rem;
+    bottom: 0;
+    border-left: 2px dashed var(--tree-line);
+  }
+
+  .goal-tree-leaf:last-child::after {
+    bottom: auto;
+    height: calc(0.5rem + 1.2rem + 2px);
   }
 }
 

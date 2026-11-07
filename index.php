@@ -367,10 +367,18 @@ require_once __DIR__ . '/includes/header.php';
                                 foreach (array_keys($childrenByMonth) as $yearMonth) {
                                     $leafRows[$yearMonth] = (int) array_search((string) $yearMonth, $treeMonths, true) + 1;
                                 }
+                                asort($leafRows);
+                                $prevRow = 0;
                                 ?>
                                 <ul class="goal-tree-leaves list-unstyled mb-0" style="--tree-leaf-end: <?= max($leafRows) + 2 ?>;">
-                                    <?php foreach ($childrenByMonth as $yearMonth => $monthChildren): ?>
-                                        <li class="goal-tree-leaf" style="--tree-row: <?= $leafRows[$yearMonth] ?>;">
+                                    <?php foreach ($leafRows as $yearMonth => $leafRow): ?>
+                                        <?php $monthChildren = $childrenByMonth[$yearMonth]; ?>
+                                        <?php for ($gapRow = $prevRow + 1; $gapRow < $leafRow; $gapRow++): ?>
+                                            <!-- Monat ohne Zwischenziel: trägt nur die Verbindungslinie weiter -->
+                                            <li class="goal-tree-gap" style="--tree-row: <?= $gapRow ?>;" aria-hidden="true"></li>
+                                        <?php endfor; ?>
+                                        <?php $prevRow = $leafRow; ?>
+                                        <li class="goal-tree-leaf" style="--tree-row: <?= $leafRow ?>;">
                                             <?php foreach ($monthChildren as $child): ?>
                                                 <a class="goal-tree-node goal-tree-link goal-tree-month <?= $child['is_completed'] ? 'is-completed' : '' ?>"
                                                     href="<?= htmlspecialchars(DashboardController::monthlyGoalUrl($child['id'], $child['year_month']), ENT_QUOTES) ?>"
