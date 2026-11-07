@@ -123,7 +123,10 @@ require_once __DIR__ . '/includes/header.php';
             </form>
         <?php endif; ?>
         <a href="timer.php" class="btn btn-sm btn-primary">Lernzeit erfassen</a>
-        <a href="goals.php" class="btn btn-sm btn-outline-primary">Planen</a>
+        <?php if ($dashboard['semester'] !== null): ?>
+            <!-- Im leeren Zustand führt schon der Button in der Karte zur Planung -->
+            <a href="goals.php" class="btn btn-sm btn-outline-primary">Planen</a>
+        <?php endif; ?>
     </div>
 </div>
 
