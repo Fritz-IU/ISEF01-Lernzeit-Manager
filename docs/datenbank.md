@@ -50,7 +50,7 @@ Hat sich etwas in `sql/` geändert, einfach erneut ausführen:
 
 ## Test-Login
 
-Alle Nutzer aus `seed.sql` (`testuser@iu-demo.de`, `testuser2@iu-demo.de`) haben das Passwort `Lernzeit-Test-2026`. Es ist ein reines Testpasswort und darf nirgends sonst verwendet werden.
+Alle Nutzer aus `seed.sql` (`testuser@iu-demo.de`, `testuser2@iu-demo.de`, `leer@iu-demo.de`) haben das Passwort `Lernzeit-Test-2026`. Es ist ein reines Testpasswort und darf nirgends sonst verwendet werden. `leer@iu-demo.de` hat absichtlich keine Ziele, Lerneinheiten oder Zeiteinträge, damit sich die leeren Zustände testen lassen.
 
 ---
 
