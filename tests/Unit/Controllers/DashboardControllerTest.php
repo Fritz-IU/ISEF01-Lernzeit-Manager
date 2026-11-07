@@ -232,6 +232,12 @@ final class DashboardControllerTest extends TestCase
     }
 
     #[Test]
+    public function modulOhneZwischenzieleHatKeinSprungziel(): void
+    {
+        $this->assertNull(DashboardController::moduleTarget([]));
+    }
+
+    #[Test]
     public function linksFuehrenDirektZumZielInDerPlanung(): void
     {
         $this->assertSame('goals.php?tab=month&month=2026-10#monthly-goal-12', DashboardController::monthlyGoalUrl(12, '2026-10'));

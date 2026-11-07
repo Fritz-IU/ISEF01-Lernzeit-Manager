@@ -91,6 +91,7 @@ CREATE TABLE time_entries (
 ## 4. Validierungsregeln ([TimeTrackingController.php](../src/Controllers/TimeTrackingController.php))
 
 * **Lernziel / Modul (`goal_id`):** Pflichtfeld (`goal_id > 0`). Muss existieren und dem angemeldeten Benutzer gehören (`goalExistsForUser`). Fehlerfeld: `goal_id`.
+  Die Auswahl zeigt nur die Zwischenziele des aktuellen Monats, gruppiert nach Semesterziel (`TimeTrackingController::groupGoalsForPicker()`). Gibt es im Monat keine, erscheinen alle. Für andere Monate ist „Lernzeit nachbuchen“ gedacht.
 * **Startzeit (`started_at`):** Pflichtfeld bei Zeitintervallen. Gültiges DateTime-Format. Fehlerfeld: `started_at`.
 * **Endzeit (`ended_at`):** Muss ein gültiges DateTime-Format sein und zeitlich **am oder nach** der Startzeit liegen (`ended_at >= started_at`). Fehlerfeld: `ended_at`.
 * **Dauerberechnung (`calculateDuration`):** Berechnet die Differenz in Sekunden (`endDt - startDt`). Wirft bei unplausibler Zeitfolge eine `ValidationException` für `ended_at`.

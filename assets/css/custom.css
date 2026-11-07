@@ -11,6 +11,11 @@ body {
   height: 100%;
 }
 
+/* Platz für die Scrollbar immer freihalten, sonst springt das Layout zwischen langen und kurzen Seiten */
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   min-height: 100vh;
   display: flex;
@@ -588,6 +593,48 @@ main {
   height: 300px;
 }
 
+/*
+ * Ersatz für Diagramme ohne JavaScript (oder wenn Chart.js nicht lädt):
+ * Die Tabelle steht im HTML, dashboard.js setzt .is-rendered erst nach erfolgreichem Zeichnen.
+ */
+.dashboard-chart:not(.is-rendered) {
+  height: auto;
+}
+
+.dashboard-chart:not(.is-rendered) canvas,
+.dashboard-chart.is-rendered .dashboard-chart-fallback {
+  display: none;
+}
+
+/* Handy: Kennzahlen als wischbare Reihe statt vier Kacheln untereinander, Charts etwas flacher */
+@media (max-width: 575.98px) {
+  .dashboard-kpis {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    padding-bottom: 0.25rem;
+  }
+
+  .dashboard-kpis::-webkit-scrollbar {
+    display: none;
+  }
+
+  .dashboard-kpis > [class*='col-'] {
+    flex: 0 0 85%;
+    max-width: 85%;
+    scroll-snap-align: start;
+  }
+
+  .dashboard-chart {
+    height: 220px;
+  }
+
+  .dashboard-chart-lg {
+    height: 240px;
+  }
+}
+
 .dashboard-empty {
   display: flex;
   align-items: center;
@@ -891,6 +938,39 @@ main {
 
 .goals-jump-target:target > td {
   animation: goalsJumpHighlight 2.4s ease-out;
+}
+
+/*
+ * Bis 991 px werden die Tabellen als Karten dargestellt (.table-mobile-cards). Dort setzen die Zellen
+ * box-shadow mit !important zurück, und !important schlägt jede Animation; outline malt Chrome auf
+ * Tabellenzeilen nicht. Deshalb blendet sich über der ganzen Karte eine Ebene ein und wieder aus.
+ */
+@media (max-width: 991.98px) {
+  .table-mobile-cards tbody tr.goals-jump-target:target {
+    position: relative;
+  }
+
+  .table-mobile-cards tbody tr.goals-jump-target:target::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: rgba(13, 110, 253, 0.1);
+    box-shadow: inset 0 0 0 2px rgba(13, 110, 253, 0.55);
+    pointer-events: none;
+    opacity: 0;
+    animation: goalsJumpCard 2.4s ease-out;
+  }
+}
+
+@keyframes goalsJumpCard {
+  0%,
+  40% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 @keyframes goalsJumpHighlight {

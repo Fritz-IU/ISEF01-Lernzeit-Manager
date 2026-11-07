@@ -365,10 +365,14 @@ class DashboardController
      * bei komplett erledigten Modulen das letzte.
      *
      * @param list<array<string, mixed>> $children Zwischenziele des Moduls, chronologisch
-     * @return array{id: int, year_month: string}
+     * @return array{id: int, year_month: string}|null Null, wenn das Modul keine Zwischenziele hat
      */
-    public static function moduleTarget(array $children): array
+    public static function moduleTarget(array $children): ?array
     {
+        if ($children === []) {
+            return null;
+        }
+
         $target = $children[count($children) - 1];
         foreach ($children as $child) {
             if (!$child['is_completed']) {

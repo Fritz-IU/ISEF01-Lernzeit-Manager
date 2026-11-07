@@ -154,7 +154,8 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 
     <!-- Kennzahlen -->
-    <div class="row g-3 mb-4">
+    <!-- Auf dem Handy wischbar (Scroll-Snap), ab 576 px als Raster -->
+    <div class="row g-3 mb-4 dashboard-kpis" role="region" aria-label="Kennzahlen" tabindex="0">
         <!-- Semesterziel -->
         <div class="col-sm-6 col-xl-3">
             <div class="card dashboard-card h-100">
@@ -208,13 +209,13 @@ require_once __DIR__ . '/includes/header.php';
         <div class="col-sm-6 col-xl-3">
             <div class="card dashboard-card h-100">
                 <div class="card-body">
-                    <div class="dashboard-kpi-label mb-1"><?= htmlspecialchars($currentMonth['label']) ?></div>
+                    <div class="dashboard-kpi-label mb-1">Aktueller Monat</div>
                     <div class="dashboard-kpi-value">
                         <?= htmlspecialchars($fmtHours((float) $currentMonth['tracked_hours'])) ?>
                         <span class="fs-6 fw-normal text-muted">/ <?= htmlspecialchars($fmtHours((float) $currentMonth['planned_hours'])) ?></span>
                     </div>
                     <div class="d-flex justify-content-between small text-muted mb-1 mt-2">
-                        <span>Zwischenziele des Monats</span>
+                        <span><?= htmlspecialchars($currentMonth['label']) ?></span>
                         <span><?= htmlspecialchars($fmtPercent((float) $currentMonth['percent'])) ?></span>
                     </div>
                     <div class="progress" style="height: 6px;" role="progressbar" aria-label="Ist im Verhältnis zum Soll des Monats" aria-valuenow="<?= (int) min(100, $currentMonth['percent']) ?>" aria-valuemin="0" aria-valuemax="100">
@@ -235,7 +236,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="col-sm-6 col-xl-3">
             <div class="card dashboard-card h-100">
                 <div class="card-body">
-                    <div class="dashboard-kpi-label mb-1">Diese Woche</div>
+                    <div class="dashboard-kpi-label mb-1">Aktuelle Woche</div>
                     <div class="dashboard-kpi-value">
                         <?= htmlspecialchars($fmtHours((float) $week['tracked_hours'])) ?>
                         <span class="fs-6 fw-normal text-muted">/ <?= htmlspecialchars($fmtHours((float) $week['scheduled_hours'])) ?></span>
@@ -256,9 +257,14 @@ require_once __DIR__ . '/includes/header.php';
     <!-- Verlauf im Semester -->
     <div class="card dashboard-card mb-4">
         <div class="card-body">
-            <h3 class="h6 mb-3">Verlauf im Semester</h3>
+            <h3 class="h6 mb-3">Lernzeit im Semesterverlauf</h3>
             <div class="dashboard-chart dashboard-chart-lg">
                 <canvas id="chartCumulative" role="img" aria-label="Kumulierte Soll- und Ist-Lernzeit im Semesterverlauf"></canvas>
+                <div class="dashboard-chart-fallback small text-muted">
+                    Ist bis heute <?= htmlspecialchars($fmtHours((float) $semester['tracked_until_today'])) ?>
+                    &middot; Soll bis heute <?= htmlspecialchars($fmtHours((float) $semester['expected_hours'])) ?>
+                    &middot; Semesterziel <?= htmlspecialchars($fmtHours((float) $semester['target_hours'])) ?>
+                </div>
             </div>
         </div>
     </div>
@@ -267,9 +273,21 @@ require_once __DIR__ . '/includes/header.php';
         <div class="col-lg-7">
             <div class="card dashboard-card h-100">
                 <div class="card-body">
-                    <h3 class="h6 mb-3">Je Monat</h3>
+                    <h3 class="h6 mb-3">Lernzeit pro Monat</h3>
                     <div class="dashboard-chart">
                         <canvas id="chartMonthly" role="img" aria-label="Geplante und erfasste Stunden je Monat mit Monatsbudget"></canvas>
+                        <table class="table table-sm small mb-0 dashboard-chart-fallback">
+                            <thead><tr><th scope="col">Monat</th><th scope="col" class="text-end">Soll</th><th scope="col" class="text-end">Ist</th></tr></thead>
+                            <tbody>
+                                <?php foreach (($dashboard['monthly_chart']['labels'] ?? []) as $i => $monthLabel): ?>
+                                    <tr>
+                                        <td><?= htmlspecialchars((string) $monthLabel) ?></td>
+                                        <td class="text-end"><?= htmlspecialchars($fmtHours((float) $dashboard['monthly_chart']['soll'][$i])) ?></td>
+                                        <td class="text-end"><?= htmlspecialchars($fmtHours((float) $dashboard['monthly_chart']['ist'][$i])) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -278,11 +296,23 @@ require_once __DIR__ . '/includes/header.php';
             <div class="card dashboard-card h-100">
                 <div class="card-body">
                     <div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2 mb-3">
-                        <h3 class="h6 mb-0">Diese Woche</h3>
+                        <h3 class="h6 mb-0">Lernzeit aktuelle Woche</h3>
                         <span class="small text-muted"><?= htmlspecialchars($week['label']) ?></span>
                     </div>
                     <div class="dashboard-chart">
                         <canvas id="chartWeek" role="img" aria-label="Eingeplante und erfasste Stunden je Wochentag"></canvas>
+                        <table class="table table-sm small mb-0 dashboard-chart-fallback">
+                            <thead><tr><th scope="col">Tag</th><th scope="col" class="text-end">Eingeplant</th><th scope="col" class="text-end">Erfasst</th></tr></thead>
+                            <tbody>
+                                <?php foreach ($week['days'] as $day): ?>
+                                    <tr<?= $day['is_today'] ? ' class="fw-semibold"' : '' ?>>
+                                        <td><?= htmlspecialchars($day['label']) ?></td>
+                                        <td class="text-end"><?= htmlspecialchars($fmtHours((float) $day['scheduled_hours'])) ?></td>
+                                        <td class="text-end"><?= htmlspecialchars($fmtHours((float) $day['tracked_hours'])) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -335,7 +365,9 @@ require_once __DIR__ . '/includes/header.php';
                             ?>
                             <li class="goal-tree-branch">
                                 <a class="goal-tree-node goal-tree-link goal-tree-module"
-                                    href="<?= htmlspecialchars(DashboardController::monthlyGoalUrl($module['target']['id'], $module['target']['year_month']), ENT_QUOTES) ?>"
+                                    href="<?= htmlspecialchars($module['target'] !== null
+                                        ? DashboardController::monthlyGoalUrl($module['target']['id'], $module['target']['year_month'])
+                                        : DashboardController::semesterGoalUrl((int) $semester['id']), ENT_QUOTES) ?>"
                                     title="Modul in der Planung öffnen"
                                     style="--module-color: var(--series-<?= ((int) $module['color_index'] % 8) + 1 ?>);">
                                     <div class="d-flex justify-content-between align-items-baseline gap-2">

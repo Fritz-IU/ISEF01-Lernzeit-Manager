@@ -24,6 +24,19 @@
   const data = JSON.parse(dataElement.textContent || '{}');
   const Chart = window.Chart;
 
+  /**
+   * Zeichnet ein Diagramm und blendet erst danach die HTML-Ersatzdarstellung aus.
+   * Ohne JS oder wenn Chart.js nicht lädt, bleibt die Ersatztabelle sichtbar statt einer leeren Kachel.
+   */
+  function renderChart(canvas, config) {
+    try {
+      new Chart(canvas, config);
+      canvas.parentElement.classList.add('is-rendered');
+    } catch (error) {
+      console.error('Diagramm konnte nicht gezeichnet werden', error);
+    }
+  }
+
   // Farben nach Rolle: Soll neutral (Referenz), Ist in der Markenfarbe
   const css = getComputedStyle(document.documentElement);
   const color = (name, fallback) => (css.getPropertyValue(name) || '').trim() || fallback;
@@ -122,7 +135,7 @@
   const cumulativeCanvas = document.getElementById('chartCumulative');
   if (cumulativeCanvas && data.cumulative) {
     const c = data.cumulative;
-    new Chart(cumulativeCanvas, {
+    renderChart(cumulativeCanvas, {
       type: 'line',
       data: {
         labels: c.labels,
@@ -235,7 +248,7 @@
       });
     }
 
-    new Chart(monthlyCanvas, {
+    renderChart(monthlyCanvas, {
       data: { labels: m.labels, datasets },
       options: {
         interaction: { mode: 'index', intersect: false },
@@ -258,7 +271,7 @@
   const weekCanvas = document.getElementById('chartWeek');
   if (weekCanvas && data.week) {
     const days = data.week.days;
-    new Chart(weekCanvas, {
+    renderChart(weekCanvas, {
       type: 'bar',
       data: {
         labels: days.map((d) => d.label.split(' ')[0]),

@@ -57,13 +57,15 @@ Sonderfälle: *Abgeschlossen* (Semesterziel abgehakt), *Noch nicht gestartet* (v
 
 ## 4. Aufbau der Seite
 
-1. **Kennzahlen:** Semesterziel (Fortschrittsring), Zeitplan (Vorsprung/Rückstand in Stunden, vergangene Semesterzeit), aktueller Monat, aktuelle Woche.
-2. **Verlauf im Semester:** kumulierte Linien über alle Semestertage mit Markierung „Heute“, über die volle Breite.
-3. **Je Monat:** gruppierte Balken mit Monatsbudget.
-4. **Diese Woche:** eingeplante und erfasste Stunden je Wochentag.
+1. **Kennzahlen:** Semesterziel (Fortschrittsring), Zeitplan (Vorsprung/Rückstand in Stunden, vergangene Semesterzeit), aktueller Monat, aktuelle Woche. Auf dem Handy (< 576 px) als wischbare Reihe (CSS Scroll-Snap, ohne JS).
+2. **Lernzeit im Semesterverlauf:** kumulierte Linien über alle Semestertage mit Markierung „Heute“, über die volle Breite.
+3. **Lernzeit pro Monat:** gruppierte Balken mit Monatsbudget.
+4. **Lernzeit aktuelle Woche:** eingeplante und erfasste Stunden je Wochentag.
 5. **Zielstruktur:** Baum Semesterziel → Module (Zwischenziele mit gleichem Titel) → monatliche Zwischenziele, jeweils mit Ist/Soll und Erledigt-Status. Jedes Modul zeigt zusätzlich seinen Anteil an der gesamten erfassten Semesterzeit (ersetzt das frühere Ringdiagramm „Lernzeit je Modul“, das dieselben Zahlen doppelt zeigte). Ab 992 px zweigen die Module nebeneinander vom Semesterziel ab; die Zeilen sind die Monate des Semesters, parallel laufende Zwischenziele stehen also auf einer Höhe. Auf schmalen Bildschirmen stehen die Module untereinander. Jeder Knoten verlinkt in die Planung (`goals.php`) und springt dort per Anker zur passenden Zeile, die kurz hervorgehoben wird:
    - Semesterziel → `goals.php?tab=semester#goal-{id}`
    - Zwischenziel → `goals.php?tab=month&month={YYYY-MM}#monthly-goal-{id}`
    - Modul → wie Zwischenziel, Ziel ist das erste noch offene Zwischenziel des Moduls (bei erledigten Modulen das letzte)
+
+Ohne JavaScript (oder wenn Chart.js nicht lädt) zeigen die Diagramm-Kacheln die Werte als Tabelle bzw. Text. `dashboard.js` blendet diese Ersatzdarstellung erst nach erfolgreichem Zeichnen aus (Klasse `is-rendered`).
 
 Farben: Ist in der Markenfarbe (Bootstrap Primary), Soll neutral grau als Referenz. Module bekommen Farben in fester Reihenfolge (`--series-1` … `--series-8`), die Farbe kennzeichnet das Modul im Zielbaum. Status wird immer mit Icon und Text angezeigt, nie nur über die Farbe.
