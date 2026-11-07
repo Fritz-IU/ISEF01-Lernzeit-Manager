@@ -58,7 +58,11 @@ INSERT INTO learning_slots (id, user_id, monthly_goal_id, slot_date, start_time,
     (10, 1, 6,  '2026-11-03', '18:00:00', '20:00:00', 'Schichtenarchitektur und MVC-Muster zusammenfassen',  0, '2026-10-25 09:30:00'),
     (11, 1, 7,  '2026-11-04', '17:30:00', '19:00:00', 'ACID-Eigenschaften und Isolationsstufen lernen',      0, '2026-10-25 09:35:00'),
     (12, 2, 13, '2026-10-27', '09:00:00', '11:00:00', 'Vektorräume und Matrizenmultiplikation',              0, '2026-10-20 12:00:00'),
-    (13, 2, 14, '2026-10-29', '14:00:00', '15:30:00', 'Deckungsbeitragsrechnung an Beispielen üben',         0, '2026-10-20 12:05:00');
+    (13, 2, 14, '2026-10-29', '14:00:00', '15:30:00', 'Deckungsbeitragsrechnung an Beispielen üben',         0, '2026-10-20 12:05:00'),
+    -- Inaktivitäts-Hinweis (#7): ein Tag, an dem zwei Module eingeplant und beide verpasst wurden
+    (14, 1, 7,  '2026-11-05', '16:00:00', '17:30:00', 'B-Baum-Index an Beispielabfragen nachvollziehen',     0, '2026-10-25 09:40:00'),
+    (15, 1, 8,  '2026-11-05', '18:00:00', '19:30:00', 'Paging und Seitenersetzung (LRU, FIFO) üben',         0, '2026-10-25 09:45:00'),
+    (16, 2, 13, '2026-10-29', '16:00:00', '17:00:00', 'Determinanten und Gauß-Verfahren wiederholen',        0, '2026-10-20 12:10:00');
 
 -- Stoppuhr-Einträge mit Pause: tracked_seconds ist kleiner als ended_at - started_at.
 INSERT INTO time_entries (id, user_id, monthly_goal_id, learning_slot_id, source, entry_date, started_at, ended_at, tracked_seconds, note, created_at) VALUES
