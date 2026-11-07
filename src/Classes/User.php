@@ -120,7 +120,7 @@ class User
         $email = trim($email);
 
         // 1. Benutzer anhand der E-Mail abfragen
-        $stmt = $this->db->prepare("SELECT id, email, password_hash, display_name FROM users WHERE email = :email");
+        $stmt = $this->db->prepare("SELECT id, email, password_hash, display_name, last_login_at FROM users WHERE email = :email");
         $stmt->execute([':email' => $email]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -137,6 +137,12 @@ class User
         $_SESSION['user_id'] = (int) $user['id'];
         $_SESSION['user_email'] = $user['email'];
         $_SESSION['user_display_name'] = $user['display_name'];
+
+        // 5. Vorherigen Login für den Inaktivitäts-Hinweis (#7) merken, danach den neuen Login speichern.
+        // NULL (erster Login) bedeutet: es gibt nichts, was seit dem letzten Besuch verpasst sein könnte.
+        $_SESSION['previous_login_at'] = $user['last_login_at'] !== null ? (string) $user['last_login_at'] : null;
+        $update = $this->db->prepare("UPDATE users SET last_login_at = NOW() WHERE id = :id");
+        $update->execute([':id' => (int) $user['id']]);
 
         return true;
     }

@@ -188,4 +188,53 @@ class DashboardDAO
 
         return $result;
     }
+
+    /**
+     * Liefert die verpassten Lerneinheiten eines Zeitraums (Inaktivitäts-Hinweis, Story #7).
+     *
+     * Verpasst ist eine Lerneinheit, deren Ende im Zeitraum liegt, die nicht abgehakt ist
+     * und auf die keine Lernzeit gebucht wurde (nur manuelle oder beendete Stoppuhr-Einträge).
+     *
+     * @param int $userId ID des Nutzers
+     * @param string $since Beginn, exklusiv (YYYY-MM-DD HH:MM:SS), in der Regel der vorherige Login
+     * @param string $until Ende, inklusiv (YYYY-MM-DD HH:MM:SS), in der Regel jetzt
+     * @return list<array<string, mixed>>
+     */
+    public function findMissedSlots(int $userId, string $since, string $until): array
+    {
+        $sql = "SELECT ls.id,
+                       ls.slot_date,
+                       ls.start_time,
+                       ls.end_time,
+                       ls.notes,
+                       TIME_TO_SEC(TIMEDIFF(ls.end_time, ls.start_time)) AS scheduled_seconds,
+                       mg.id AS monthly_goal_id,
+                       mg.title AS monthly_goal_title,
+                       mg.plan_month,
+                       mg.completed_at AS monthly_goal_completed_at,
+                       lg.id AS goal_id,
+                       lg.title AS goal_title
+                FROM learning_slots ls
+                INNER JOIN monthly_goals mg
+                    ON mg.id = ls.monthly_goal_id AND mg.user_id = ls.user_id
+                INNER JOIN learning_goals lg
+                    ON lg.id = mg.goal_id AND lg.user_id = ls.user_id
+                WHERE ls.user_id = :user_id
+                  AND ls.is_completed = 0
+                  AND TIMESTAMP(ls.slot_date, ls.end_time) > :since
+                  AND TIMESTAMP(ls.slot_date, ls.end_time) <= :until
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM time_entries te
+                      WHERE te.learning_slot_id = ls.id
+                        AND te.user_id = ls.user_id
+                        AND (te.source = 'manual' OR te.ended_at IS NOT NULL)
+                  )
+                ORDER BY ls.slot_date ASC, ls.start_time ASC, ls.id ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':user_id' => $userId, ':since' => $since, ':until' => $until]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }

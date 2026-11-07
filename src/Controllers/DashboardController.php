@@ -29,6 +29,9 @@ class DashboardController
 
     private const WEEKDAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
+    /** So viele Tage zeigt die Tagesleiste des Inaktivitäts-Hinweises höchstens (bis einschließlich heute) */
+    public const INACTIVITY_MAX_DAYS = 14;
+
     private DashboardDAO $dashboardDAO;
 
     public function __construct(DashboardDAO $dashboardDAO)
@@ -385,6 +388,155 @@ class DashboardController
     }
 
     /**
+     * Baut den Inaktivitäts-Hinweis (Story #7): verpasste Lerneinheiten seit dem vorherigen Login,
+     * verdichtet zu einer Tagesleiste (Stunden je Tag und Modul) und den betroffenen offenen Modulen.
+     *
+     * @param int $userId ID des angemeldeten Nutzers
+     * @param string|null $previousLoginAt Vorheriger Login (YYYY-MM-DD HH:MM:SS), NULL beim ersten Login
+     * @param string|null $now Stichzeitpunkt (YYYY-MM-DD HH:MM:SS) für Tests, Standard: jetzt
+     * @param array<string, int> $moduleColors Farbindex je Modul (Titel in Kleinbuchstaben) aus der Zielstruktur,
+     *                                         damit ein Modul im Hinweis dieselbe Farbe hat wie im Zielbaum
+     * @return array<string, mixed>|null NULL, wenn nichts verpasst wurde
+     */
+    public function buildInactivityNotice(
+        int $userId,
+        ?string $previousLoginAt,
+        ?string $now = null,
+        array $moduleColors = []
+    ): ?array {
+        $sinceDt = self::parseDateTime($previousLoginAt);
+        if ($sinceDt === null) {
+            return null;
+        }
+        $nowDt = self::parseDateTime($now) ?? new DateTimeImmutable();
+        if ($sinceDt >= $nowDt) {
+            return null;
+        }
+
+        $rows = $this->dashboardDAO->findMissedSlots(
+            $userId,
+            $sinceDt->format('Y-m-d H:i:s'),
+            $nowDt->format('Y-m-d H:i:s')
+        );
+        if ($rows === []) {
+            return null;
+        }
+
+        // Tagesleiste: vom Tag des letzten Logins bis heute, höchstens INACTIVITY_MAX_DAYS Tage
+        $todayDt = $nowDt->setTime(0, 0);
+        $firstDayDt = $sinceDt->setTime(0, 0);
+        $earliestDt = $todayDt->modify('-' . (self::INACTIVITY_MAX_DAYS - 1) . ' days');
+        $isTruncated = $firstDayDt < $earliestDt;
+        if ($isTruncated) {
+            $firstDayDt = $earliestDt;
+        }
+
+        $days = [];
+        for ($day = $firstDayDt; $day <= $todayDt; $day = $day->modify('+1 day')) {
+            $days[$day->format('Y-m-d')] = [
+                'date'     => $day->format('Y-m-d'),
+                'weekday'  => self::WEEKDAY_LABELS[(int) $day->format('N') - 1],
+                'day'      => $day->format('j'),
+                'is_today' => $day == $todayDt,
+                'hours'    => 0.0,
+                'segments' => [],
+                'slots'    => [],
+            ];
+        }
+
+        $modules = [];
+        $totalSeconds = 0;
+        foreach ($rows as $row) {
+            $hours = ((int) $row['scheduled_seconds']) / 3600;
+            $totalSeconds += (int) $row['scheduled_seconds'];
+
+            // Module wie in der Zielstruktur über den Titel zusammenfassen (ein Modul hat ein Zwischenziel je Monat)
+            $title = trim((string) $row['monthly_goal_title']);
+            $key = mb_strtolower($title);
+            if (!isset($modules[$key])) {
+                $modules[$key] = [
+                    'title'        => $title,
+                    'color_index'  => $moduleColors[$key] ?? null,
+                    'missed_hours' => 0.0,
+                    'missed_count' => 0,
+                    'is_open'      => false,
+                    'url'          => null,
+                ];
+            }
+            $modules[$key]['missed_hours'] += $hours;
+            $modules[$key]['missed_count']++;
+
+            // Offen ist ein Modul, solange eines seiner betroffenen Zwischenziele nicht erledigt ist.
+            // Der Link führt zum ersten offenen Zwischenziel mit verpasster Lernzeit.
+            if (($row['monthly_goal_completed_at'] ?? null) === null && !$modules[$key]['is_open']) {
+                $modules[$key]['is_open'] = true;
+                $modules[$key]['url'] = self::monthlyGoalUrl((int) $row['monthly_goal_id'], (string) $row['plan_month']);
+            }
+
+            $date = (string) $row['slot_date'];
+            if (isset($days[$date])) {
+                $days[$date]['hours'] += $hours;
+                $days[$date]['segments'][$key] = ($days[$date]['segments'][$key] ?? 0.0) + $hours;
+                // Einzelne Einheiten für den Tooltip der Tagesleiste (was genau verpasst wurde)
+                $days[$date]['slots'][] = [
+                    'module_key' => $key,
+                    'start'      => substr((string) $row['start_time'], 0, 5),
+                    'end'        => substr((string) $row['end_time'], 0, 5),
+                    'hours'      => round($hours, 2),
+                    'notes'      => trim((string) ($row['notes'] ?? '')),
+                ];
+            }
+        }
+
+        // Module ohne Farbe aus der Zielstruktur (z. B. aus einem anderen Semester) bekommen die nächsten freien Farben
+        $nextColor = $moduleColors === [] ? 0 : max($moduleColors) + 1;
+        foreach ($modules as $key => $module) {
+            if ($module['color_index'] === null) {
+                $modules[$key]['color_index'] = $nextColor++;
+            }
+            $modules[$key]['missed_hours'] = round($module['missed_hours'], 2);
+        }
+
+        $maxDayHours = 0.0;
+        foreach ($days as $date => $day) {
+            $maxDayHours = max($maxDayHours, $day['hours']);
+            $segments = [];
+            foreach ($day['segments'] as $key => $hours) {
+                $segments[] = [
+                    'title'       => $modules[$key]['title'],
+                    'color_index' => $modules[$key]['color_index'],
+                    'hours'       => round($hours, 2),
+                ];
+            }
+            $days[$date]['segments'] = $segments;
+            $days[$date]['slots'] = array_map(static function (array $slot) use ($modules): array {
+                $key = $slot['module_key'];
+                unset($slot['module_key']);
+
+                return $slot + [
+                    'module_title' => $modules[$key]['title'],
+                    'color_index'  => $modules[$key]['color_index'],
+                ];
+            }, $day['slots']);
+            $days[$date]['hours'] = round($day['hours'], 2);
+        }
+
+        // Meiste verpasste Zeit zuerst
+        $openModules = array_values(array_filter($modules, static fn (array $m): bool => $m['is_open']));
+        usort($openModules, static fn (array $a, array $b): int => $b['missed_hours'] <=> $a['missed_hours']);
+
+        return [
+            'since'          => $sinceDt->format('Y-m-d H:i:s'),
+            'missed_count'   => count($rows),
+            'missed_hours'   => round($totalSeconds / 3600, 2),
+            'days'           => array_values($days),
+            'max_day_hours'  => round($maxDayHours, 2),
+            'days_truncated' => $isTruncated,
+            'open_modules'   => $openModules,
+        ];
+    }
+
+    /**
      * Liefert den Link in die Monatsplanung, der direkt zu einem Zwischenziel springt.
      */
     public static function monthlyGoalUrl(int $monthlyGoalId, string $yearMonth): string
@@ -551,6 +703,16 @@ class DashboardController
     public static function percent(float $value, float $base): float
     {
         return $base > 0 ? round(($value / $base) * 100, 1) : 0.0;
+    }
+
+    private static function parseDateTime(?string $dateTime): ?DateTimeImmutable
+    {
+        if ($dateTime === null || trim($dateTime) === '') {
+            return null;
+        }
+        $dt = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', trim($dateTime));
+
+        return ($dt && $dt->format('Y-m-d H:i:s') === trim($dateTime)) ? $dt : null;
     }
 
     private static function parseDate(?string $date): ?DateTimeImmutable
