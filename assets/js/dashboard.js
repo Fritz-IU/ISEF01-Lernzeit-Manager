@@ -37,7 +37,6 @@
     grid: '#e9eef4',
     text: '#64748b',
   };
-  const SERIES = [1, 2, 3, 4, 5, 6, 7, 8].map((i) => color('--series-' + i, '#64748b'));
 
   const numberFormat = new Intl.NumberFormat('de-DE', {
     minimumFractionDigits: 1,
@@ -306,51 +305,6 @@
               title: (items) =>
                 days[items[0].dataIndex].label +
                 (days[items[0].dataIndex].is_today ? ' (heute)' : ''),
-            },
-          },
-        },
-      },
-    });
-  }
-
-  // 4. Erfasste Lernzeit je Modul (Farbe folgt dem Modul, nicht dem Rang)
-  const modulesCanvas = document.getElementById('chartModules');
-  if (modulesCanvas && data.modules && data.modules.length) {
-    const modules = data.modules;
-    const total = modules.reduce((sum, mod) => sum + mod.tracked_hours, 0);
-    new Chart(modulesCanvas, {
-      type: 'doughnut',
-      data: {
-        labels: modules.map((mod) => mod.title),
-        datasets: [
-          {
-            data: modules.map((mod) => mod.tracked_hours),
-            backgroundColor: modules.map((mod) => SERIES[mod.color_index % SERIES.length]),
-            borderColor: '#ffffff',
-            borderWidth: 2,
-            hoverOffset: 4,
-          },
-        ],
-      },
-      options: {
-        cutout: '68%',
-        plugins: {
-          // Legende als HTML unter dem Diagramm (index.php), damit die Mitte frei bleibt
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label(ctx) {
-                const mod = modules[ctx.dataIndex];
-                const share = total > 0 ? Math.round((mod.tracked_hours / total) * 100) : 0;
-                return (
-                  ' ' +
-                  hours(mod.tracked_hours) +
-                  ' (' +
-                  share +
-                  ' %) · Soll ' +
-                  hours(mod.planned_hours)
-                );
-              },
             },
           },
         },

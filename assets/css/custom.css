@@ -588,28 +588,6 @@ main {
   height: 300px;
 }
 
-.dashboard-chart-doughnut {
-  height: 200px;
-}
-
-.dashboard-doughnut-center {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-
-.dashboard-doughnut-center .dashboard-kpi-value {
-  font-size: 1.15rem;
-}
-
-.dashboard-legend li + li {
-  margin-top: 0.35rem;
-}
-
 .dashboard-empty {
   display: flex;
   align-items: center;
@@ -730,10 +708,13 @@ main {
 
 .goal-tree-leaf {
   flex: 0 0 9.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .goal-tree-month {
-  height: 100%;
+  flex: 1 1 auto;
   padding: 0.45rem 0.6rem;
   background: #f8fafc;
 }
@@ -754,32 +735,95 @@ main {
 }
 
 @media (min-width: 992px) {
-  /* Breite Bildschirme: Modul links, Zwischenziele rechts daneben */
-  .goal-tree-branch {
-    display: flex;
-    align-items: flex-start;
-    gap: 0;
+  /*
+   * Breite Bildschirme: Module zweigen nebeneinander vom Semesterziel ab.
+   * Die Zeilen sind die Monate des Semesters (Subgrid), parallel laufende Zwischenziele stehen auf einer Höhe.
+   */
+  .goal-tree-root {
+    margin-inline: auto;
+  }
+
+  .goal-tree-branches {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(var(--tree-cols, 1), minmax(0, 1fr));
+    grid-template-rows: auto repeat(var(--tree-rows, 1), auto);
+    column-gap: 1rem;
+    row-gap: 0.5rem;
+    margin: 0;
+    padding: 2rem 0 0;
+  }
+
+  /* Stamm vom Semesterziel nach unten */
+  .goal-tree-branches::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    height: 1rem;
+    border-left: 2px solid var(--tree-line);
+  }
+
+  .goal-tree-branches > .goal-tree-branch {
+    display: grid;
+    grid-row: 1 / -1;
+    grid-template-rows: subgrid;
+    min-width: 0;
+    padding-top: 0;
+  }
+
+  /* Querlinie über alle Module, beim ersten und letzten Modul nur bis zur Mitte */
+  .goal-tree-branches > .goal-tree-branch::before {
+    left: -0.5rem;
+    right: -0.5rem;
+    top: -1rem;
+    width: auto;
+  }
+
+  .goal-tree-branches > .goal-tree-branch:first-child::before {
+    left: 50%;
+  }
+
+  .goal-tree-branches > .goal-tree-branch:last-child::before {
+    right: 50%;
+  }
+
+  .goal-tree-branches > .goal-tree-branch:only-child::before {
+    display: none;
+  }
+
+  /* Senkrechte Verbindung von der Querlinie zum Modul */
+  .goal-tree-branches > .goal-tree-branch::after {
+    left: 50%;
+    top: -1rem;
+    bottom: auto;
+    height: 1rem;
   }
 
   .goal-tree-module {
-    flex: 0 0 18rem;
-    width: 18rem;
+    grid-row: 1;
+    width: auto;
   }
 
   .goal-tree-leaves {
-    flex: 1 1 auto;
-    margin: 0;
-    padding: 0 0 0 1.25rem;
-    border-left: 0;
-    position: relative;
+    display: grid;
+    grid-row: 2 / var(--tree-leaf-end, -1);
+    grid-template-rows: subgrid;
+    margin: 0 0 0 0.75rem;
+    padding: 0 0 0 1rem;
   }
 
-  .goal-tree-leaves::before {
+  .goal-tree-leaf {
+    position: relative;
+    grid-row: var(--tree-row, auto);
+  }
+
+  .goal-tree-leaf::before {
     content: '';
     position: absolute;
-    left: 0;
-    top: 1.4rem;
-    width: 1.25rem;
+    left: -1rem;
+    top: 1.2rem;
+    width: 1rem;
     border-top: 2px dashed var(--tree-line);
   }
 }

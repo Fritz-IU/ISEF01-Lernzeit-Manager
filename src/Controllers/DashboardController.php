@@ -175,8 +175,45 @@ class DashboardController
                 'today_index' => $cumulative['today_index'],
                 'soll_source' => $plannedTotal > 0 ? 'planning' : 'target',
             ],
-            'modules' => $modules,
+            'modules'     => self::addModuleShares($modules, $trackedTotal),
+            'tree_months' => self::treeMonths($modules),
         ];
+    }
+
+    /**
+     * Ergänzt je Modul den Anteil an der gesamten erfassten Semesterzeit.
+     * Bezug ist bewusst die Semestersumme aus den Kennzahlen, damit die Prozente zu dieser Zahl passen.
+     *
+     * @param list<array<string, mixed>> $modules
+     * @return list<array<string, mixed>>
+     */
+    public static function addModuleShares(array $modules, float $trackedTotal): array
+    {
+        foreach ($modules as $i => $module) {
+            $modules[$i]['share_percent'] = self::percent((float) $module['tracked_hours'], $trackedTotal);
+        }
+
+        return $modules;
+    }
+
+    /**
+     * Alle Monate, in denen mindestens ein Modul ein Zwischenziel hat, chronologisch.
+     * Sie bilden die Zeilen der Zielstruktur, damit parallel laufende Module auf einer Höhe stehen.
+     *
+     * @param list<array<string, mixed>> $modules
+     * @return list<string> Monate als YYYY-MM
+     */
+    public static function treeMonths(array $modules): array
+    {
+        $months = [];
+        foreach ($modules as $module) {
+            foreach ($module['children'] as $child) {
+                $months[(string) $child['year_month']] = true;
+            }
+        }
+        ksort($months);
+
+        return array_keys($months);
     }
 
     /**
@@ -268,7 +305,7 @@ class DashboardController
     }
 
     /**
-     * Gruppiert die Zwischenziele nach Modul (gleicher Titel) für Zielbaum und Modul-Diagramm.
+     * Gruppiert die Zwischenziele nach Modul (gleicher Titel) für die Zielstruktur.
      * Die Reihenfolge folgt dem ersten Auftreten, damit jedes Modul eine feste Farbe behält.
      *
      * @param list<array<string, mixed>> $monthlyGoals

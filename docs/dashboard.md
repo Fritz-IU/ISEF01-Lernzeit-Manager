@@ -58,13 +58,12 @@ Sonderfälle: *Abgeschlossen* (Semesterziel abgehakt), *Noch nicht gestartet* (v
 ## 4. Aufbau der Seite
 
 1. **Kennzahlen:** Semesterziel (Fortschrittsring), Zeitplan (Vorsprung/Rückstand in Stunden, vergangene Semesterzeit), aktueller Monat, aktuelle Woche.
-2. **Verlauf im Semester:** kumulierte Linien über alle Semestertage mit Markierung „Heute“.
-3. **Lernzeit je Modul:** Ringdiagramm mit HTML-Legende.
-4. **Je Monat:** gruppierte Balken mit Monatsbudget.
-5. **Diese Woche:** eingeplante und erfasste Stunden je Wochentag.
-6. **Zielstruktur:** Baum Semesterziel → Module (Zwischenziele mit gleichem Titel) → monatliche Zwischenziele, jeweils mit Ist/Soll und Erledigt-Status. Jeder Knoten verlinkt in die Planung (`goals.php`) und springt dort per Anker zur passenden Zeile, die kurz hervorgehoben wird:
+2. **Verlauf im Semester:** kumulierte Linien über alle Semestertage mit Markierung „Heute“, über die volle Breite.
+3. **Je Monat:** gruppierte Balken mit Monatsbudget.
+4. **Diese Woche:** eingeplante und erfasste Stunden je Wochentag.
+5. **Zielstruktur:** Baum Semesterziel → Module (Zwischenziele mit gleichem Titel) → monatliche Zwischenziele, jeweils mit Ist/Soll und Erledigt-Status. Jedes Modul zeigt zusätzlich seinen Anteil an der gesamten erfassten Semesterzeit (ersetzt das frühere Ringdiagramm „Lernzeit je Modul“, das dieselben Zahlen doppelt zeigte). Ab 992 px zweigen die Module nebeneinander vom Semesterziel ab; die Zeilen sind die Monate des Semesters, parallel laufende Zwischenziele stehen also auf einer Höhe. Auf schmalen Bildschirmen stehen die Module untereinander. Jeder Knoten verlinkt in die Planung (`goals.php`) und springt dort per Anker zur passenden Zeile, die kurz hervorgehoben wird:
    - Semesterziel → `goals.php?tab=semester#goal-{id}`
    - Zwischenziel → `goals.php?tab=month&month={YYYY-MM}#monthly-goal-{id}`
    - Modul → wie Zwischenziel, Ziel ist das erste noch offene Zwischenziel des Moduls (bei erledigten Modulen das letzte)
 
-Farben: Ist in der Markenfarbe (Bootstrap Primary), Soll neutral grau als Referenz. Module bekommen Farben in fester Reihenfolge (`--series-1` … `--series-8`), die Farbe folgt dem Modul in Ringdiagramm und Zielbaum. Status wird immer mit Icon und Text angezeigt, nie nur über die Farbe.
+Farben: Ist in der Markenfarbe (Bootstrap Primary), Soll neutral grau als Referenz. Module bekommen Farben in fester Reihenfolge (`--series-1` … `--series-8`), die Farbe kennzeichnet das Modul im Zielbaum. Status wird immer mit Icon und Text angezeigt, nie nur über die Farbe.

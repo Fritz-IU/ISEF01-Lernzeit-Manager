@@ -196,6 +196,31 @@ final class DashboardControllerTest extends TestCase
     }
 
     #[Test]
+    public function modulanteilBeziehtSichAufDieSemestersumme(): void
+    {
+        $modules = DashboardController::addModuleShares([
+            ['title' => 'Modul A', 'tracked_hours' => 5.4],
+            ['title' => 'Modul B', 'tracked_hours' => 0.0],
+        ], 39.0);
+
+        $this->assertSame(13.8, $modules[0]['share_percent']);
+        $this->assertSame(0.0, $modules[1]['share_percent']);
+        // Ohne erfasste Zeit kein Division-by-zero
+        $this->assertSame(0.0, DashboardController::addModuleShares([['tracked_hours' => 0.0]], 0.0)[0]['share_percent']);
+    }
+
+    #[Test]
+    public function zielstrukturZeilenSindAlleMonateChronologisch(): void
+    {
+        $months = DashboardController::treeMonths([
+            ['children' => [['year_month' => '2026-11'], ['year_month' => '2026-12']]],
+            ['children' => [['year_month' => '2026-10'], ['year_month' => '2026-11']]],
+        ]);
+
+        $this->assertSame(['2026-10', '2026-11', '2026-12'], $months);
+    }
+
+    #[Test]
     public function erledigtesModulSpringtZumLetztenZwischenziel(): void
     {
         $target = DashboardController::moduleTarget([
