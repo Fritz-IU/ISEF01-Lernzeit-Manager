@@ -392,7 +392,7 @@ require_once __DIR__ . '/includes/header.php';
                                     $allocTextClass = 'text-dark fw-semibold';
                                 }
                                 ?>
-                                <tr class="<?= $isGoalOverAllocated ? 'table-warning' : '' ?>">
+                                <tr id="goal-<?= (int) $goal['id'] ?>" class="goals-jump-target <?= $isGoalOverAllocated ? 'table-warning' : '' ?>">
                                     <td class="td-mobile-header" data-label="Lernziel">
                                         <div class="d-flex align-items-start gap-2">
                                             <form action="goals.php" method="POST" class="m-0 pt-1 flex-shrink-0" data-ajax-form>
@@ -744,7 +744,7 @@ require_once __DIR__ . '/includes/header.php';
                                         $isMgOverScheduled = (bool) ($mGoal['is_over_scheduled'] ?? false);
                                         $mgSchedPct = $mgHours > 0 ? min(100.0, $mgScheduled / $mgHours * 100) : 0.0;
                                         ?>
-                                        <tr class="<?= ($isParentOver || $isMgOverScheduled) ? 'table-warning' : '' ?>">
+                                        <tr id="monthly-goal-<?= (int) $mGoal['id'] ?>" class="goals-jump-target <?= ($isParentOver || $isMgOverScheduled) ? 'table-warning' : '' ?>">
                                             <td class="td-mobile-header" data-label="Zwischenziel">
                                                 <div class="d-flex align-items-start gap-2">
                                                     <form action="goals.php" method="POST" class="m-0 pt-1 flex-shrink-0" data-ajax-form>

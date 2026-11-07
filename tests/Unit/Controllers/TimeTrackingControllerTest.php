@@ -1098,5 +1098,31 @@ final class TimeTrackingControllerTest extends TestCase
             'id'
         );
     }
-}
 
+    #[Test]
+    public function stoppuhrZeigtNurZwischenzieleDesAktuellenMonats(): void
+    {
+        $picker = TimeTrackingController::groupGoalsForPicker([
+            ['id' => 1, 'title' => 'Modul A', 'plan_month' => '2026-11', 'parent_goal_title' => 'WiSe 26/27'],
+            ['id' => 2, 'title' => 'Modul A', 'plan_month' => '2026-10', 'parent_goal_title' => 'WiSe 26/27'],
+            ['id' => 3, 'title' => 'Modul B', 'plan_month' => '2026-11', 'parent_goal_title' => 'WiSe 26/27'],
+        ], '2026-11');
+
+        $this->assertTrue($picker['filtered']);
+        $this->assertSame(['WiSe 26/27' => [
+            ['id' => 1, 'title' => 'Modul A'],
+            ['id' => 3, 'title' => 'Modul B'],
+        ]], $picker['groups']);
+    }
+
+    #[Test]
+    public function stoppuhrZeigtAlleZwischenzieleWennImMonatKeinesGeplantIst(): void
+    {
+        $picker = TimeTrackingController::groupGoalsForPicker([
+            ['id' => 2, 'title' => 'Modul A', 'plan_month' => '2026-10', 'parent_goal_title' => 'WiSe 26/27'],
+        ], '2026-11');
+
+        $this->assertFalse($picker['filtered']);
+        $this->assertSame(['WiSe 26/27 – Oktober 2026' => [['id' => 2, 'title' => 'Modul A']]], $picker['groups']);
+    }
+}

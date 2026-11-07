@@ -38,8 +38,9 @@ $timeTrackingDAO = new TimeTrackingDAO($db);
 $timeTrackingController = new TimeTrackingController($timeTrackingDAO);
 
 $errorMessage = '';
-$successMessage = (string) ($_SESSION['timer_success'] ?? '');
-unset($_SESSION['timer_success']);
+// Erfolgsmeldungen der Stoppuhr und der Nachbuchung (api/time-entries.php setzt flash_success vor dem Reload)
+$successMessage = (string) ($_SESSION['timer_success'] ?? ($_SESSION['flash_success'] ?? ''));
+unset($_SESSION['timer_success'], $_SESSION['flash_success']);
 
 // Formularverarbeitung (Post/Redirect/Get)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -117,6 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Daten für die Ansicht laden
 $currentStopwatch = $timeTrackingController->getCurrentStopwatch($userId);
 $availableGoals = $timeTrackingController->getAvailableGoals($userId);
+$goalPicker = TimeTrackingController::groupGoalsForPicker($availableGoals, date('Y-m'));
 $timeEntries = $timeTrackingController->getTimeEntries($userId, null, 30);
 $totalSeconds = $timeTrackingController->getTotalTrackedSeconds($userId);
 
@@ -139,13 +141,16 @@ require_once __DIR__ . '/includes/header.php';
 ?>
 
 <!-- Kopfzeile -->
-<div class="row align-items-center mb-4">
-    <div class="col-12">
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
         <h1 class="h3 fw-bold text-primary mb-1">Stoppuhr & Zeiterfassung</h1>
         <p class="text-muted mb-0">
-            Erfasse deine Lernzeiten live per Stoppuhr für deine Lernziele.
+            Erfasse deine Lernzeiten live per Stoppuhr oder buche sie nachträglich.
         </p>
     </div>
+    <button type="button" class="btn btn-primary flex-shrink-0 align-self-start align-self-md-center" data-bs-toggle="modal" data-bs-target="#manualTimeModal">
+        + Lernzeit nachbuchen
+    </button>
 </div>
 
 <!-- Statusmeldungen -->
@@ -331,14 +336,19 @@ require_once __DIR__ . '/includes/header.php';
 
                     <div class="mb-3">
                         <label for="timer_goal_id" class="form-label fw-semibold">Modul / Lernziel auswählen <span class="text-danger">*</span></label>
-                        <select name="goal_id" id="timer_goal_id" class="form-select form-select-lg" required>
+                        <select name="goal_id" id="timer_goal_id" class="form-select form-select-lg" required<?= $goalPicker['filtered'] ? ' aria-describedby="timer_goal_hint"' : '' ?>>
                             <option value="">-- Bitte Modul auswählen --</option>
-                            <?php foreach ($availableGoals as $g): ?>
-                                <option value="<?= (int) $g['id'] ?>">
-                                    <?= htmlspecialchars((string) $g['title']) ?> (<?= htmlspecialchars((string) $g['parent_goal_title']) ?><?= !empty($g['plan_month']) ? ' &ndash; ' . htmlspecialchars((string) $g['plan_month']) : '' ?>)
-                                </option>
+                            <?php foreach ($goalPicker['groups'] as $groupLabel => $groupGoals): ?>
+                                <optgroup label="<?= htmlspecialchars((string) $groupLabel, ENT_QUOTES) ?>">
+                                    <?php foreach ($groupGoals as $g): ?>
+                                        <option value="<?= $g['id'] ?>"><?= htmlspecialchars($g['title']) ?></option>
+                                    <?php endforeach; ?>
+                                </optgroup>
                             <?php endforeach; ?>
                         </select>
+                        <?php if ($goalPicker['filtered']): ?>
+                            <div id="timer_goal_hint" class="form-text">Zwischenziele aus dem aktuellen Monat. Für andere Monate nutze „Lernzeit nachbuchen“.</div>
+                        <?php endif; ?>
                     </div>
 
                     <div class="mb-4">
@@ -584,6 +594,8 @@ require_once __DIR__ . '/includes/header.php';
 
 <?php
 $extraScripts = '<script src="assets/js/timer.js?v=' . filemtime(__DIR__ . '/assets/js/timer.js') . '"></script>';
+// Modal für die manuelle Zeitnachbuchung (hängt manual-time.js an $extraScripts an)
+require_once __DIR__ . '/includes/manual-time-modal.php';
 require_once __DIR__ . '/includes/footer.php';
 ?>
 

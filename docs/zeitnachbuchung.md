@@ -16,7 +16,7 @@ Dieses Dokument beschreibt die Architektur, Datenhaltung und Funktionsweise der 
 * **Separation of Concerns (SoC) & Schichtenarchitektur:** Strikte Trennung zwischen wiederverwendbarem UI-Modal ([includes/manual-time-modal.php](../includes/manual-time-modal.php)), asynchronem Endpunkt ([api/time-entries.php](../api/time-entries.php)), Controller mit Validierungslogik ([src/Controllers/TimeEntryController.php](../src/Controllers/TimeEntryController.php)), Datenbankzugriffsschicht ([src/DAO/TimeEntryDAO.php](../src/DAO/TimeEntryDAO.php)) und Datenbank ([sql/schema.sql](../sql/schema.sql)).
 * **Single Source of Truth:** Manuelle Buchungen speichern ihre Netto-Lernzeit in `tracked_seconds`. Gemäß DB-Constraint `chk_time_entries_manual` bleiben Start- und Endzeitstempel `NULL`. Das Dashboard muss daher nie zwischen Stoppuhr und Nachbuchung unterscheiden, sondern summiert stets `tracked_seconds`.
 * **Progressive Filterung im Frontend:** Zuerst wird der Lerntag gewählt, wodurch die Modulliste automatisch auf die für diesen Monat geplanten Module eingegrenzt wird (keine langen, unübersichtlichen Dropdowns).
-* **Wiederverwendbarkeit ohne Redundanz (DRY):** Das Modal liegt als Teilstück in `includes/` und kann über einen Einzeiler auf beliebigen Seiten (Dashboard `index.php`, Wochenansicht `goals.php` etc.) eingebunden werden.
+* **Wiederverwendbarkeit ohne Redundanz (DRY):** Das Modal liegt als Teilstück in `includes/` und kann über einen Einzeiler auf beliebigen Seiten (aktuell die Stoppuhr-Seite `timer.php`, möglich z. B. auch `goals.php`) eingebunden werden.
 
 ---
 
@@ -34,7 +34,7 @@ lernzeit-manager/
 │   └── zeitnachbuchung.md       # Diese Dokumentation
 ├── includes/
 │   └── manual-time-modal.php    # Wiederverwendbares Bootstrap-5-Modal (HTML-Komponente)
-├── index.php                    # Dashboard mit Aufruf-Button und Einbindung des Modals
+├── timer.php                    # Stoppuhr-Seite mit Aufruf-Button und Einbindung des Modals
 ├── src/
 │   ├── Controllers/
 │   │   └── TimeEntryController.php # Validierung, Geschäftsregeln und Datenaufbereitung

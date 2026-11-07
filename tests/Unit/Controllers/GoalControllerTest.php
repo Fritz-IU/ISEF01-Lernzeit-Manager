@@ -279,6 +279,53 @@ final class GoalControllerTest extends TestCase
     // validateAndParseMonthlyGoalInput (Zwischenziel)
     // ------------------------------------------------------------------
 
+    // ------------------------------------------------------------------
+    // updateGoal: Zeitraum darf geplante Zwischenziele nicht abschneiden
+    // ------------------------------------------------------------------
+
+    #[Test]
+    public function verkuerztesSemesterMitZwischenzielDanachWirdAbgelehnt(): void
+    {
+        $this->daoLiefertLernziel();
+        $this->dao->method('findMonthlyGoalsByGoalId')->willReturn([
+            ['id' => 1, 'plan_month' => '2026-10'],
+            ['id' => 2, 'plan_month' => '2026-12'],
+        ]);
+        $this->dao->method('findLearningSlotsByMonthlyGoalId')->willReturn([]);
+        $this->dao->expects($this->never())->method('update');
+
+        $e = $this->erwartetValidierungsfehler(
+            fn () => $this->controller->updateGoal(7, self::USER_ID, self::lernzielEingabe(['end_date' => '2026-11-30'])),
+            'end_date'
+        );
+        $this->assertStringContainsString('Dezember 2026', $e->getMessage());
+    }
+
+    #[Test]
+    public function spaeterBeginnMitLerneinheitDavorWirdAmStartdatumAbgelehnt(): void
+    {
+        $this->daoLiefertLernziel();
+        $this->dao->method('findMonthlyGoalsByGoalId')->willReturn([['id' => 1, 'plan_month' => '2026-10']]);
+        $this->dao->method('findLearningSlotsByMonthlyGoalId')->willReturn([['slot_date' => '2026-10-05']]);
+        $this->dao->expects($this->never())->method('update');
+
+        $this->erwartetValidierungsfehler(
+            fn () => $this->controller->updateGoal(7, self::USER_ID, self::lernzielEingabe(['start_date' => '2026-10-10'])),
+            'start_date'
+        );
+    }
+
+    #[Test]
+    public function zeitraumDerAllePlanungEnthaeltWirdGespeichert(): void
+    {
+        $this->daoLiefertLernziel();
+        $this->dao->method('findMonthlyGoalsByGoalId')->willReturn([['id' => 1, 'plan_month' => '2026-10']]);
+        $this->dao->method('findLearningSlotsByMonthlyGoalId')->willReturn([['slot_date' => '2026-10-05']]);
+        $this->dao->expects($this->once())->method('update')->willReturn(true);
+
+        $this->assertTrue($this->controller->updateGoal(7, self::USER_ID, self::lernzielEingabe(['end_date' => '2026-10-31'])));
+    }
+
     #[Test]
     public function bereinigtGueltigeZwischenzielEingabe(): void
     {

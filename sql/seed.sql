@@ -8,7 +8,9 @@ SET NAMES utf8mb4;
 
 INSERT INTO users (id, email, password_hash, display_name, study_program, semester, last_login_at, created_at) VALUES
     (1, 'testuser@iu-demo.de',  '$2y$10$crH3Dq6gADtWjO70Kz8pAuiHFx9jXyAb8jUCaegA9DjAWhEjQRd26', 'Test Nutzer',  'Informatik',            3, '2026-10-28 21:05:00', '2026-09-01 08:00:00'),
-    (2, 'testuser2@iu-demo.de', '$2y$10$crH3Dq6gADtWjO70Kz8pAuiHFx9jXyAb8jUCaegA9DjAWhEjQRd26', 'Test Nutzerin', 'Wirtschaftsinformatik', 2, '2026-10-27 10:25:00', '2026-09-02 09:30:00');
+    (2, 'testuser2@iu-demo.de', '$2y$10$crH3Dq6gADtWjO70Kz8pAuiHFx9jXyAb8jUCaegA9DjAWhEjQRd26', 'Test Nutzerin', 'Wirtschaftsinformatik', 2, '2026-10-27 10:25:00', '2026-09-02 09:30:00'),
+    -- Nutzer 3 bekommt bewusst keine weiteren Daten: zum Testen der leeren Zustände (Dashboard, Planung, Stoppuhr)
+    (3, 'leer@iu-demo.de',      '$2y$10$crH3Dq6gADtWjO70Kz8pAuiHFx9jXyAb8jUCaegA9DjAWhEjQRd26', 'Leerer Nutzer', 'Informatik',            1, NULL,                  '2026-11-07 09:00:00');
 
 INSERT INTO learning_goals (id, user_id, title, description, target_hours, start_date, end_date, created_at) VALUES
     (1, 1, '3. Semester – Informatik (WiSe 2026/27)',             'Module: Software Engineering, Datenbanken, Betriebssysteme', 180.00, '2026-09-01', '2027-02-28', '2026-09-01 08:15:00'),

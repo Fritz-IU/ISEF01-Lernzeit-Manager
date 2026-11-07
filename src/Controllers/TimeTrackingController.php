@@ -11,6 +11,7 @@ use DateTimeImmutable;
 
 require_once __DIR__ . '/../Classes/ValidationException.php';
 require_once __DIR__ . '/../DAO/TimeTrackingDAO.php';
+require_once __DIR__ . '/GoalController.php';
 
 /**
  * Controller für die Stoppuhr und Zeiterfassung.
@@ -361,6 +362,35 @@ class TimeTrackingController
     public function getAvailableGoals(int $userId): array
     {
         return $this->timeTrackingDAO->getAvailableGoalsForUser($userId);
+    }
+
+    /**
+     * Bereitet die Zwischenziele für die Auswahl der Stoppuhr auf.
+     * Die Stoppuhr erfasst immer „jetzt“, deshalb werden nur die Zwischenziele des aktuellen Monats angeboten,
+     * gruppiert nach Semesterziel. Gibt es im aktuellen Monat keine, erscheinen alle (gruppiert nach Semester und Monat).
+     *
+     * @param list<array<string, mixed>> $goals Ergebnis von getAvailableGoals()
+     * @param string $currentMonth Aktueller Monat als YYYY-MM
+     * @return array{filtered: bool, groups: array<string, list<array{id: int, title: string}>>}
+     */
+    public static function groupGoalsForPicker(array $goals, string $currentMonth): array
+    {
+        $currentGoals = array_values(array_filter(
+            $goals,
+            static fn (array $goal): bool => (string) ($goal['plan_month'] ?? '') === $currentMonth
+        ));
+        $filtered = $currentGoals !== [];
+
+        $groups = [];
+        foreach ($filtered ? $currentGoals : $goals as $goal) {
+            $label = (string) $goal['parent_goal_title'];
+            if (!$filtered && !empty($goal['plan_month'])) {
+                $label .= ' – ' . GoalController::formatYearMonth((string) $goal['plan_month']);
+            }
+            $groups[$label][] = ['id' => (int) $goal['id'], 'title' => (string) $goal['title']];
+        }
+
+        return ['filtered' => $filtered, 'groups' => $groups];
     }
 
     /**

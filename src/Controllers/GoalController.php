@@ -165,6 +165,7 @@ class GoalController
         }
 
         $validated = $this->validateAndParseInput($input);
+        $this->assertPlanningInsideRange($goalId, $userId, $validated['start_date'], $validated['end_date']);
 
         return $this->goalDAO->update(
             $goalId,
@@ -175,6 +176,57 @@ class GoalController
             $validated['start_date'],
             $validated['end_date']
         );
+    }
+
+    /**
+     * Verhindert, dass ein Semesterziel so verkürzt wird, dass Zwischenziele oder Lerneinheiten
+     * außerhalb des neuen Zeitraums liegen. Sonst würden Dashboard-Summen und Diagramme auseinanderlaufen.
+     * Bewusst eine Sperre statt automatischem Verschieben: Was mit der Planung passiert, entscheidet der Nutzer.
+     *
+     * @throws ValidationException Wenn Planung außerhalb des neuen Zeitraums liegt
+     */
+    private function assertPlanningInsideRange(int $goalId, int $userId, string $startDate, string $endDate): void
+    {
+        $startMonth = substr($startDate, 0, 7);
+        $endMonth = substr($endDate, 0, 7);
+        $outsideMonths = [];
+        $outsideSlots = 0;
+        // Feld für die Fehlermeldung: Startdatum, wenn die Planung vor dem neuen Beginn liegt
+        $field = 'end_date';
+
+        foreach ($this->goalDAO->findMonthlyGoalsByGoalId($goalId, $userId) as $monthlyGoal) {
+            $month = (string) $monthlyGoal['plan_month'];
+            if ($month < $startMonth || $month > $endMonth) {
+                $outsideMonths[$month] = self::formatYearMonth($month);
+                $field = $month < $startMonth ? 'start_date' : $field;
+                continue;
+            }
+
+            foreach ($this->goalDAO->findLearningSlotsByMonthlyGoalId((int) $monthlyGoal['id'], $userId) as $slot) {
+                $slotDate = (string) $slot['slot_date'];
+                if ($slotDate < $startDate || $slotDate > $endDate) {
+                    $outsideSlots++;
+                    $field = $slotDate < $startDate ? 'start_date' : $field;
+                }
+            }
+        }
+
+        if ($outsideMonths !== []) {
+            ksort($outsideMonths);
+            throw new ValidationException(sprintf(
+                "Außerhalb des neuen Zeitraums liegen bereits geplante Zwischenziele (%s). Bitte verschiebe oder lösche sie zuerst in der Monatsplanung.",
+                implode(', ', $outsideMonths)
+            ), $field);
+        }
+
+        if ($outsideSlots > 0) {
+            throw new ValidationException(sprintf(
+                "%d geplante Lerneinheit%s läge%s außerhalb des neuen Zeitraums. Bitte verschiebe oder lösche sie zuerst in der Wochenplanung.",
+                $outsideSlots,
+                $outsideSlots === 1 ? '' : 'en',
+                $outsideSlots === 1 ? '' : 'n'
+            ), $field);
+        }
     }
 
     /**
