@@ -263,9 +263,8 @@ Die Umsetzung von Issue #3 (Wöchentliche Detailplanung) zeichnet sich durch meh
     - Monats- und Wochenwechsel erfolgen über Fetch-Requests, deren Antwort durch `DOMParser` geparst und mittels `replaceChildren()` zielgenau in die Container `#monatsplanung` und `#wochenplanung` eingehängt wird.
     - Der aktive Tab (`tab=week` bzw. `tab=month`), der gewählte Monat und die Woche werden ohne störende Seiten-Reloads und ohne Scroll-Sprünge in der Adresszeile (`history.replaceState`) synchronisiert.
 
-5. **Hybrides UX-Konzept (Tag vs. Woche):**
-    - Das Frontend bietet einen schnellen Umschalter zwischen der Tagesansicht „Tag“ (inklusive interaktivem Wochenband Mo–So) und der Übersicht „Woche“. Der Button „+ Lernzeit planen“ übernimmt automatisch den gewählten Tag.
-    - In der Ansicht „Woche“ wird das redundante Tagesband ausgeblendet und leere Tage zeigen nur ihre Kopfzeile, um kognitive Überlastung zu minimieren.
+5. **Fokussierte Tagesauswahl über das Wochenband (Mo–So):**
+    - In der Wochenansicht wählt das interaktive Wochenband (Mo–So) den gewünschten Wochentag aus und blendet unmittelbar darunter dessen Detailansicht ein. Der Button „+ Lernzeit planen“ übernimmt automatisch den gewählten Tag.
     - Seltener genutzte Aktionen (Bearbeiten, Löschen) liegen in allen drei Ansichten einheitlich in einem ⋮-Menü; in der Oberfläche heißen Timeslots „Lerneinheiten“.
 
 6. **Echtzeit-Kollisionserkennung:**
