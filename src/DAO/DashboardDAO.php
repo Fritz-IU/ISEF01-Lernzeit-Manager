@@ -194,6 +194,8 @@ class DashboardDAO
      *
      * Verpasst ist eine Lerneinheit, deren Ende im Zeitraum liegt, die nicht abgehakt ist
      * und auf die keine Lernzeit gebucht wurde (nur manuelle oder beendete Stoppuhr-Einträge).
+     * Als gebucht zählt auch freie Lernzeit ohne Slot-Bezug (z. B. Stoppuhr) für dasselbe
+     * Zwischenziel am selben Tag, so wie sie auch in der Wochenplanung auf die Slots verteilt wird.
      *
      * @param int $userId ID des Nutzers
      * @param string $since Beginn, exklusiv (YYYY-MM-DD HH:MM:SS), in der Regel der vorherige Login
@@ -226,9 +228,16 @@ class DashboardDAO
                   AND NOT EXISTS (
                       SELECT 1
                       FROM time_entries te
-                      WHERE te.learning_slot_id = ls.id
-                        AND te.user_id = ls.user_id
+                      WHERE te.user_id = ls.user_id
                         AND (te.source = 'manual' OR te.ended_at IS NOT NULL)
+                        AND (
+                            te.learning_slot_id = ls.id
+                            OR (
+                                te.learning_slot_id IS NULL
+                                AND te.monthly_goal_id = ls.monthly_goal_id
+                                AND te.entry_date = ls.slot_date
+                            )
+                        )
                   )
                 ORDER BY ls.slot_date ASC, ls.start_time ASC, ls.id ASC";
 

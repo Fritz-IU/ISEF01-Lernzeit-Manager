@@ -1062,7 +1062,9 @@ main {
 
 .inactivity-bar-segment {
   display: block;
-  flex-shrink: 0;
+  /* Darf schrumpfen, damit die Lücken zwischen gestapelten Modulen am höchsten Tag nicht oben abgeschnitten werden */
+  flex-shrink: 1;
+  min-height: 2px;
   background-color: var(--module-color);
 }
 

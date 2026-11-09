@@ -59,11 +59,7 @@ $treeMonths = $dashboard['tree_months'] ?? [];
 $previousLoginAt = isset($_SESSION['previous_login_at']) && is_string($_SESSION['previous_login_at'])
     ? $_SESSION['previous_login_at']
     : null;
-$moduleColors = [];
-foreach ($modules as $module) {
-    $moduleColors[mb_strtolower((string) $module['title'])] = (int) $module['color_index'];
-}
-$inactivityNotice = $dashboardController->buildInactivityNotice($userId, $previousLoginAt, null, $moduleColors);
+$inactivityNotice = $dashboardController->buildInactivityNotice($userId, $previousLoginAt, null, $modules);
 
 /** Stunden im deutschen Format, z. B. "12,5 h" */
 $fmtHours = static fn (float $hours): string => number_format($hours, 1, ',', '.') . ' h';
@@ -71,6 +67,8 @@ $fmtHours = static fn (float $hours): string => number_format($hours, 1, ',', '.
 $fmtHoursShort = static fn (float $hours): string => str_replace(',0 ', ' ', number_format($hours, 1, ',', '.') . ' h');
 /** Modulfarbe aus der festen Reihe --series-1 … --series-8 */
 $seriesColor = static fn (int $colorIndex): string => 'var(--series-' . (($colorIndex % 8) + 1) . ')';
+/** Zahl für CSS-Werte, immer mit Punkt als Dezimaltrenner (unabhängig von der Locale) */
+$cssNumber = static fn (float $value): string => number_format($value, 2, '.', '');
 /** Prozent ohne Nachkommastelle, z. B. "42 %" */
 $fmtPercent = static fn (float $percent): string => number_format($percent, 0, ',', '.') . ' %';
 /** Datum YYYY-MM-DD als TT.MM.JJJJ */
@@ -203,7 +201,7 @@ require_once __DIR__ . '/includes/header.php';
                             <div class="inactivity-bar" aria-hidden="true">
                                 <?php foreach ($noticeDay['segments'] as $segment): ?>
                                     <span class="inactivity-bar-segment"
-                                          style="height: <?= round(($segment['hours'] / max((float) $inactivityNotice['max_day_hours'], 0.01)) * 100, 1) ?>%; --module-color: <?= $seriesColor((int) $segment['color_index']) ?>;"></span>
+                                          style="height: <?= $cssNumber((float) $segment['height_pct']) ?>%; --module-color: <?= $seriesColor((int) $segment['color_index']) ?>;"></span>
                                 <?php endforeach; ?>
                             </div>
                             <span class="inactivity-day-label" aria-hidden="true"><?= htmlspecialchars((string) $noticeDay['weekday']) ?><br><?= htmlspecialchars((string) $noticeDay['day']) ?></span>
@@ -218,7 +216,7 @@ require_once __DIR__ . '/includes/header.php';
                                     <!-- Mehrere Module an einem Tag: Aufteilung als Mini-Balken in den Modulfarben -->
                                     <div class="inactivity-tip-split mt-1">
                                         <?php foreach ($noticeDay['segments'] as $segment): ?>
-                                            <span style="flex-grow: <?= (float) $segment['hours'] ?>; --module-color: <?= $seriesColor((int) $segment['color_index']) ?>;"></span>
+                                            <span style="flex-grow: <?= $cssNumber((float) $segment['hours']) ?>; --module-color: <?= $seriesColor((int) $segment['color_index']) ?>;"></span>
                                         <?php endforeach; ?>
                                     </div>
                                     <div class="inactivity-tip-notes mt-1"><?= count($noticeDay['segments']) ?> Module an diesem Tag</div>

@@ -394,15 +394,15 @@ class DashboardController
      * @param int $userId ID des angemeldeten Nutzers
      * @param string|null $previousLoginAt Vorheriger Login (YYYY-MM-DD HH:MM:SS), NULL beim ersten Login
      * @param string|null $now Stichzeitpunkt (YYYY-MM-DD HH:MM:SS) für Tests, Standard: jetzt
-     * @param array<string, int> $moduleColors Farbindex je Modul (Titel in Kleinbuchstaben) aus der Zielstruktur,
-     *                                         damit ein Modul im Hinweis dieselbe Farbe hat wie im Zielbaum
+     * @param list<array<string, mixed>> $structureModules Module aus der Zielstruktur (title, color_index),
+     *                                                    damit ein Modul im Hinweis dieselbe Farbe hat wie im Zielbaum
      * @return array<string, mixed>|null NULL, wenn nichts verpasst wurde
      */
     public function buildInactivityNotice(
         int $userId,
         ?string $previousLoginAt,
         ?string $now = null,
-        array $moduleColors = []
+        array $structureModules = []
     ): ?array {
         $sinceDt = self::parseDateTime($previousLoginAt);
         if ($sinceDt === null) {
@@ -420,6 +420,11 @@ class DashboardController
         );
         if ($rows === []) {
             return null;
+        }
+
+        $moduleColors = [];
+        foreach ($structureModules as $structureModule) {
+            $moduleColors[mb_strtolower(trim((string) $structureModule['title']))] = (int) $structureModule['color_index'];
         }
 
         // Tagesleiste: vom Tag des letzten Logins bis heute, höchstens INACTIVITY_MAX_DAYS Tage
@@ -498,14 +503,19 @@ class DashboardController
         }
 
         $maxDayHours = 0.0;
-        foreach ($days as $date => $day) {
+        foreach ($days as $day) {
             $maxDayHours = max($maxDayHours, $day['hours']);
+        }
+
+        foreach ($days as $date => $day) {
             $segments = [];
             foreach ($day['segments'] as $key => $hours) {
                 $segments[] = [
                     'title'       => $modules[$key]['title'],
                     'color_index' => $modules[$key]['color_index'],
                     'hours'       => round($hours, 2),
+                    // Höhe in der Säule, gemessen am Tag mit der meisten verpassten Zeit
+                    'height_pct'  => round($hours / max($maxDayHours, 0.01) * 100, 1),
                 ];
             }
             $days[$date]['segments'] = $segments;

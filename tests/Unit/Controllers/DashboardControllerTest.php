@@ -335,6 +335,9 @@ final class DashboardControllerTest extends TestCase
         $this->assertSame(1.5, $notice['days'][2]['hours']); // Fr 30.10.
         $this->assertSame(2.5, $notice['days'][6]['hours']); // Di 3.11., zwei Module übereinander
         $this->assertCount(2, $notice['days'][6]['segments']);
+        // Säulenhöhe relativ zum Tag mit der meisten verpassten Zeit (Di 3.11. = 100 %)
+        $this->assertSame([40.0, 60.0], array_column($notice['days'][6]['segments'], 'height_pct'));
+        $this->assertSame([60.0], array_column($notice['days'][2]['segments'], 'height_pct'));
 
         // Tooltip: was genau an einem Tag verpasst wurde
         $this->assertSame([], $notice['days'][0]['slots']);
@@ -372,7 +375,10 @@ final class DashboardControllerTest extends TestCase
             self::USER_ID,
             '2026-10-28 21:05:00',
             '2026-11-07 09:00:00',
-            ['modul software engineering' => 0, 'modul datenbanken' => 1]
+            [
+                ['title' => 'Modul Software Engineering', 'color_index' => 0],
+                ['title' => 'Modul Datenbanken', 'color_index' => 1],
+            ]
         );
 
         $this->assertNotNull($notice);
@@ -463,7 +469,10 @@ final class DashboardControllerTest extends TestCase
             self::USER_ID,
             '2026-11-04 20:00:00',
             '2026-11-07 09:00:00',
-            ['modul datenbanken' => 1, 'modul betriebssysteme' => 2]
+            [
+                ['title' => 'Modul Datenbanken', 'color_index' => 1],
+                ['title' => 'Modul Betriebssysteme', 'color_index' => 2],
+            ]
         );
 
         $this->assertNotNull($notice);
@@ -474,8 +483,8 @@ final class DashboardControllerTest extends TestCase
 
         // Eine Säule, zwei Abschnitte in den Modulfarben
         $this->assertSame([
-            ['title' => 'Modul Datenbanken', 'color_index' => 1, 'hours' => 1.5],
-            ['title' => 'Modul Betriebssysteme', 'color_index' => 2, 'hours' => 1.5],
+            ['title' => 'Modul Datenbanken', 'color_index' => 1, 'hours' => 1.5, 'height_pct' => 50.0],
+            ['title' => 'Modul Betriebssysteme', 'color_index' => 2, 'hours' => 1.5, 'height_pct' => 50.0],
         ], $day['segments']);
 
         // Tooltip: beide Einheiten in zeitlicher Reihenfolge
