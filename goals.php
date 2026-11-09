@@ -475,6 +475,7 @@ require_once __DIR__ . '/includes/header.php';
                                                     class="btn btn-sm btn-link text-secondary p-1 text-decoration-none row-action-menu-btn"
                                                     type="button"
                                                     data-bs-toggle="dropdown"
+                                                    data-bs-boundary="viewport"
                                                     aria-expanded="false"
                                                     title="Weitere Aktionen"
                                                     aria-label="Weitere Aktionen für Lernziel">
@@ -823,6 +824,7 @@ require_once __DIR__ . '/includes/header.php';
                                                         class="btn btn-sm btn-link text-secondary p-1 text-decoration-none row-action-menu-btn"
                                                         type="button"
                                                         data-bs-toggle="dropdown"
+                                                        data-bs-boundary="viewport"
                                                         aria-expanded="false"
                                                         title="Aktionen"
                                                         aria-label="Aktionen für Zwischenziel">
@@ -1367,6 +1369,7 @@ require_once __DIR__ . '/includes/header.php';
                                                         class="btn btn-sm btn-link text-secondary p-1 text-decoration-none row-action-menu-btn"
                                                         type="button"
                                                         data-bs-toggle="dropdown"
+                                                        data-bs-boundary="viewport"
                                                         aria-expanded="false"
                                                         title="Aktionen"
                                                         aria-label="Aktionen für Lerneinheit">

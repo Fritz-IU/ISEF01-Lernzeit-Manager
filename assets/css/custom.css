@@ -307,11 +307,19 @@ main {
 
 /*
  * Tabellen auf goals.php:
- * Klare visuelle Abgrenzung vom Hintergrund und professioneller Tabellenkopf.
+ * Klare visuelle Abgrenzung vom Hintergrund, professioneller Tabellenkopf und
+ * sichtbarer Überlauf (overflow: visible), damit das Drei-Punkte-Dropdown-Menü
+ * auch bei nur einem Eintrag nicht durch .table-responsive abgeschnitten wird.
  */
 .goals-table-card {
   border: 1px solid rgba(0, 0, 0, 0.09) !important;
   box-shadow: 0 0.125rem 0.35rem rgba(0, 0, 0, 0.04) !important;
+  overflow: visible;
+}
+
+.goals-table-card > .table-responsive,
+.goals-table-frame {
+  overflow: visible;
 }
 
 .goals-table-frame {
@@ -319,6 +327,28 @@ main {
   border-radius: var(--bs-border-radius, 0.375rem);
   background-color: #ffffff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+@media (min-width: 992px) {
+  .table-mobile-cards thead tr:first-child th:first-child {
+    border-top-left-radius: calc(var(--bs-border-radius, 0.375rem) - 1px);
+  }
+
+  .table-mobile-cards thead tr:first-child th:last-child {
+    border-top-right-radius: calc(var(--bs-border-radius, 0.375rem) - 1px);
+  }
+
+  .table-mobile-cards tbody tr:last-child > td {
+    border-bottom-width: 0;
+  }
+
+  .table-mobile-cards tbody tr:last-child > td:first-child {
+    border-bottom-left-radius: calc(var(--bs-border-radius, 0.375rem) - 1px);
+  }
+
+  .table-mobile-cards tbody tr:last-child > td:last-child {
+    border-bottom-right-radius: calc(var(--bs-border-radius, 0.375rem) - 1px);
+  }
 }
 
 .table-mobile-cards thead th {
