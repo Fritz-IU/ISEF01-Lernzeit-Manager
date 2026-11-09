@@ -216,14 +216,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * Berechnet das Enddatum 6 Monate nach dem übergebenen Startdatum (Format JJJJ-MM-TT).
-   * Liegt der Tag im Zielmonat hinter dem letzten Kalendertag (z. B. 31.08. + 6 Monate),
-   * wird der letzte Tag des Zielmonats gewählt (z. B. 28.02. bzw. 29.02.).
+   * Berechnet das Standard-Enddatum eines Semesters: einen Tag vor demselben Tag sechs Monate
+   * später (z. B. 01.10. bis 31.03.). So beginnt ein direkt anschließendes Semester ohne Überlappung.
+   * Gibt es den Tag im Zielmonat nicht (z. B. 31.08. + 6 Monate), endet es am letzten Tag dieses Monats.
+   * Muss mit GoalController::calculateSemesterEndDate() übereinstimmen.
    *
    * @param {string} startDateStr Datum im Format YYYY-MM-DD
    * @returns {string} Enddatum im Format YYYY-MM-DD oder leerer String bei ungültiger Eingabe
    */
-  function addSixMonthsToDate(startDateStr) {
+  function calculateSemesterEndDate(startDateStr) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(startDateStr)) return '';
     const [year, month, day] = startDateStr.split('-').map(Number);
     if (Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day)) return '';
@@ -232,14 +233,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const targetYear = year + Math.floor(targetMonthIndex / 12);
     const targetMonth = (targetMonthIndex % 12) + 1;
     const daysInTargetMonth = new Date(targetYear, targetMonth, 0).getDate();
-    const targetDay = Math.min(day, daysInTargetMonth);
 
-    return `${String(targetYear).padStart(4, '0')}-${String(targetMonth).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
+    // Lokale Mittagszeit vermeidet Verschiebungen durch Sommer-/Winterzeit
+    const end = day > daysInTargetMonth
+      ? new Date(targetYear, targetMonth - 1, daysInTargetMonth, 12)
+      : new Date(targetYear, targetMonth - 1, day - 1, 12);
+
+    return `${String(end.getFullYear()).padStart(4, '0')}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
   }
 
   /**
    * Verknüpft Start- und Enddatum eines Formulars für Lernziele: Beim Ändern des Startdatums
-   * wird das Enddatum automatisch auf +6 Monate gesetzt, sofern das Enddatum noch nicht
+   * wird das Enddatum automatisch auf das Standard-Semesterende (6 Monate, siehe calculateSemesterEndDate) gesetzt, sofern das Enddatum noch nicht
    * manuell geändert wurde oder das neue Startdatum hinter dem aktuellen Enddatum liegt.
    *
    * @param {HTMLFormElement|null} form
@@ -255,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     startInput.addEventListener('change', () => {
-      const nextEnd = addSixMonthsToDate(startInput.value);
+      const nextEnd = calculateSemesterEndDate(startInput.value);
       if (!nextEnd) return;
 
       const isManual = endInput.dataset.manualEdit === 'true';
