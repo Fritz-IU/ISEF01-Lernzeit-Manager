@@ -216,6 +216,63 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
+   * Berechnet das Enddatum 6 Monate nach dem übergebenen Startdatum (Format JJJJ-MM-TT).
+   * Liegt der Tag im Zielmonat hinter dem letzten Kalendertag (z. B. 31.08. + 6 Monate),
+   * wird der letzte Tag des Zielmonats gewählt (z. B. 28.02. bzw. 29.02.).
+   *
+   * @param {string} startDateStr Datum im Format YYYY-MM-DD
+   * @returns {string} Enddatum im Format YYYY-MM-DD oder leerer String bei ungültiger Eingabe
+   */
+  function addSixMonthsToDate(startDateStr) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDateStr)) return '';
+    const [year, month, day] = startDateStr.split('-').map(Number);
+    if (Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day)) return '';
+
+    const targetMonthIndex = month - 1 + 6;
+    const targetYear = year + Math.floor(targetMonthIndex / 12);
+    const targetMonth = (targetMonthIndex % 12) + 1;
+    const daysInTargetMonth = new Date(targetYear, targetMonth, 0).getDate();
+    const targetDay = Math.min(day, daysInTargetMonth);
+
+    return `${String(targetYear).padStart(4, '0')}-${String(targetMonth).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
+  }
+
+  /**
+   * Verknüpft Start- und Enddatum eines Formulars für Lernziele: Beim Ändern des Startdatums
+   * wird das Enddatum automatisch auf +6 Monate gesetzt, sofern das Enddatum noch nicht
+   * manuell geändert wurde oder das neue Startdatum hinter dem aktuellen Enddatum liegt.
+   *
+   * @param {HTMLFormElement|null} form
+   */
+  function setupGoalDateAutoUpdate(form) {
+    if (!form) return;
+    const startInput = form.querySelector('[name="start_date"]');
+    const endInput = form.querySelector('[name="end_date"]');
+    if (!startInput || !endInput) return;
+
+    endInput.addEventListener('change', () => {
+      endInput.dataset.manualEdit = 'true';
+    });
+
+    startInput.addEventListener('change', () => {
+      const nextEnd = addSixMonthsToDate(startInput.value);
+      if (!nextEnd) return;
+
+      const isManual = endInput.dataset.manualEdit === 'true';
+      const isStartAfterEnd = Boolean(endInput.value && startInput.value > endInput.value);
+
+      if (!isManual || !endInput.value || isStartAfterEnd) {
+        endInput.value = nextEnd;
+        delete endInput.dataset.manualEdit;
+        clearFieldError(endInput);
+      }
+    });
+  }
+
+  setupGoalDateAutoUpdate(createForm);
+  setupGoalDateAutoUpdate(editForm);
+
+  /**
    * Setzt das Formular für ein neues Lernziel auf die Standardwerte zurück.
    */
   function resetCreateGoalForm() {
@@ -228,8 +285,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (startInput && startInput.dataset.default) {
       startInput.value = startInput.dataset.default;
     }
-    if (endInput && endInput.dataset.default) {
-      endInput.value = endInput.dataset.default;
+    if (endInput) {
+      delete endInput.dataset.manualEdit;
+      if (endInput.dataset.default) {
+        endInput.value = endInput.dataset.default;
+      }
     }
   }
 
@@ -576,7 +636,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (editTitleInput) editTitleInput.value = editGoalBtn.dataset.title || '';
       if (editHoursInput) editHoursInput.value = editGoalBtn.dataset.hours || '';
       if (editStartInput) editStartInput.value = editGoalBtn.dataset.start || '';
-      if (editEndInput) editEndInput.value = editGoalBtn.dataset.end || '';
+      if (editEndInput) {
+        editEndInput.value = editGoalBtn.dataset.end || '';
+        delete editEndInput.dataset.manualEdit;
+      }
       if (editDescInput) editDescInput.value = editGoalBtn.dataset.description || '';
       return;
     }
