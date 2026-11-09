@@ -132,11 +132,12 @@ class GoalController
      * @param int $userId ID des Nutzers
      * @param array<string, mixed> $input Rohdaten (z. B. aus $_POST)
      * @return int ID des neu erstellten Lernziels
-     * @throws ValidationException Bei ungültigen Eingaben
+     * @throws ValidationException Bei ungültigen Eingaben oder zeitlicher Überlappung
      */
     public function createGoal(int $userId, array $input): int
     {
         $validated = $this->validateAndParseInput($input);
+        $this->assertNoOverlappingGoal($userId, $validated['start_date'], $validated['end_date']);
 
         return $this->goalDAO->create(
             $userId,
@@ -155,7 +156,7 @@ class GoalController
      * @param int $userId ID des Nutzers
      * @param array<string, mixed> $input Rohdaten
      * @return bool True bei Erfolg
-     * @throws ValidationException Bei ungültigen Eingaben oder unberechtigtem Zugriff
+     * @throws ValidationException Bei ungültigen Eingaben, zeitlicher Überlappung oder unberechtigtem Zugriff
      */
     public function updateGoal(int $goalId, int $userId, array $input): bool
     {
@@ -165,6 +166,7 @@ class GoalController
         }
 
         $validated = $this->validateAndParseInput($input);
+        $this->assertNoOverlappingGoal($userId, $validated['start_date'], $validated['end_date'], $goalId);
         $this->assertPlanningInsideRange($goalId, $userId, $validated['start_date'], $validated['end_date']);
 
         return $this->goalDAO->update(
@@ -176,6 +178,50 @@ class GoalController
             $validated['start_date'],
             $validated['end_date']
         );
+    }
+
+    /**
+     * Verhindert zeitlich überlappende Lernziele desselben Nutzers, da jedes Lernziel
+     * ein Semester darstellt.
+     *
+     * @param int $userId ID des Nutzers
+     * @param string $startDate Neues Startdatum (YYYY-MM-DD)
+     * @param string $endDate Neues Enddatum (YYYY-MM-DD)
+     * @param int|null $excludeGoalId Optionale ID eines bestehenden Lernziels (beim Bearbeiten)
+     * @throws ValidationException Wenn sich der Zeitraum mit einem bestehenden Lernziel überschneidet
+     */
+    private function assertNoOverlappingGoal(
+        int $userId,
+        string $startDate,
+        string $endDate,
+        ?int $excludeGoalId = null
+    ): void {
+        foreach ($this->goalDAO->findAllByUserId($userId) as $existingGoal) {
+            $existingId = (int) ($existingGoal['id'] ?? 0);
+            if ($excludeGoalId !== null && $existingId === $excludeGoalId) {
+                continue;
+            }
+
+            $existingStart = (string) ($existingGoal['start_date'] ?? '');
+            $existingEnd = (string) ($existingGoal['end_date'] ?? '');
+            if ($existingStart === '' || $existingEnd === '') {
+                continue;
+            }
+
+            if ($startDate <= $existingEnd && $endDate >= $existingStart) {
+                $field = $startDate < $existingStart ? 'end_date' : 'start_date';
+                $existingTitle = trim((string) ($existingGoal['title'] ?? ''));
+                $formattedStart = self::formatDateGerman($existingStart) ?? $existingStart;
+                $formattedEnd = self::formatDateGerman($existingEnd) ?? $existingEnd;
+
+                throw new ValidationException(sprintf(
+                    'Der gewählte Zeitraum überschneidet sich mit dem bestehenden Lernziel "%s" (%s bis %s).',
+                    $existingTitle,
+                    $formattedStart,
+                    $formattedEnd
+                ), $field);
+            }
+        }
     }
 
     /**
@@ -2071,7 +2117,7 @@ class GoalController
                 'date_formatted'      => $dayDt->format('d.m.'),
                 'date_full_formatted' => $dayDt->format('d.m.Y'),
                 'is_today'            => ($dayDateStr === $todayStr),
-                'is_in_selected_month'=> (substr($dayDateStr, 0, 7) === $selectedMonth),
+                'is_in_selected_month' => (substr($dayDateStr, 0, 7) === $selectedMonth),
                 'scheduled_hours'     => round($dayHours, 2),
                 'tracked_seconds'     => $dayTrackedSeconds,
                 'tracked_hours'       => round($dayTrackedSeconds / 3600.0, 2),
@@ -2209,4 +2255,3 @@ class GoalController
         return sprintf('%d Min.', $minutes);
     }
 }
-

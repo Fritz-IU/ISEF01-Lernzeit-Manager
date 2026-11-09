@@ -280,6 +280,99 @@ final class GoalControllerTest extends TestCase
     // ------------------------------------------------------------------
 
     // ------------------------------------------------------------------
+    // createGoal & updateGoal: Keine zeitliche Überlappung von Semestern
+    // ------------------------------------------------------------------
+
+    /**
+     * @return array<string, array{0: string, 1: string, 2: string}>
+     */
+    public static function ueberlappendeSemesterZeitraeume(): array
+    {
+        return [
+            'Start liegt im bestehenden Semester'             => ['2027-01-01', '2027-06-30', 'start_date'],
+            'Start fällt auf das Enddatum des Semesters'      => ['2027-03-31', '2027-09-30', 'start_date'],
+            'Ende liegt im bestehenden Semester'              => ['2026-04-01', '2026-10-15', 'end_date'],
+            'Ende fällt auf das Startdatum des Semesters'     => ['2026-04-01', '2026-10-01', 'end_date'],
+            'Neues Semester umschließt bestehendes komplett'  => ['2026-09-01', '2027-04-30', 'end_date'],
+            'Neues Semester liegt komplett innerhalb'         => ['2026-11-01', '2027-02-28', 'start_date'],
+            'Identischer Zeitraum'                            => ['2026-10-01', '2027-03-31', 'start_date'],
+        ];
+    }
+
+    #[Test]
+    #[DataProvider('ueberlappendeSemesterZeitraeume')]
+    public function lehntErstellenEinesUeberlappendenLernzielsMitMeldungAb(
+        string $startDate,
+        string $endDate,
+        string $expectedField
+    ): void {
+        $this->dao->method('findAllByUserId')
+            ->with(self::USER_ID)
+            ->willReturn([self::PARENT_GOAL]);
+        $this->dao->expects($this->never())->method('create');
+
+        $e = $this->erwartetValidierungsfehler(
+            fn () => $this->controller->createGoal(self::USER_ID, self::lernzielEingabe([
+                'title'      => 'Neues Semester',
+                'start_date' => $startDate,
+                'end_date'   => $endDate,
+            ])),
+            $expectedField
+        );
+
+        self::assertStringContainsString('Software Engineering', $e->getMessage());
+        self::assertStringContainsString('01.10.2026 bis 31.03.2027', $e->getMessage());
+    }
+
+    #[Test]
+    public function erstelltNahtlosAnschliessendesLernzielOhneUeberlappung(): void
+    {
+        $this->dao->method('findAllByUserId')
+            ->with(self::USER_ID)
+            ->willReturn([self::PARENT_GOAL]);
+        $this->dao->expects($this->once())
+            ->method('create')
+            ->with(self::USER_ID, 'Sommersemester 2027', null, 150.0, '2027-04-01', '2027-09-30')
+            ->willReturn(8);
+
+        $newGoalId = $this->controller->createGoal(self::USER_ID, self::lernzielEingabe([
+            'title'      => 'Sommersemester 2027',
+            'start_date' => '2027-04-01',
+            'end_date'   => '2027-09-30',
+        ]));
+
+        self::assertSame(8, $newGoalId);
+    }
+
+    #[Test]
+    public function lehntBearbeitenAbWennZeitraumMitAnderemLernzielUeberlappt(): void
+    {
+        $this->daoLiefertLernziel();
+        $this->dao->method('findAllByUserId')
+            ->with(self::USER_ID)
+            ->willReturn([
+                self::PARENT_GOAL,
+                [
+                    'id'           => 8,
+                    'user_id'      => self::USER_ID,
+                    'title'        => 'Sommersemester 2027',
+                    'target_hours' => 150.0,
+                    'start_date'   => '2027-04-01',
+                    'end_date'     => '2027-09-30',
+                ],
+            ]);
+        $this->dao->expects($this->never())->method('update');
+
+        $e = $this->erwartetValidierungsfehler(
+            fn () => $this->controller->updateGoal(7, self::USER_ID, self::lernzielEingabe(['end_date' => '2027-04-15'])),
+            'end_date'
+        );
+
+        self::assertStringContainsString('Sommersemester 2027', $e->getMessage());
+        self::assertStringContainsString('01.04.2027 bis 30.09.2027', $e->getMessage());
+    }
+
+    // ------------------------------------------------------------------
     // updateGoal: Zeitraum darf geplante Zwischenziele nicht abschneiden
     // ------------------------------------------------------------------
 

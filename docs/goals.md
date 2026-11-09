@@ -150,6 +150,7 @@ CREATE TABLE learning_slots (
 - **Zielstunden (`target_hours`):** Pflichtfeld, numerisch, zwischen 0,5 und 1500,0 Stunden. Unterstützt sowohl Komma (`120,5`) als auch Punkt (`120.5`) als Dezimaltrennzeichen.
 - **Startdatum (`start_date`):** Pflichtfeld im ISO-Format `JJJJ-MM-TT` (`Y-m-d`).
 - **Enddatum (`end_date`):** Pflichtfeld im ISO-Format `JJJJ-MM-TT` (`Y-m-d`). Muss zeitlich am oder nach dem Startdatum liegen (`end_date >= start_date`).
+- **Keine zeitliche Überlappung von Semestern:** Da ein Lernziel ein Semester abbildet, darf sich der Zeitraum (`start_date` bis `end_date`) beim Erstellen oder Bearbeiten nicht mit einem bereits bestehenden Lernziel desselben Nutzers überschneiden (`start_date <= existing_end_date && end_date >= existing_start_date`). Im Konfliktfall wird das Speichern mit einer sprechenden Fehlermeldung verhindert.
 - **Beschreibung (`description`):** Optional, maximal 2000 Zeichen. Leere Zeichenketten werden in der Datenbank als `NULL` abgelegt.
 - **Monat (`year_month`):** Pflichtfeld im Format `JJJJ-MM` (`^\d{4}-(0[1-9]|1[0-2])$`).
 - **Monatliches Soll-Zeitbudget (`budget_hours`):** Numerisch zwischen 0,0 und 744,0 Stunden (`GoalController::MAX_MONTHLY_HOURS`). Bei leerem Wert oder `0` wird das hinterlegte Monatsbudget zurückgesetzt.
