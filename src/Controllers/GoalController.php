@@ -1617,6 +1617,78 @@ class GoalController
     }
 
     /**
+     * Berechnet das Standard-Enddatum eines Semesters: einen Tag vor demselben Tag sechs Monate
+     * später (z. B. 01.10. bis 31.03.). So beginnt ein direkt anschließendes Semester ohne Überlappung.
+     * Gibt es den Tag im Zielmonat nicht (z. B. 31.08. + 6 Monate), endet es am letzten Tag dieses Monats.
+     * Muss mit calculateSemesterEndDate() in assets/js/goals.js übereinstimmen.
+     *
+     * @param string $startDate Startdatum (YYYY-MM-DD)
+     * @return string|null Enddatum (YYYY-MM-DD) oder null bei ungültigem Startdatum
+     */
+    public static function calculateSemesterEndDate(string $startDate): ?string
+    {
+        $start = DateTimeImmutable::createFromFormat('!Y-m-d', $startDate);
+        if (!$start || $start->format('Y-m-d') !== $startDate) {
+            return null;
+        }
+
+        $targetMonthFirst = $start->modify('first day of this month')->modify('+6 months');
+        $daysInTargetMonth = (int) $targetMonthFirst->format('t');
+        $day = (int) $start->format('j');
+
+        if ($day > $daysInTargetMonth) {
+            return $targetMonthFirst->modify('last day of this month')->format('Y-m-d');
+        }
+
+        return $targetMonthFirst
+            ->setDate((int) $targetMonthFirst->format('Y'), (int) $targetMonthFirst->format('n'), $day)
+            ->modify('-1 day')
+            ->format('Y-m-d');
+    }
+
+    /**
+     * Schlägt für ein neues Lernziel einen Zeitraum vor, der sich mit keinem bestehenden
+     * Lernziel überschneidet: Start ist heute oder der Tag nach dem Semester, in dem heute liegt
+     * (bei lückenlos anschließenden Semestern auch weiter in der Zukunft). Das Ende ist das
+     * Standard-Enddatum, wird aber vor ein später beginnendes Semester gekürzt.
+     *
+     * @param list<array<string, mixed>> $goals Bestehende Lernziele des Nutzers
+     * @param string $today Heutiges Datum (YYYY-MM-DD)
+     * @return array{start_date: string, end_date: string}
+     */
+    public static function suggestNewGoalPeriod(array $goals, string $today): array
+    {
+        $periods = [];
+        foreach ($goals as $goal) {
+            $start = (string) ($goal['start_date'] ?? '');
+            $end = (string) ($goal['end_date'] ?? '');
+            if (self::formatDateGerman($start) !== null && self::formatDateGerman($end) !== null) {
+                $periods[] = ['start' => $start, 'end' => $end];
+            }
+        }
+
+        $startDate = $today;
+        do {
+            $moved = false;
+            foreach ($periods as $period) {
+                if ($period['start'] <= $startDate && $startDate <= $period['end']) {
+                    $startDate = (new DateTimeImmutable($period['end']))->modify('+1 day')->format('Y-m-d');
+                    $moved = true;
+                }
+            }
+        } while ($moved);
+
+        $endDate = self::calculateSemesterEndDate($startDate) ?? $startDate;
+        foreach ($periods as $period) {
+            if ($period['start'] > $startDate && $period['start'] <= $endDate) {
+                $endDate = (new DateTimeImmutable($period['start']))->modify('-1 day')->format('Y-m-d');
+            }
+        }
+
+        return ['start_date' => $startDate, 'end_date' => $endDate];
+    }
+
+    /**
      * Ermittelt das gültige Abschlussdatum im Format YYYY-MM-DD (Fallback: aktuelles Tagesdatum).
      */
     private static function resolveCompletionDate(?string $today = null): string

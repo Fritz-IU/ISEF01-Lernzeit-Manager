@@ -17,6 +17,30 @@
     });
   }
 
+  // Inaktivitäts-Hinweis (#7): einmal geschlossen, bleibt er bis zum nächsten Login ausgeblendet.
+  // Der Schlüssel enthält den vorherigen Login, ein neuer Login zeigt neue Versäumnisse also wieder an.
+  const inactivityNotice = document.getElementById('inactivityNotice');
+  if (inactivityNotice) {
+    const storageKey = 'inactivityNoticeClosed:' + (inactivityNotice.dataset.since || '');
+    let closed = false;
+    try {
+      closed = window.sessionStorage.getItem(storageKey) === '1';
+    } catch (e) {
+      // sessionStorage nicht verfügbar (z. B. privater Modus): Hinweis bleibt sichtbar
+    }
+    if (closed) {
+      inactivityNotice.remove();
+    } else {
+      inactivityNotice.addEventListener('close.bs.alert', function () {
+        try {
+          window.sessionStorage.setItem(storageKey, '1');
+        } catch (e) {
+          // Ohne sessionStorage erscheint der Hinweis beim nächsten Laden erneut
+        }
+      });
+    }
+  }
+
   if (!dataElement || typeof window.Chart === 'undefined') {
     return;
   }

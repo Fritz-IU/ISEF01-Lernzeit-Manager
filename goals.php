@@ -199,9 +199,10 @@ $initEndMinute = $initEndMinutesTotal % 60;
 $initEndTime = sprintf('%02d:%02d', $initEndHour, $initEndMinute);
 $initDurationMinutes = $initEndMinutesTotal - $initStartMinutesTotal;
 
-// Standardwerte für neues Lernziel
-$defaultStartDate = date('Y-m-d');
-$defaultEndDate = date('Y-m-d', strtotime('+6 months'));
+// Standardwerte für neues Lernziel: erster freier Zeitraum ohne Überlappung mit bestehenden Semestern
+$defaultGoalPeriod = GoalController::suggestNewGoalPeriod($goals, date('Y-m-d'));
+$defaultStartDate = $defaultGoalPeriod['start_date'];
+$defaultEndDate = $defaultGoalPeriod['end_date'];
 
 // Vorbefüllte Werte bei fehlgeschlagenem POST-Fallback
 $createTitleVal = $failedAction === 'create' && is_string($_POST['title'] ?? null) ? $_POST['title'] : '';
@@ -475,6 +476,7 @@ require_once __DIR__ . '/includes/header.php';
                                                     class="btn btn-sm btn-link text-secondary p-1 text-decoration-none row-action-menu-btn"
                                                     type="button"
                                                     data-bs-toggle="dropdown"
+                                                    data-bs-boundary="viewport"
                                                     aria-expanded="false"
                                                     title="Weitere Aktionen"
                                                     aria-label="Weitere Aktionen für Lernziel">
@@ -823,6 +825,7 @@ require_once __DIR__ . '/includes/header.php';
                                                         class="btn btn-sm btn-link text-secondary p-1 text-decoration-none row-action-menu-btn"
                                                         type="button"
                                                         data-bs-toggle="dropdown"
+                                                        data-bs-boundary="viewport"
                                                         aria-expanded="false"
                                                         title="Aktionen"
                                                         aria-label="Aktionen für Zwischenziel">
@@ -1367,6 +1370,7 @@ require_once __DIR__ . '/includes/header.php';
                                                         class="btn btn-sm btn-link text-secondary p-1 text-decoration-none row-action-menu-btn"
                                                         type="button"
                                                         data-bs-toggle="dropdown"
+                                                        data-bs-boundary="viewport"
                                                         aria-expanded="false"
                                                         title="Aktionen"
                                                         aria-label="Aktionen für Lerneinheit">

@@ -54,8 +54,21 @@ $currentMonth = $dashboard['current_month'] ?? null;
 $modules = $dashboard['modules'] ?? [];
 $treeMonths = $dashboard['tree_months'] ?? [];
 
+// Inaktivitäts-Hinweis (#7): verpasste Lerneinheiten seit dem vorherigen Login (gemerkt in User::login).
+// Die Modulfarben kommen aus der Zielstruktur, damit ein Modul im Hinweis und im Zielbaum gleich aussieht.
+$previousLoginAt = isset($_SESSION['previous_login_at']) && is_string($_SESSION['previous_login_at'])
+    ? $_SESSION['previous_login_at']
+    : null;
+$inactivityNotice = $dashboardController->buildInactivityNotice($userId, $previousLoginAt, null, $modules);
+
 /** Stunden im deutschen Format, z. B. "12,5 h" */
 $fmtHours = static fn (float $hours): string => number_format($hours, 1, ',', '.') . ' h';
+/** Stunden ohne überflüssige Null, z. B. "9 h" oder "1,5 h" */
+$fmtHoursShort = static fn (float $hours): string => str_replace(',0 ', ' ', number_format($hours, 1, ',', '.') . ' h');
+/** Modulfarbe aus der festen Reihe --series-1 … --series-8 */
+$seriesColor = static fn (int $colorIndex): string => 'var(--series-' . (($colorIndex % 8) + 1) . ')';
+/** Zahl für CSS-Werte, immer mit Punkt als Dezimaltrenner (unabhängig von der Locale) */
+$cssNumber = static fn (float $value): string => number_format($value, 2, '.', '');
 /** Prozent ohne Nachkommastelle, z. B. "42 %" */
 $fmtPercent = static fn (float $percent): string => number_format($percent, 0, ',', '.') . ' %';
 /** Datum YYYY-MM-DD als TT.MM.JJJJ */
@@ -129,6 +142,112 @@ require_once __DIR__ . '/includes/header.php';
         <?php endif; ?>
     </div>
 </div>
+
+<?php if ($inactivityNotice !== null): ?>
+    <!-- Inaktivitäts-Hinweis (#7): bleibt für die Sitzung sichtbar, bis er geschlossen wird (dashboard.js) -->
+    <section class="alert alert-dismissible fade show shadow-sm mb-4 inactivity-notice" id="inactivityNotice"
+             aria-labelledby="inactivityNoticeTitle" data-since="<?= htmlspecialchars((string) $inactivityNotice['since']) ?>">
+        <div class="row g-3 align-items-center">
+            <div class="col-12 col-md-6 col-lg-5">
+                <div class="d-flex align-items-start gap-2">
+                    <svg class="inactivity-notice-icon flex-shrink-0" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><?= $statusIcons['warning'] ?></svg>
+                    <div>
+                        <h2 class="h5 mb-0" id="inactivityNoticeTitle"><?= htmlspecialchars($fmtHoursShort((float) $inactivityNotice['missed_hours'])) ?> Lernzeit verpasst</h2>
+                        <p class="small text-body-secondary mb-0">
+                            <?= (int) $inactivityNotice['missed_count'] === 1 ? '1 Lerneinheit' : (int) $inactivityNotice['missed_count'] . ' Lerneinheiten' ?>
+                            seit <?= htmlspecialchars(date('d.m.', (int) strtotime((string) $inactivityNotice['since']))) ?>
+                        </p>
+                    </div>
+                </div>
+
+                <?php if ($inactivityNotice['open_modules'] !== []): ?>
+                    <ul class="list-unstyled d-flex flex-wrap gap-2 mt-3 mb-0" aria-label="Offene Ziele mit verpasster Lernzeit">
+                        <?php foreach ($inactivityNotice['open_modules'] as $openModule): ?>
+                            <li>
+                                <a href="<?= htmlspecialchars((string) $openModule['url']) ?>" class="inactivity-chip"
+                                   style="--module-color: <?= $seriesColor((int) $openModule['color_index']) ?>;">
+                                    <span class="inactivity-chip-dot" aria-hidden="true"></span>
+                                    <?= htmlspecialchars((string) $openModule['title']) ?>
+                                    <span class="text-body-secondary"><?= htmlspecialchars($fmtHoursShort((float) $openModule['missed_hours'])) ?></span>
+                                </a>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
+
+                <a href="timer.php" class="btn btn-sm btn-warning mt-3">Lernzeit nachtragen</a>
+            </div>
+
+            <div class="col-12 col-md-6 col-lg-7">
+                <p class="inactivity-days-caption mb-2" id="inactivityDaysCaption">Verpasste Lernzeit pro Tag</p>
+                <?php $noticeDayCount = count($inactivityNotice['days']); ?>
+                <ul class="inactivity-days list-unstyled mb-0" aria-labelledby="inactivityDaysCaption">
+                    <?php foreach ($inactivityNotice['days'] as $dayIndex => $noticeDay): ?>
+                        <?php
+                        $hasMissed = $noticeDay['hours'] > 0;
+                        $dayHeading = $noticeDay['weekday'] . ' ' . date('d.m.', (int) strtotime((string) $noticeDay['date']));
+                        // Ausgabe für Screenreader: Tag, Summe und die einzelnen Einheiten in einem Satz
+                        $dayLabel = $dayHeading . ': ' . ($hasMissed ? $fmtHoursShort((float) $noticeDay['hours']) . ' verpasst' : 'nichts verpasst');
+                        foreach ($noticeDay['slots'] as $daySlot) {
+                            $dayLabel .= '; ' . $daySlot['start'] . ' bis ' . $daySlot['end'] . ' Uhr ' . $daySlot['module_title']
+                                . ' (' . $fmtHoursShort((float) $daySlot['hours']) . ')'
+                                . ($daySlot['notes'] !== '' ? ', ' . $daySlot['notes'] : '');
+                        }
+                        // Tooltip am Rand nicht aus der Karte laufen lassen
+                        $tipAlign = $dayIndex < 3 ? ' is-start' : ($dayIndex >= $noticeDayCount - 3 ? ' is-end' : '');
+                        ?>
+                        <li class="inactivity-day<?= $noticeDay['is_today'] ? ' is-today' : '' ?><?= $hasMissed ? ' has-missed' : '' ?>"
+                            <?= $hasMissed ? 'tabindex="0"' : '' ?> aria-label="<?= htmlspecialchars($dayLabel) ?>">
+                            <div class="inactivity-bar" aria-hidden="true">
+                                <?php foreach ($noticeDay['segments'] as $segment): ?>
+                                    <span class="inactivity-bar-segment"
+                                          style="height: <?= $cssNumber((float) $segment['height_pct']) ?>%; --module-color: <?= $seriesColor((int) $segment['color_index']) ?>;"></span>
+                                <?php endforeach; ?>
+                            </div>
+                            <span class="inactivity-day-label" aria-hidden="true"><?= htmlspecialchars((string) $noticeDay['weekday']) ?><br><?= htmlspecialchars((string) $noticeDay['day']) ?></span>
+
+                            <!-- Tooltip: erscheint bei Hover und bei Fokus (Tastatur, Antippen auf dem Handy) -->
+                            <div class="inactivity-tip<?= $tipAlign ?>" aria-hidden="true">
+                                <div class="d-flex justify-content-between gap-3 fw-semibold">
+                                    <span><?= htmlspecialchars($dayHeading) ?></span>
+                                    <span><?= $hasMissed ? htmlspecialchars($fmtHoursShort((float) $noticeDay['hours'])) . ' verpasst' : 'nichts verpasst' ?></span>
+                                </div>
+                                <?php if (count($noticeDay['segments']) > 1): ?>
+                                    <!-- Mehrere Module an einem Tag: Aufteilung als Mini-Balken in den Modulfarben -->
+                                    <div class="inactivity-tip-split mt-1">
+                                        <?php foreach ($noticeDay['segments'] as $segment): ?>
+                                            <span style="flex-grow: <?= $cssNumber((float) $segment['hours']) ?>; --module-color: <?= $seriesColor((int) $segment['color_index']) ?>;"></span>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    <div class="inactivity-tip-notes mt-1"><?= count($noticeDay['segments']) ?> Module an diesem Tag</div>
+                                <?php endif; ?>
+                                <?php if ($hasMissed): ?>
+                                    <ul class="list-unstyled mb-0 mt-2">
+                                        <?php foreach ($noticeDay['slots'] as $daySlot): ?>
+                                            <li class="inactivity-tip-slot" style="--module-color: <?= $seriesColor((int) $daySlot['color_index']) ?>;">
+                                                <div class="d-flex justify-content-between gap-3">
+                                                    <span class="fw-semibold"><?= htmlspecialchars((string) $daySlot['module_title']) ?></span>
+                                                    <span class="inactivity-tip-hours"><?= htmlspecialchars($fmtHoursShort((float) $daySlot['hours'])) ?></span>
+                                                </div>
+                                                <div class="inactivity-tip-notes">
+                                                    <span class="inactivity-tip-time"><?= htmlspecialchars($daySlot['start']) ?>–<?= htmlspecialchars($daySlot['end']) ?> Uhr</span><?= $daySlot['notes'] !== '' ? ' · ' . htmlspecialchars($daySlot['notes']) : '' ?>
+                                                </div>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                <?php endif; ?>
+                            </div>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+                <?php if ($inactivityNotice['days_truncated']): ?>
+                    <p class="small text-body-secondary text-end mb-0 mt-1">Grafik: letzte <?= DashboardController::INACTIVITY_MAX_DAYS ?> Tage</p>
+                <?php endif; ?>
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Hinweis schließen"></button>
+    </section>
+<?php endif; ?>
 
 <?php if ($semester === null): ?>
     <!-- Leerer Zustand: noch kein Semesterziel geplant -->

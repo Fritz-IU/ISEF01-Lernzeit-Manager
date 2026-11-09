@@ -373,6 +373,94 @@ final class GoalControllerTest extends TestCase
     }
 
     // ------------------------------------------------------------------
+    // calculateSemesterEndDate & suggestNewGoalPeriod: Vorgaben ohne Überlappung
+    // ------------------------------------------------------------------
+
+    /**
+     * Gleiche Werte wie calculateSemesterEndDate() in assets/js/goals.js.
+     *
+     * @return array<string, array{0: string, 1: string|null}>
+     */
+    public static function semesterEnddaten(): array
+    {
+        return [
+            'Wintersemester endet am 31.03.'               => ['2026-10-01', '2027-03-31'],
+            'Sommersemester endet am 30.09.'               => ['2027-04-01', '2027-09-30'],
+            'Monatserster endet am Vormonatsletzten'       => ['2026-09-01', '2027-02-28'],
+            'Tag mitten im Monat'                          => ['2026-01-15', '2026-07-14'],
+            '31.08. ohne 31.02. endet am Monatsletzten'    => ['2026-08-31', '2027-02-28'],
+            '29.08. im Nicht-Schaltjahr'                   => ['2026-08-29', '2027-02-28'],
+            '29.08. im Schaltjahr'                         => ['2027-08-29', '2028-02-28'],
+            'Jahreswechsel'                                => ['2026-12-01', '2027-05-31'],
+            'Ungültiges Datum'                             => ['2026-02-30', null],
+        ];
+    }
+
+    #[Test]
+    #[DataProvider('semesterEnddaten')]
+    public function berechnetSemesterEnddatumOhneUeberlappungMitFolgesemester(string $startDate, ?string $expected): void
+    {
+        self::assertSame($expected, GoalController::calculateSemesterEndDate($startDate));
+    }
+
+    #[Test]
+    public function schlaegtOhneLernzieleHeuteAlsStartVor(): void
+    {
+        self::assertSame(
+            ['start_date' => '2026-11-09', 'end_date' => '2027-05-08'],
+            GoalController::suggestNewGoalPeriod([], '2026-11-09')
+        );
+    }
+
+    #[Test]
+    public function schlaegtStartNachDemLaufendenSemesterVor(): void
+    {
+        self::assertSame(
+            ['start_date' => '2027-04-01', 'end_date' => '2027-09-30'],
+            GoalController::suggestNewGoalPeriod([self::PARENT_GOAL], '2026-11-09')
+        );
+    }
+
+    #[Test]
+    public function springtUeberLueckenlosAnschliessendeSemesterHinweg(): void
+    {
+        $goals = [
+            ['start_date' => '2027-04-01', 'end_date' => '2027-09-30'],
+            self::PARENT_GOAL,
+        ];
+
+        self::assertSame(
+            ['start_date' => '2027-10-01', 'end_date' => '2028-03-31'],
+            GoalController::suggestNewGoalPeriod($goals, '2026-11-09')
+        );
+    }
+
+    #[Test]
+    public function kuerztVorschlagVorEinSpaeterBeginnendesSemester(): void
+    {
+        $goals = [['start_date' => '2027-03-01', 'end_date' => '2027-08-31']];
+
+        self::assertSame(
+            ['start_date' => '2026-11-09', 'end_date' => '2027-02-28'],
+            GoalController::suggestNewGoalPeriod($goals, '2026-11-09')
+        );
+    }
+
+    #[Test]
+    public function vorgeschlagenerZeitraumBestehtDieUeberlappungspruefung(): void
+    {
+        $this->dao->method('findAllByUserId')->willReturn([self::PARENT_GOAL]);
+        $period = GoalController::suggestNewGoalPeriod([self::PARENT_GOAL], '2026-11-09');
+        $this->dao->expects($this->once())->method('create')->willReturn(8);
+
+        $this->controller->createGoal(self::USER_ID, self::lernzielEingabe([
+            'title'      => 'Sommersemester 2027',
+            'start_date' => $period['start_date'],
+            'end_date'   => $period['end_date'],
+        ]));
+    }
+
+    // ------------------------------------------------------------------
     // updateGoal: Zeitraum darf geplante Zwischenziele nicht abschneiden
     // ------------------------------------------------------------------
 
