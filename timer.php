@@ -513,6 +513,34 @@ require_once __DIR__ . '/includes/header.php';
                         </span>
                     </div>
 
+                    <!-- Dauerkorrektur bei auffällig langen Sitzungen (vergessene Stoppuhr), per JS eingeblendet -->
+                    <div
+                        id="stop-correction"
+                        class="mb-3 d-none"
+                        data-threshold-seconds="<?= TimeTrackingController::LONG_SESSION_SECONDS ?>"
+                        data-max-seconds="<?= TimeTrackingController::MAX_DURATION_SECONDS ?>"
+                    >
+                        <div class="alert alert-warning small py-2 mb-2" role="alert" id="stop-correction-hint">
+                            Die Stoppuhr lief ungewöhnlich lange. Hast du sie vielleicht vergessen? Trage bei Bedarf die tatsächliche Lerndauer ein.
+                        </div>
+                        <label class="form-label fw-semibold" for="stop_corrected_hours">Tatsächliche Lerndauer</label>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <div class="input-group">
+                                    <input type="number" name="corrected_hours" id="stop_corrected_hours" class="form-control" min="0" max="24" step="1" inputmode="numeric" disabled>
+                                    <span class="input-group-text">Std.</span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="input-group">
+                                    <input type="number" name="corrected_minutes" id="stop_corrected_minutes" class="form-control" min="0" max="59" step="1" inputmode="numeric" aria-label="Minuten" disabled>
+                                    <span class="input-group-text">Min.</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-text">Höchstens die gemessene Zeit, maximal 24 Stunden.</div>
+                    </div>
+
                     <div class="mb-3">
                         <label for="stop_note" class="form-label fw-semibold">Notiz zur Einheit (optional)</label>
                         <textarea

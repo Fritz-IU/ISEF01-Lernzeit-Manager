@@ -168,6 +168,38 @@ document.addEventListener('DOMContentLoaded', () => {
     document.title = originalTitle;
   });
 
+  /**
+   * Blendet im Stopp-Dialog die Dauerkorrektur ein, wenn die Sitzung auffällig lang ist
+   * (vergessene Stoppuhr). Vorbelegt wird die gemessene Zeit, höchstens 24 Stunden.
+   * Unterhalb der Schwelle bleiben die Felder deaktiviert und werden nicht mitgesendet.
+   */
+  function prepareDurationCorrection() {
+    const block = document.getElementById('stop-correction');
+    const hoursInput = document.getElementById('stop_corrected_hours');
+    const minutesInput = document.getElementById('stop_corrected_minutes');
+    const hint = document.getElementById('stop-correction-hint');
+    if (!block || !hoursInput || !minutesInput) return;
+
+    const threshold = parseInt(block.dataset.thresholdSeconds || '0', 10);
+    const maxSeconds = parseInt(block.dataset.maxSeconds || '86400', 10);
+    const isLong = threshold > 0 && currentSeconds >= threshold;
+
+    block.classList.toggle('d-none', !isLong);
+    hoursInput.disabled = !isLong;
+    minutesInput.disabled = !isLong;
+    if (!isLong) return;
+
+    const suggestedMinutes = Math.floor(Math.min(currentSeconds, maxSeconds) / 60);
+    hoursInput.value = String(Math.floor(suggestedMinutes / 60));
+    minutesInput.value = String(suggestedMinutes % 60);
+
+    if (hint) {
+      hint.textContent = currentSeconds > maxSeconds
+        ? 'Die Stoppuhr lief länger als 24 Stunden. Gespeichert werden höchstens 24 Stunden. Trage bei Bedarf die tatsächliche Lerndauer ein.'
+        : 'Die Stoppuhr lief ungewöhnlich lange. Hast du sie vielleicht vergessen? Trage bei Bedarf die tatsächliche Lerndauer ein.';
+    }
+  }
+
   // Modal: "Stopp & Speichern" Interaktion
   if (stopModalElement) {
     // Sobald der Nutzer "Stopp & Speichern" klickt und das Modal geöffnet wird:
@@ -181,6 +213,8 @@ document.addEventListener('DOMContentLoaded', () => {
         sendTimerAction('pause');
         updateStatusDisplay(false);
       }
+
+      prepareDurationCorrection();
     });
 
     // Wenn der Nutzer speichert, wird das normale Absenden markiert
