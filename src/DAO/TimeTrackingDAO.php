@@ -163,7 +163,7 @@ class TimeTrackingDAO
     public function pauseStopwatch(int $id, int $userId, int $additionalSeconds): bool
     {
         $sql = "UPDATE time_entries
-                SET tracked_seconds = :tracked_seconds,
+                SET tracked_seconds = tracked_seconds + :additional_seconds,
                     resumed_at = NULL
                 WHERE id = :id
                   AND user_id = :user_id
@@ -173,7 +173,7 @@ class TimeTrackingDAO
         $stmt = $this->db->prepare($sql);
 
         return $stmt->execute([
-            ':tracked_seconds'    => $trackedSeconds,
+            ':additional_seconds' => $additionalSeconds,
             ':id'                 => $id,
             ':user_id'            => $userId,
         ]);
