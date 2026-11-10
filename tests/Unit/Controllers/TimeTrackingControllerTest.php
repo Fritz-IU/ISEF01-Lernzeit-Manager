@@ -1029,6 +1029,7 @@ final class TimeTrackingControllerTest extends TestCase
         return [
             'Mehr als gemessen'    => [['corrected_hours' => '7', 'corrected_minutes' => '0'], 'corrected_hours'],
             'Null Minuten'         => [['corrected_hours' => '0', 'corrected_minutes' => '0'], 'corrected_minutes'],
+            'Beide Felder leer'    => [['corrected_hours' => '', 'corrected_minutes' => ''], 'corrected_minutes'],
             'Minuten über 59'      => [['corrected_hours' => '1', 'corrected_minutes' => '60'], 'corrected_minutes'],
             'Stunden über 24'      => [['corrected_hours' => '25', 'corrected_minutes' => '0'], 'corrected_hours'],
             'Negative Stunden'     => [['corrected_hours' => '-1', 'corrected_minutes' => '0'], 'corrected_hours'],

@@ -80,6 +80,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'stop') {
             $timeTrackingController->stopAndSaveStopwatch($userId, $_POST);
             $_SESSION['timer_success'] = 'Lerneinheit erfolgreich gespeichert!';
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true]);
+                exit;
+            }
             header('Location: timer.php');
             exit;
         } elseif ($action === 'discard') {
@@ -99,7 +104,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($isAjax) {
             http_response_code(422);
             header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            echo json_encode([
+                'success' => false,
+                'error'   => $e->getMessage(),
+                'field'   => $e->getField(),
+            ]);
             exit;
         }
         $errorMessage = $e->getMessage();
@@ -495,7 +504,7 @@ require_once __DIR__ . '/includes/header.php';
 <div class="modal fade" id="stopTimerModal" tabindex="-1" aria-labelledby="stopTimerModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <form action="timer.php" method="POST" id="form-stop-timer">
+            <form action="timer.php" method="POST" id="form-stop-timer" novalidate>
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
                 <input type="hidden" name="action" value="stop">
                 <div class="modal-header">
@@ -503,6 +512,8 @@ require_once __DIR__ . '/includes/header.php';
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
                 </div>
                 <div class="modal-body">
+                    <div id="stop-timer-alert" class="alert alert-danger d-none" role="alert"></div>
+
                     <div class="p-3 bg-light rounded text-center mb-3">
                         <span class="text-muted small d-block">Erfasste Lernzeit:</span>
                         <div id="modal-stop-duration" class="h3 fw-bold text-primary mb-0">

@@ -6,8 +6,51 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalDuration = document.getElementById('modal-stop-duration');
   const stopModalElement = document.getElementById('stopTimerModal');
   const stopForm = document.getElementById('form-stop-timer');
+  const stopAlert = document.getElementById('stop-timer-alert');
   const resumeBtn = document.getElementById('btn-resume-timer');
   const originalTitle = document.title;
+
+  /**
+   * Entfernt die Fehlermeldung und alle roten Feldmarkierungen im Stopp-Modal.
+   */
+  function clearStopModalErrors() {
+    if (stopAlert) {
+      stopAlert.className = 'alert alert-danger d-none';
+      stopAlert.textContent = '';
+    }
+    if (stopForm) {
+      stopForm.querySelectorAll('.is-invalid').forEach((el) => {
+        el.classList.remove('is-invalid');
+        el.removeAttribute('aria-invalid');
+      });
+    }
+  }
+
+  /**
+   * Zeigt eine Fehlermeldung im Stopp-Modal an und markiert optional das betroffene Feld rot.
+   * @param {string} message
+   * @param {string|null} [fieldName]
+   */
+  function showStopModalError(message, fieldName = null) {
+    if (stopAlert) {
+      stopAlert.className = 'alert alert-danger small py-2 mb-3';
+      stopAlert.textContent = '';
+
+      const strong = document.createElement('strong');
+      strong.textContent = 'Fehler: ';
+      stopAlert.appendChild(strong);
+      stopAlert.appendChild(document.createTextNode(message));
+    }
+
+    if (fieldName && stopForm) {
+      const fieldEl = stopForm.querySelector(`[name="${fieldName}"]`);
+      if (fieldEl) {
+        fieldEl.classList.add('is-invalid');
+        fieldEl.setAttribute('aria-invalid', 'true');
+        fieldEl.focus();
+      }
+    }
+  }
 
   /**
    * Formatiert Sekunden in HH:MM:SS
@@ -206,6 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
     stopModalElement.addEventListener('show.bs.modal', () => {
       isSaving = false;
       wasRunningWhenModalOpened = isRunning;
+      clearStopModalErrors();
 
       // Timer sofort pausieren, Anzeige einfrieren und Server synchronisieren
       if (isRunning) {
@@ -217,10 +261,71 @@ document.addEventListener('DOMContentLoaded', () => {
       prepareDurationCorrection();
     });
 
-    // Wenn der Nutzer speichert, wird das normale Absenden markiert
+    // Wenn der Nutzer speichert, wird das Formular per Fetch gesendet, damit Fehler direkt im Modal erscheinen
     if (stopForm) {
-      stopForm.addEventListener('submit', () => {
+      stopForm.querySelectorAll('input, textarea').forEach((inputEl) => {
+        inputEl.addEventListener('input', () => {
+          inputEl.classList.remove('is-invalid');
+          inputEl.removeAttribute('aria-invalid');
+        });
+      });
+
+      stopForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearStopModalErrors();
+
+        const hoursInput = document.getElementById('stop_corrected_hours');
+        const minutesInput = document.getElementById('stop_corrected_minutes');
+
+        if (hoursInput && !hoursInput.disabled && hoursInput.validity && hoursInput.validity.badInput) {
+          showStopModalError('Die Stunden müssen eine ganze Zahl zwischen 0 und 24 sein.', 'corrected_hours');
+          return;
+        }
+        if (minutesInput && !minutesInput.disabled && minutesInput.validity && minutesInput.validity.badInput) {
+          showStopModalError('Die Minuten müssen eine ganze Zahl zwischen 0 und 59 sein.', 'corrected_minutes');
+          return;
+        }
+
         isSaving = true;
+        const submitBtn = stopForm.querySelector('button[type="submit"]');
+        const originalBtnText = submitBtn ? submitBtn.textContent : '';
+        if (submitBtn) {
+          submitBtn.disabled = true;
+        }
+
+        try {
+          const params = new URLSearchParams(new FormData(stopForm));
+          const response = await fetch('timer.php', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'X-Requested-With': 'XMLHttpRequest',
+              'Accept': 'application/json',
+            },
+            body: params.toString(),
+          });
+
+          const data = await response.json().catch(() => null);
+
+          if (!response.ok || !data || !data.success) {
+            isSaving = false;
+            const message = data && data.error
+              ? data.error
+              : 'Es ist ein Fehler beim Speichern der Lerneinheit aufgetreten.';
+            showStopModalError(message, data && data.field ? data.field : null);
+            return;
+          }
+
+          window.location.href = 'timer.php';
+        } catch {
+          isSaving = false;
+          showStopModalError('Netzwerkfehler. Bitte überprüfe deine Verbindung und versuche es erneut.');
+        } finally {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalBtnText;
+          }
+        }
       });
     }
 

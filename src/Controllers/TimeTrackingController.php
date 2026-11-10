@@ -188,6 +188,13 @@ class TimeTrackingController
     {
         $maxSeconds = min(max(0, $measuredSeconds), self::MAX_DURATION_SECONDS);
 
+        $hasCorrectionInput = array_key_exists('corrected_hours', $input)
+            || array_key_exists('corrected_minutes', $input);
+
+        if (!$hasCorrectionInput) {
+            return $maxSeconds;
+        }
+
         $rawHours = isset($input['corrected_hours']) && is_scalar($input['corrected_hours'])
             ? trim((string) $input['corrected_hours'])
             : '';
@@ -196,7 +203,7 @@ class TimeTrackingController
             : '';
 
         if ($rawHours === '' && $rawMinutes === '') {
-            return $maxSeconds;
+            throw new ValidationException('Bitte gib eine Lerndauer von mindestens einer Minute an.', 'corrected_minutes');
         }
 
         if (($rawHours !== '' && !preg_match('/^\d{1,2}$/', $rawHours)) || (int) $rawHours > 24) {
