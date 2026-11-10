@@ -1225,18 +1225,6 @@ require_once __DIR__ . '/includes/header.php';
                                                 Frei
                                             <?php endif; ?>
                                         </span>
-                                        <?php if (!empty($selectableMonthlyGoals)): ?>
-                                            <button
-                                                type="button"
-                                                class="btn btn-sm btn-outline-primary py-0 px-2 quick-add-slot-btn"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#createSlotModal"
-                                                data-date="<?= htmlspecialchars($dayDate, ENT_QUOTES) ?>"
-                                                title="Lernzeit für <?= htmlspecialchars((string) $day['day_name_long']) ?> (<?= htmlspecialchars((string) $day['date_full_formatted']) ?>) planen"
-                                                aria-label="Lernzeit für <?= htmlspecialchars((string) $day['day_name_long']) ?> planen">
-                                                +
-                                            </button>
-                                        <?php endif; ?>
                                     </div>
                                 </div>
 
