@@ -50,7 +50,7 @@ Hat sich etwas in `sql/` geändert, einfach erneut ausführen:
 
 ## Test-Login
 
-Alle Nutzer aus `seed.sql` haben das Passwort `Lernzeit-Test-2026`. Es ist ein reines Testpasswort und darf nirgends sonst verwendet werden. Jeder Account zeigt eine eigene Situation:
+Alle Nutzer aus `seed.sql` haben das Passwort `Lernzeit-Test-2026`. Es ist ein reines Testpasswort und darf nirgends sonst verwendet werden. Jeder Account zeigt eine eigene Situation (ausführliche Beschreibung mit Prüfschritten für die Begutachtung: [test-accounts.md](test-accounts.md)):
 
 | E-Mail | Name | Situation |
 | --- | --- | --- |
