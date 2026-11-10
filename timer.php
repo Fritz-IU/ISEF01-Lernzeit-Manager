@@ -184,7 +184,6 @@ require_once __DIR__ . '/includes/header.php';
             <div class="card-body">
                 <span class="text-muted small text-uppercase fw-semibold d-block">Heute gelernt</span>
                 <span class="h3 fw-bold text-primary mb-0"><?= TimeTrackingController::formatSecondsHuman($todaySeconds) ?></span>
-                <span class="text-muted small d-block mt-1"><?= TimeTrackingController::formatSecondsToTime($todaySeconds) ?></span>
             </div>
         </div>
     </div>
@@ -193,7 +192,6 @@ require_once __DIR__ . '/includes/header.php';
             <div class="card-body">
                 <span class="text-muted small text-uppercase fw-semibold d-block">Gesamtlernzeit erfasst</span>
                 <span class="h3 fw-bold text-dark mb-0"><?= TimeTrackingController::formatSecondsHuman($totalSeconds) ?></span>
-                <span class="text-muted small d-block mt-1"><?= number_format(round($totalSeconds / 3600.0, 1), 1, ',', '.') ?> Stunden</span>
             </div>
         </div>
     </div>
@@ -202,7 +200,6 @@ require_once __DIR__ . '/includes/header.php';
             <div class="card-body">
                 <span class="text-muted small text-uppercase fw-semibold d-block">Erfasste Einheiten</span>
                 <span class="h3 fw-bold text-secondary mb-0"><?= count($timeEntries) ?></span>
-                <span class="text-muted small d-block mt-1">Lern-Sessions</span>
             </div>
         </div>
     </div>
