@@ -674,63 +674,201 @@ class GoalController
     }
 
     /**
+     * Erzeugt alle Kalendermonate (YYYY-MM) von $startMonth bis $endMonth (jeweils inklusive).
+     *
+     * @return list<string>
+     */
+    private static function buildMonthsRange(string $startMonth, string $endMonth): array
+    {
+        $startDt = DateTimeImmutable::createFromFormat('!Y-m-d', $startMonth . '-01');
+        $endDt = DateTimeImmutable::createFromFormat('!Y-m-d', $endMonth . '-01');
+        if (!$startDt || !$endDt || $endDt < $startDt) {
+            return [$startMonth];
+        }
+
+        $months = [];
+        $cursor = $startDt;
+        $maxIterations = 120;
+        while ($cursor <= $endDt && $maxIterations-- > 0) {
+            $months[] = $cursor->format('Y-m');
+            $cursor = $cursor->modify('+1 month');
+        }
+
+        return $months !== [] ? $months : [$startMonth];
+    }
+
+    /**
      * Bereitet alle Daten für die monatliche Detail- und Grobplanung (Tab-Ansicht, Budgets,
      * prozentuale Workload-Verteilung und Zwischenziele des gewählten Monats) auf.
+     * Das Monatskarussell ist an das jeweils aktive Semester gebunden und zeigt nur dessen Monate.
      *
      * @param int $userId ID des Nutzers
-     * @param list<array<string, mixed>> $goals Bereits geladene 6-Monats-Lernziele
+     * @param list<array<string, mixed>> $goals Bereits geladene Semester-Lernziele
      * @param string|null $requestedMonth Vom Nutzer ausgewählter Monat (GET-Parameter month)
+     * @param int|null $requestedSemesterId Optional gewähltes Semester (GET-Parameter semester)
+     * @param string|null $today Optionales Referenzdatum (YYYY-MM-DD) für deterministische Tests
      * @return array<string, mixed>
      */
-    public function buildMonthlyPlanningData(int $userId, array $goals, ?string $requestedMonth = null): array
-    {
-        $currentCalendarMonth = date('Y-m');
+    public function buildMonthlyPlanningData(
+        int $userId,
+        array $goals,
+        ?string $requestedMonth = null,
+        ?int $requestedSemesterId = null,
+        ?string $today = null
+    ): array {
+        $todayDt = ($today !== null && trim($today) !== '')
+            ? (DateTimeImmutable::createFromFormat('!Y-m-d', trim($today)) ?: new DateTimeImmutable('today'))
+            : new DateTimeImmutable('today');
+        $todayStr = $todayDt->format('Y-m-d');
+        $currentCalendarMonth = $todayDt->format('Y-m');
 
-        // 1. Ausgewählten Monat bestimmen (Fallback: aktueller Kalendermonat)
-        $selectedMonth = $currentCalendarMonth;
-        if ($requestedMonth !== null && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', trim($requestedMonth))) {
-            $selectedMonth = trim($requestedMonth);
+        $validRequestedMonth = ($requestedMonth !== null && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', trim($requestedMonth)))
+            ? trim($requestedMonth)
+            : null;
+
+        // 1. Semester aus den übergebenen Lernzielen chronologisch aufbereiten
+        $semesters = [];
+        foreach ($goals as $g) {
+            $startDate = (string) ($g['start_date'] ?? '');
+            $endDate = (string) ($g['end_date'] ?? '');
+            $startMonth = substr($startDate, 0, 7);
+            $endMonth = substr($endDate, 0, 7);
+            if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $startMonth) || !preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $endMonth)) {
+                continue;
+            }
+            $semesterMonths = self::buildMonthsRange($startMonth, $endMonth);
+            $defaultMonth = in_array($currentCalendarMonth, $semesterMonths, true)
+                ? $currentCalendarMonth
+                : $semesterMonths[0];
+
+            $semesters[] = [
+                'id'              => (int) ($g['id'] ?? 0),
+                'title'           => (string) ($g['title'] ?? ''),
+                'start_date'      => $startDate,
+                'end_date'        => $endDate,
+                'start_month'     => $startMonth,
+                'end_month'       => $endMonth,
+                'months'          => $semesterMonths,
+                'default_month'   => $defaultMonth,
+                'target_hours'    => (float) ($g['target_hours'] ?? 0.0),
+                'allocated_hours' => (float) ($g['allocated_hours'] ?? 0.0),
+                'is_completed'    => !empty($g['completed_at']) || !empty($g['is_completed']),
+            ];
         }
 
-        // 2. Standard-Startmonat des 6-Monats-Fensters ermitteln (frühestes Startdatum oder aktueller Monat)
-        $baseStartMonth = $currentCalendarMonth;
-        if (!empty($goals)) {
-            $earliestStart = (string) $goals[0]['start_date'];
-            foreach ($goals as $g) {
-                if ((string) $g['start_date'] < $earliestStart) {
-                    $earliestStart = (string) $g['start_date'];
+        usort($semesters, static function (array $a, array $b): int {
+            $cmp = strcmp($a['start_date'], $b['start_date']);
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+            $cmpEnd = strcmp($a['end_date'], $b['end_date']);
+            if ($cmpEnd !== 0) {
+                return $cmpEnd;
+            }
+            return $a['id'] <=> $b['id'];
+        });
+
+        // 2. Aktives Semester und ausgewählten Monat innerhalb dieses Semesters bestimmen
+        $selectedSemester = null;
+        $prevSemester = null;
+        $nextSemester = null;
+
+        if ($semesters !== []) {
+            $selectedSemesterIndex = null;
+
+            // a) Explizit angefragtes Semester (z. B. beim Blättern über die Semester-Pfeile)
+            if ($requestedSemesterId !== null && $requestedSemesterId > 0) {
+                foreach ($semesters as $idx => $sem) {
+                    if ($sem['id'] === $requestedSemesterId) {
+                        $selectedSemesterIndex = $idx;
+                        break;
+                    }
                 }
             }
-            $baseStartMonth = substr($earliestStart, 0, 7);
-        }
 
-        // Falls der gewählte Monat außerhalb des 6-Monats-Standardfensters liegt,
-        // verschiebt sich die 6-Monats-Tab-Leiste passend zum gewählten Monat.
-        $baseStartDt = DateTimeImmutable::createFromFormat('Y-m-d', $baseStartMonth . '-01') ?: new DateTimeImmutable('first day of this month');
-        $baseEndDt = $baseStartDt->modify('+5 months');
-        $selectedDt = DateTimeImmutable::createFromFormat('Y-m-d', $selectedMonth . '-01') ?: $baseStartDt;
+            // b) Semester anhand des angefragten Monats ermitteln
+            if ($selectedSemesterIndex === null && $validRequestedMonth !== null) {
+                foreach ($semesters as $idx => $sem) {
+                    if (in_array($validRequestedMonth, $sem['months'], true)) {
+                        $selectedSemesterIndex = $idx;
+                        break;
+                    }
+                }
+            }
 
-        if ($selectedDt < $baseStartDt) {
-            $windowStartDt = $selectedDt;
-        } elseif ($selectedDt > $baseEndDt) {
-            $windowStartDt = $selectedDt->modify('-5 months');
+            // c) Fallback: laufendes Semester (enthält heute bzw. aktuellen Kalendermonat),
+            //    sonst nächstes anstehendes Semester, sonst zuletzt beendetes Semester
+            if ($selectedSemesterIndex === null) {
+                foreach ($semesters as $idx => $sem) {
+                    if (
+                        ($sem['start_date'] <= $todayStr && $sem['end_date'] >= $todayStr)
+                        || in_array($currentCalendarMonth, $sem['months'], true)
+                    ) {
+                        $selectedSemesterIndex = $idx;
+                        break;
+                    }
+                }
+            }
+            if ($selectedSemesterIndex === null) {
+                foreach ($semesters as $idx => $sem) {
+                    if ($sem['start_month'] > $currentCalendarMonth) {
+                        $selectedSemesterIndex = $idx;
+                        break;
+                    }
+                }
+            }
+            if ($selectedSemesterIndex === null) {
+                $selectedSemesterIndex = count($semesters) - 1;
+            }
+
+            $selectedSemester = $semesters[$selectedSemesterIndex];
+            $prevSemester = $selectedSemesterIndex > 0 ? $semesters[$selectedSemesterIndex - 1] : null;
+            $nextSemester = $selectedSemesterIndex < (count($semesters) - 1) ? $semesters[$selectedSemesterIndex + 1] : null;
+
+            // Beim Wechsel des Semesters (oder ohne gültigen Monat im Semester) ist standardmäßig
+            // der aktuelle Kalendermonat (falls er im Semester liegt) oder sonst der erste Monat aktiv.
+            if ($validRequestedMonth !== null && in_array($validRequestedMonth, $selectedSemester['months'], true)) {
+                $selectedMonth = $validRequestedMonth;
+            } else {
+                $selectedMonth = $selectedSemester['default_month'];
+            }
+
+            $windowMonthKeys = $selectedSemester['months'];
         } else {
-            $windowStartDt = $baseStartDt;
+            // Fallback ohne angelegte Semesterziele: 6-Monats-Fenster ab aktuellem Kalendermonat
+            $selectedMonth = $validRequestedMonth ?? $currentCalendarMonth;
+            $baseStartDt = DateTimeImmutable::createFromFormat('!Y-m-d', $currentCalendarMonth . '-01')
+                ?: new DateTimeImmutable('first day of this month');
+            $baseEndDt = $baseStartDt->modify('+5 months');
+            $selectedDt = DateTimeImmutable::createFromFormat('!Y-m-d', $selectedMonth . '-01') ?: $baseStartDt;
+
+            if ($selectedDt < $baseStartDt) {
+                $windowStartDt = $selectedDt;
+            } elseif ($selectedDt > $baseEndDt) {
+                $windowStartDt = $selectedDt->modify('-5 months');
+            } else {
+                $windowStartDt = $baseStartDt;
+            }
+
+            $windowMonthKeys = [];
+            for ($i = 0; $i < 6; $i++) {
+                $windowMonthKeys[] = $windowStartDt->modify("+{$i} months")->format('Y-m');
+            }
         }
+
+        $selectedDt = DateTimeImmutable::createFromFormat('!Y-m-d', $selectedMonth . '-01')
+            ?: new DateTimeImmutable('first day of this month');
 
         // 3. Monatsbudgets und geplante Stunden je Monat aus der Datenbank abrufen
         $budgetsByMonth = $this->goalDAO->findAllMonthlyBudgetsByUserId($userId);
         $plannedByMonth = $this->goalDAO->getMonthlyPlannedHoursByUserId($userId);
 
-        // Gesamtsumme aller geplanten Monatsstunden (für die prozentuale Workload-Verteilung über das Semester)
+        // Gesamtsumme aller geplanten Monatsstunden
         $totalPlannedAllMonths = array_sum($plannedByMonth);
 
-        // 4. 6-Monats-Tab-Leiste aufbauen
+        // 4. Monats-Karussell für das aktive Semester aufbauen
         $monthsWindow = [];
-        for ($i = 0; $i < 6; $i++) {
-            $mDt = $windowStartDt->modify("+{$i} months");
-            $ym = $mDt->format('Y-m');
-
+        foreach ($windowMonthKeys as $ym) {
             $budgetHours = $budgetsByMonth[$ym] ?? null;
             $plannedHours = $plannedByMonth[$ym] ?? 0.0;
             $isOverBudget = $budgetHours !== null && $plannedHours > $budgetHours;
@@ -831,6 +969,10 @@ class GoalController
             'selected_month_data'      => $selectedMonthData,
             'prev_month'               => $selectedDt->modify('-1 month')->format('Y-m'),
             'next_month'               => $selectedDt->modify('+1 month')->format('Y-m'),
+            'selected_semester'        => $selectedSemester,
+            'prev_semester'            => $prevSemester,
+            'next_semester'            => $nextSemester,
+            'semesters'                => $semesters,
             'months_window'            => $monthsWindow,
             'monthly_goals'            => $monthlyGoals,
             'total_planned_all_months' => $totalPlannedAllMonths,
