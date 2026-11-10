@@ -288,10 +288,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         isSaving = true;
         const submitBtn = stopForm.querySelector('button[type="submit"]');
-        const originalBtnText = submitBtn ? submitBtn.textContent : '';
         if (submitBtn) {
           submitBtn.disabled = true;
         }
+
+        // Nur im Fehlerfall wieder freigeben; nach Erfolg bleibt der Button bis zum Reload gesperrt
+        const resetAfterError = (message, field = null) => {
+          isSaving = false;
+          if (submitBtn) {
+            submitBtn.disabled = false;
+          }
+          showStopModalError(message, field);
+        };
 
         try {
           const params = new URLSearchParams(new FormData(stopForm));
@@ -308,23 +316,16 @@ document.addEventListener('DOMContentLoaded', () => {
           const data = await response.json().catch(() => null);
 
           if (!response.ok || !data || !data.success) {
-            isSaving = false;
-            const message = data && data.error
-              ? data.error
-              : 'Es ist ein Fehler beim Speichern der Lerneinheit aufgetreten.';
-            showStopModalError(message, data && data.field ? data.field : null);
+            resetAfterError(
+              data && data.error ? data.error : 'Es ist ein Fehler beim Speichern der Lerneinheit aufgetreten.',
+              data && data.field ? data.field : null
+            );
             return;
           }
 
           window.location.href = 'timer.php';
         } catch {
-          isSaving = false;
-          showStopModalError('Netzwerkfehler. Bitte überprüfe deine Verbindung und versuche es erneut.');
-        } finally {
-          if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = originalBtnText;
-          }
+          resetAfterError('Netzwerkfehler. Bitte überprüfe deine Verbindung und versuche es erneut.');
         }
       });
     }
