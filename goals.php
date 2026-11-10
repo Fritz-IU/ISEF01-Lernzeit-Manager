@@ -891,8 +891,7 @@ require_once __DIR__ . '/includes/header.php';
             data-selected-week-short="<?= htmlspecialchars((string) $selectedWeekData['label_short'], ENT_QUOTES) ?>"
             data-selected-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>"
             data-selected-month-short="<?= htmlspecialchars((string) $selectedMonthData['label_short'], ENT_QUOTES) ?>"
-            data-default-slot-date="<?= htmlspecialchars($defaultSlotDate, ENT_QUOTES) ?>"
-            data-week-view-mode="day">
+            data-default-slot-date="<?= htmlspecialchars($defaultSlotDate, ENT_QUOTES) ?>">
             <!-- Kalenderwochen-Auswahl: Monat mit Pfeilen wechseln, darunter die Wochen des Monats -->
             <div class="d-flex justify-content-center align-items-center gap-2 mb-2">
                 <a
@@ -1041,22 +1040,6 @@ require_once __DIR__ . '/includes/header.php';
                         </div>
 
                         <div class="d-flex flex-wrap align-items-center gap-2">
-                            <!-- Umschalter: einzelner Tag vs. ganze Woche -->
-                            <div class="btn-group btn-group-sm" role="group" aria-label="Darstellung der Woche">
-                                <button
-                                    type="button"
-                                    class="btn btn-outline-secondary active"
-                                    data-week-view-mode-btn="day">
-                                    Tag
-                                </button>
-                                <button
-                                    type="button"
-                                    class="btn btn-outline-secondary"
-                                    data-week-view-mode-btn="week">
-                                    Woche
-                                </button>
-                            </div>
-
                             <?php if (!empty($selectableMonthlyGoals)): ?>
                                 <button
                                     type="button"
@@ -1160,7 +1143,7 @@ require_once __DIR__ . '/includes/header.php';
                         </div>
                     <?php endif; ?>
 
-                    <!-- Wochenband (Mo bis So), nur in der Tagesansicht sichtbar -->
+                    <!-- Wochenband (Mo bis So) zur Auswahl des Wochentags -->
                     <div class="week-day-strip mb-3" role="tablist" aria-label="Wochentagsauswahl">
                         <?php foreach ($weekDays as $day): ?>
                             <?php
@@ -1197,7 +1180,7 @@ require_once __DIR__ . '/includes/header.php';
                         <?php endforeach; ?>
                     </div>
 
-                    <!-- Tages-Kacheln (in der Tagesansicht nur der gewählte Tag, in der Wochenansicht alle 7 als Agenda) -->
+                    <!-- Detailansicht des ausgewählten Wochentags -->
                     <div class="d-flex flex-column gap-2" id="week-days-container">
                         <?php foreach ($weekDays as $day): ?>
                             <?php
@@ -1215,8 +1198,7 @@ require_once __DIR__ . '/includes/header.php';
                             ?>
                             <div
                                 class="card week-day-card <?= $isToday ? 'border-primary-subtle' : ($dayHasOverlap ? 'border-warning' : 'border') ?> <?= !$inMonth ? 'bg-light-subtle' : 'bg-white' ?> <?= $isSelectedDay ? '' : 'd-none' ?>"
-                                data-day-card="<?= htmlspecialchars($dayDate, ENT_QUOTES) ?>"
-                                data-has-slots="<?= $hasSlots ? 'true' : 'false' ?>">
+                                data-day-card="<?= htmlspecialchars($dayDate, ENT_QUOTES) ?>">
                                 <div class="card-header py-2 px-3 d-flex justify-content-between align-items-center gap-2 <?= $isToday ? 'bg-primary-subtle border-primary-subtle' : 'bg-light-subtle' ?>">
                                     <div class="d-flex align-items-center flex-wrap gap-2">
                                         <span class="fw-bold text-dark"><?= htmlspecialchars((string) $day['day_name_long']) ?></span>
@@ -1244,22 +1226,10 @@ require_once __DIR__ . '/includes/header.php';
                                                 Frei
                                             <?php endif; ?>
                                         </span>
-                                        <?php if (!empty($selectableMonthlyGoals)): ?>
-                                            <button
-                                                type="button"
-                                                class="btn btn-sm btn-outline-primary py-0 px-2 quick-add-slot-btn"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#createSlotModal"
-                                                data-date="<?= htmlspecialchars($dayDate, ENT_QUOTES) ?>"
-                                                title="Lernzeit für <?= htmlspecialchars((string) $day['day_name_long']) ?> (<?= htmlspecialchars((string) $day['date_full_formatted']) ?>) planen"
-                                                aria-label="Lernzeit für <?= htmlspecialchars((string) $day['day_name_long']) ?> planen">
-                                                +
-                                            </button>
-                                        <?php endif; ?>
                                     </div>
                                 </div>
 
-                                <div class="card-body p-2 p-sm-3 d-flex flex-column gap-2 <?= $hasSlots ? '' : 'week-day-empty' ?>">
+                                <div class="card-body p-2 p-sm-3 d-flex flex-column gap-2">
                                     <?php if (!$hasSlots): ?>
                                         <div class="text-muted small py-2 px-1 fst-italic">
                                             Für diesen Tag ist noch keine Lernzeit geplant.

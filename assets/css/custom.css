@@ -247,11 +247,6 @@ main {
   transform: rotate(180deg);
 }
 
-/* In der Wochenansicht zeigen leere Tage nur ihre Kopfzeile */
-[data-week-view-mode='week'] .week-day-empty {
-  display: none !important;
-}
-
 .slot-item-card {
   transition:
     background-color 0.15s ease,

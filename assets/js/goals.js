@@ -489,44 +489,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   /**
-   * Wendet den gewählten Darstellungsmodus ("day" = einzelner Tag, "week" = ganze Woche)
-   * auf die Wochenplanung an und speichert die Präferenz in der sessionStorage.
-   *
-   * @param {string} mode "day" oder "week"
-   */
-  function applyWeekViewMode(mode) {
-    const validMode = mode === 'week' ? 'week' : 'day';
-    sessionStorage.setItem('goals_week_view_mode', validMode);
-
-    const weekSection = document.getElementById('wochenplanung');
-    if (!weekSection) return;
-
-    weekSection.setAttribute('data-week-view-mode', validMode);
-
-    weekSection.querySelectorAll('[data-week-view-mode-btn]').forEach((btn) => {
-      const isTarget = btn.getAttribute('data-week-view-mode-btn') === validMode;
-      btn.classList.toggle('active', isTarget);
-    });
-
-    // Wochenband (Mo–So) nur in der Tagesansicht einblenden, in der Wochenansicht ausblenden
-    const dayStrip = weekSection.querySelector('.week-day-strip');
-    if (dayStrip) {
-      dayStrip.classList.toggle('d-none', validMode === 'week');
-    }
-
-    const selectedDate = weekSection.getAttribute('data-default-slot-date') || '';
-    const dayCards = weekSection.querySelectorAll('[data-day-card]');
-
-    // In der Wochenansicht sind alle Tage sichtbar; leere Tage zeigen per CSS nur ihre Kopfzeile
-    dayCards.forEach((cardEl) => {
-      const cardDate = cardEl.getAttribute('data-day-card') || '';
-      cardEl.classList.toggle('d-none', validMode === 'day' && cardDate !== selectedDate);
-    });
-  }
-
-  /**
    * Wählt im Wochenband einen bestimmten Wochentag aus, aktualisiert den primären
-   * "+ Lernzeit planen"-Button und zeigt in der Tagesansicht diesen Tag an (bzw. scrollt in der Wochenansicht dorthin).
+   * "+ Lernzeit planen"-Button und blendet die Detailansicht dieses Tages ein.
    *
    * @param {string} targetDate Datum im Format YYYY-MM-DD
    */
@@ -549,16 +513,9 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.setAttribute('aria-selected', isSelected ? 'true' : 'false');
     });
 
-    const currentMode = weekSection.getAttribute('data-week-view-mode') || 'day';
-    const dayCards = weekSection.querySelectorAll('[data-day-card]');
-
-    dayCards.forEach((cardEl) => {
+    weekSection.querySelectorAll('[data-day-card]').forEach((cardEl) => {
       const isSelected = cardEl.getAttribute('data-day-card') === targetDate;
-      if (currentMode === 'day') {
-        cardEl.classList.toggle('d-none', !isSelected);
-      } else if (isSelected) {
-        cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
+      cardEl.classList.toggle('d-none', !isSelected);
     });
 
     // URL mit dem gewählten Tag synchronisieren
@@ -571,10 +528,6 @@ document.addEventListener('DOMContentLoaded', () => {
     params.set('day', targetDate);
     window.history.replaceState(null, '', `goals.php?${params.toString()}`);
   }
-
-  // Gespeicherten Darstellungsmodus der Wochenplanung beim Laden wiederherstellen
-  const initialWeekMode = sessionStorage.getItem('goals_week_view_mode') || 'day';
-  applyWeekViewMode(initialWeekMode);
 
   // Event-Delegation für alle Modal-Buttons sowie den asynchronen Monats-, Wochen- und Tageswechsel
   document.addEventListener('click', async (event) => {
@@ -613,15 +566,6 @@ document.addEventListener('DOMContentLoaded', () => {
         event.preventDefault();
         selectWeekDay(targetDate);
       }
-      return;
-    }
-
-    // 1d. Darstellungsmodus-Umschalter ("Tag" vs. "Woche")
-    const weekViewModeBtn = target.closest('[data-week-view-mode-btn]');
-    if (weekViewModeBtn) {
-      const targetMode = weekViewModeBtn.getAttribute('data-week-view-mode-btn') || 'day';
-      event.preventDefault();
-      applyWeekViewMode(targetMode);
       return;
     }
 
@@ -883,7 +827,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Neu eingefügte Toggle-Formulare innerhalb der Wochenplanung für Fetch aktivieren
       weekSection.querySelectorAll('form[data-ajax-form]').forEach(setupAjaxForm);
-      applyWeekViewMode(sessionStorage.getItem('goals_week_view_mode') || 'day');
     }
 
     // Auswahlfelder für Zwischenziele in den Timeslot-Modals aktualisieren
