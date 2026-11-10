@@ -207,12 +207,12 @@ class TimeTrackingDAO
 
     /**
      * Beendet eine Stoppuhr endgültig.
-     * Addiert etwaige Restsekunden, setzt ended_at und leert resumed_at.
+     * Setzt die endgültige Netto-Lernzeit, setzt ended_at und leert resumed_at.
      *
      * @param int $id ID des Eintrags
      * @param int $userId ID des Nutzers
      * @param string $endedAt Endzeitpunkt (YYYY-MM-DD HH:MM:SS)
-     * @param int $additionalSeconds Zusätzliche Sekunden seit letztem resumed_at
+     * @param int $trackedSeconds Endgültige Netto-Lernzeit in Sekunden (ggf. gekappt oder vom Nutzer korrigiert)
      * @param string|null $note Optionale Notiz
      * @return bool True bei Erfolg
      */
@@ -220,14 +220,14 @@ class TimeTrackingDAO
         int $id,
         int $userId,
         string $endedAt,
-        int $additionalSeconds,
+        int $trackedSeconds,
         ?string $note = null
     ): bool {
         $hasNote = $note !== null;
 
         $sql = "UPDATE time_entries
                 SET ended_at = :ended_at,
-                    tracked_seconds = tracked_seconds + :additional_seconds,
+                    tracked_seconds = :tracked_seconds,
                     resumed_at = NULL,
                     note = CASE WHEN :has_note = 1 THEN :note ELSE note END
                 WHERE id = :id
@@ -239,7 +239,7 @@ class TimeTrackingDAO
 
         return $stmt->execute([
             ':ended_at'           => $endedAt,
-            ':additional_seconds' => $additionalSeconds,
+            ':tracked_seconds'    => $trackedSeconds,
             ':has_note'           => $hasNote ? 1 : 0,
             ':note'               => $note,
             ':id'                 => $id,

@@ -21,6 +21,7 @@ class TimeTrackingController
 {
     public const MAX_NOTE_LENGTH = 255;
     public const MAX_DURATION_SECONDS = 86400; // Höchstens 24 Stunden pro Zeiteintrag
+    public const LONG_SESSION_SECONDS = 21600; // Ab 6 Stunden fragt der Stopp-Dialog nach der tatsächlichen Dauer
 
     private TimeTrackingDAO $timeTrackingDAO;
 
@@ -122,10 +123,10 @@ class TimeTrackingController
      * Beendet eine Stoppuhr und speichert die erfasste Zeit ab.
      *
      * @param int $userId ID des Nutzers
-     * @param array<string, mixed> $input Optionale Parameter wie note
+     * @param array<string, mixed> $input Optionale Parameter wie note, corrected_hours, corrected_minutes
      * @param string|null $now Optionaler Referenzzeitpunkt (für Tests)
      * @return array<string, mixed> Beendeter Zeiteintrag
-     * @throws ValidationException Wenn keine offene Stoppuhr vorhanden ist
+     * @throws ValidationException Wenn keine offene Stoppuhr vorhanden ist oder die Korrektur ungültig ist
      */
     public function stopAndSaveStopwatch(int $userId, array $input = [], ?string $now = null): array
     {
@@ -145,19 +146,14 @@ class TimeTrackingController
             $additionalSeconds = max(0, $nowTimestamp->getTimestamp() - $resumedTimestamp->getTimestamp());
         }
 
-        $totalSeconds = (int) $open['tracked_seconds'] + $additionalSeconds;
-        if ($totalSeconds > self::MAX_DURATION_SECONDS) {
-            throw new ValidationException(
-                'Ein Zeiteintrag darf höchstens 24 Stunden (86.400 Sekunden) umfassen.',
-                'tracked_seconds'
-            );
-        }
+        $measuredSeconds = (int) $open['tracked_seconds'] + $additionalSeconds;
+        $totalSeconds = $this->resolveStoppedSeconds($measuredSeconds, $input);
 
         $this->timeTrackingDAO->stopStopwatch(
             (int) $open['id'],
             $userId,
             $endedAt,
-            $additionalSeconds,
+            $totalSeconds,
             $note
         );
 
@@ -171,10 +167,70 @@ class TimeTrackingController
 
         $saved = $this->timeTrackingDAO->findByIdAndUserId((int) $open['id'], $userId);
         $result = $saved ?: $open;
-        $result['tracked_seconds'] = (int) ($result['tracked_seconds'] ?? $totalSeconds);
+        $result['tracked_seconds'] = $saved ? (int) ($saved['tracked_seconds'] ?? $totalSeconds) : $totalSeconds;
         $result['goal_completed'] = $goalCompleted;
 
         return $result;
+    }
+
+    /**
+     * Ermittelt die zu speichernde Lernzeit einer gestoppten Stoppuhr.
+     * Eine vergessene Stoppuhr darf nicht in einer Sackgasse enden: Ohne Korrektur wird die gemessene Zeit
+     * auf 24 Stunden gekappt. Optional kann der Nutzer die tatsächliche Dauer (corrected_hours / corrected_minutes)
+     * angeben, die zwischen einer Minute und der gemessenen Zeit liegen muss.
+     *
+     * @param int $measuredSeconds Gemessene Netto-Lernzeit in Sekunden
+     * @param array<string, mixed> $input Formulardaten des Stopp-Dialogs
+     * @return int Zu speichernde Lernzeit in Sekunden
+     * @throws ValidationException Bei ungültiger Korrektur
+     */
+    public function resolveStoppedSeconds(int $measuredSeconds, array $input): int
+    {
+        $maxSeconds = min(max(0, $measuredSeconds), self::MAX_DURATION_SECONDS);
+
+        $hasCorrectionInput = array_key_exists('corrected_hours', $input)
+            || array_key_exists('corrected_minutes', $input);
+
+        if (!$hasCorrectionInput) {
+            return $maxSeconds;
+        }
+
+        $rawHours = isset($input['corrected_hours']) && is_scalar($input['corrected_hours'])
+            ? trim((string) $input['corrected_hours'])
+            : '';
+        $rawMinutes = isset($input['corrected_minutes']) && is_scalar($input['corrected_minutes'])
+            ? trim((string) $input['corrected_minutes'])
+            : '';
+
+        if ($rawHours === '' && $rawMinutes === '') {
+            throw new ValidationException('Bitte gib eine Lerndauer von mindestens einer Minute an.', 'corrected_minutes');
+        }
+
+        if (($rawHours !== '' && !preg_match('/^\d{1,2}$/', $rawHours)) || (int) $rawHours > 24) {
+            throw new ValidationException('Die Stunden müssen eine ganze Zahl zwischen 0 und 24 sein.', 'corrected_hours');
+        }
+        if (($rawMinutes !== '' && !preg_match('/^\d{1,2}$/', $rawMinutes)) || (int) $rawMinutes > 59) {
+            throw new ValidationException('Die Minuten müssen eine ganze Zahl zwischen 0 und 59 sein.', 'corrected_minutes');
+        }
+
+        $correctedMinutes = ((int) $rawHours * 60) + (int) $rawMinutes;
+        if ($correctedMinutes < 1) {
+            throw new ValidationException('Bitte gib eine Lerndauer von mindestens einer Minute an.', 'corrected_minutes');
+        }
+
+        // Unveränderter Vorschlag (abgerundet auf ganze Minuten): angebrochene Minute nicht verlieren
+        if ($correctedMinutes === intdiv($maxSeconds, 60)) {
+            return $maxSeconds;
+        }
+
+        if ($correctedMinutes * 60 > $maxSeconds) {
+            throw new ValidationException(sprintf(
+                'Die Lerndauer darf höchstens %s betragen (gemessene Zeit, maximal 24 Stunden).',
+                self::formatSecondsHuman($maxSeconds)
+            ), 'corrected_hours');
+        }
+
+        return $correctedMinutes * 60;
     }
 
     /**

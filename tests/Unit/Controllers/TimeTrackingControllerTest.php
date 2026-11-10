@@ -432,14 +432,14 @@ final class TimeTrackingControllerTest extends TestCase
             ->with(self::USER_ID)
             ->willReturn($runningEntry);
 
-        // Stopp um 10:25:00 -> 15 Minuten (900s) zusätzlich
+        // Stopp um 10:25:00 -> 15 Minuten (900s) zusätzlich, gespeichert wird die Gesamtzeit 1500s
         $this->dao->expects(self::once())
             ->method('stopStopwatch')
             ->with(
                 10,
                 self::USER_ID,
                 '2026-10-30 10:25:00',
-                900,
+                1500,
                 'Erfolgreich beendet'
             )
             ->willReturn(true);
@@ -573,7 +573,7 @@ final class TimeTrackingControllerTest extends TestCase
 
         $this->dao->expects(self::once())
             ->method('stopStopwatch')
-            ->with(15, self::USER_ID, '2026-10-30 15:00:00', 1800, null)
+            ->with(15, self::USER_ID, '2026-10-30 15:00:00', 3600, null)
             ->willReturn(true);
 
         // Aufsummierte gestoppte Zeit am Tag: 3600 Sekunden (1 Stunde)
@@ -948,7 +948,7 @@ final class TimeTrackingControllerTest extends TestCase
 
         $this->dao->expects(self::once())
             ->method('stopStopwatch')
-            ->with(10, self::USER_ID, '2026-10-30 12:00:00', 0, null)
+            ->with(10, self::USER_ID, '2026-10-30 12:00:00', 600, null)
             ->willReturn(true);
 
         $result = $this->controller->stopAndSaveStopwatch(self::USER_ID, [], '2026-10-30 12:00:00');
@@ -971,19 +971,91 @@ final class TimeTrackingControllerTest extends TestCase
     }
 
     #[Test]
-    public function lehntStoppuhrUeber24StundenAbOhneZuSpeichern(): void
+    public function kapptVergesseneStoppuhrUeber24StundenStattAbzulehnen(): void
+    {
+        // Issue #50: Läuft die Stoppuhr länger als 24 h, wird gespeichert statt in einer Sackgasse zu enden
+        $this->dao->method('findOpenStopwatch')->willReturn([
+            'id'              => 10,
+            'resumed_at'      => '2026-10-29 10:00:00',
+            'tracked_seconds' => 0,
+        ]);
+
+        $this->dao->expects(self::once())
+            ->method('stopStopwatch')
+            ->with(10, self::USER_ID, '2026-10-30 12:00:00', TimeTrackingController::MAX_DURATION_SECONDS, null)
+            ->willReturn(true);
+
+        $result = $this->controller->stopAndSaveStopwatch(self::USER_ID, [], '2026-10-30 12:00:00');
+
+        self::assertSame(TimeTrackingController::MAX_DURATION_SECONDS, $result['tracked_seconds']);
+    }
+
+    #[Test]
+    public function speichertKorrigierteDauerBeiVergessenerStoppuhr(): void
     {
         $this->dao->method('findOpenStopwatch')->willReturn([
             'id'              => 10,
-            'resumed_at'      => '2026-10-30 12:00:00',
-            'tracked_seconds' => TimeTrackingController::MAX_DURATION_SECONDS,
+            'resumed_at'      => '2026-10-29 10:00:00',
+            'tracked_seconds' => 0,
+        ]);
+
+        $this->dao->expects(self::once())
+            ->method('stopStopwatch')
+            ->with(10, self::USER_ID, '2026-10-30 12:00:00', 2 * 3600 + 15 * 60, null)
+            ->willReturn(true);
+
+        $this->controller->stopAndSaveStopwatch(
+            self::USER_ID,
+            ['corrected_hours' => '2', 'corrected_minutes' => '15'],
+            '2026-10-30 12:00:00'
+        );
+    }
+
+    #[Test]
+    public function behaeltAngebrocheneMinuteBeiUnveraendertemVorschlag(): void
+    {
+        // Gemessen 6:30:42 h, Vorschlag im Dialog 6 Std. 30 Min. -> die 42 Sekunden gehen nicht verloren
+        self::assertSame(
+            23442,
+            $this->controller->resolveStoppedSeconds(23442, ['corrected_hours' => '6', 'corrected_minutes' => '30'])
+        );
+    }
+
+    /**
+     * @return array<string, array{array<string, string>, string}>
+     */
+    public static function ungueltigeDauerkorrekturen(): array
+    {
+        return [
+            'Mehr als gemessen'    => [['corrected_hours' => '7', 'corrected_minutes' => '0'], 'corrected_hours'],
+            'Null Minuten'         => [['corrected_hours' => '0', 'corrected_minutes' => '0'], 'corrected_minutes'],
+            'Beide Felder leer'    => [['corrected_hours' => '', 'corrected_minutes' => ''], 'corrected_minutes'],
+            'Minuten über 59'      => [['corrected_hours' => '1', 'corrected_minutes' => '60'], 'corrected_minutes'],
+            'Stunden über 24'      => [['corrected_hours' => '25', 'corrected_minutes' => '0'], 'corrected_hours'],
+            'Negative Stunden'     => [['corrected_hours' => '-1', 'corrected_minutes' => '0'], 'corrected_hours'],
+            'Keine ganze Zahl'     => [['corrected_hours' => '1.5', 'corrected_minutes' => ''], 'corrected_hours'],
+        ];
+    }
+
+    /**
+     * @param array<string, string> $input
+     */
+    #[Test]
+    #[DataProvider('ungueltigeDauerkorrekturen')]
+    public function lehntUngueltigeDauerkorrekturAbOhneZuSpeichern(array $input, string $expectedField): void
+    {
+        // Gemessen: 6:30 h
+        $this->dao->method('findOpenStopwatch')->willReturn([
+            'id'              => 10,
+            'resumed_at'      => null,
+            'tracked_seconds' => 23400,
         ]);
 
         $this->dao->expects(self::never())->method('stopStopwatch');
 
         $this->erwartetValidierungsfehler(
-            fn () => $this->controller->stopAndSaveStopwatch(self::USER_ID, [], '2026-10-30 12:00:01'),
-            'tracked_seconds'
+            fn () => $this->controller->stopAndSaveStopwatch(self::USER_ID, $input, '2026-10-30 12:00:00'),
+            $expectedField
         );
     }
 

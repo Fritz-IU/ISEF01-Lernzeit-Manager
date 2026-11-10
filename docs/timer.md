@@ -96,6 +96,7 @@ CREATE TABLE time_entries (
 * **Endzeit (`ended_at`):** Muss ein gültiges DateTime-Format sein und zeitlich **am oder nach** der Startzeit liegen (`ended_at >= started_at`). Fehlerfeld: `ended_at`.
 * **Dauerberechnung (`calculateDuration`):** Berechnet die Differenz in Sekunden (`endDt - startDt`). Wirft bei unplausibler Zeitfolge eine `ValidationException` für `ended_at`.
 * **Lernzeit (`tracked_seconds`):** Darf nicht negativ sein und höchstens 24 Stunden (86.400 Sekunden) pro Einzeleintrag umfassen. Fehlerfeld: `tracked_seconds`.
+* **Vergessene Stoppuhr (Issue #50):** Beim Stoppen wird nie abgelehnt, sondern die gemessene Zeit auf 24 Stunden gekappt. Ab 6 Stunden (`LONG_SESSION_SECONDS`) blendet der Stopp-Dialog die Felder „Tatsächliche Lerndauer“ (`corrected_hours`, `corrected_minutes`) ein, vorbelegt mit der gemessenen Zeit. Erlaubt ist eine Minute bis zur gemessenen Zeit (höchstens 24 Stunden); ein unveränderter Vorschlag übernimmt die gemessene Zeit sekundengenau.
 * **Notiz (`note`):** Optional, maximal 255 Zeichen (`TimeTrackingController::MAX_NOTE_LENGTH`). Fehlerfeld: `note`.
 
 ---

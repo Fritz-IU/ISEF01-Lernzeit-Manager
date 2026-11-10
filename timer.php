@@ -80,6 +80,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'stop') {
             $timeTrackingController->stopAndSaveStopwatch($userId, $_POST);
             $_SESSION['timer_success'] = 'Lerneinheit erfolgreich gespeichert!';
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true]);
+                exit;
+            }
             header('Location: timer.php');
             exit;
         } elseif ($action === 'discard') {
@@ -99,7 +104,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($isAjax) {
             http_response_code(422);
             header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            echo json_encode([
+                'success' => false,
+                'error'   => $e->getMessage(),
+                'field'   => $e->getField(),
+            ]);
             exit;
         }
         $errorMessage = $e->getMessage();
@@ -175,7 +184,6 @@ require_once __DIR__ . '/includes/header.php';
             <div class="card-body">
                 <span class="text-muted small text-uppercase fw-semibold d-block">Heute gelernt</span>
                 <span class="h3 fw-bold text-primary mb-0"><?= TimeTrackingController::formatSecondsHuman($todaySeconds) ?></span>
-                <span class="text-muted small d-block mt-1"><?= TimeTrackingController::formatSecondsToTime($todaySeconds) ?></span>
             </div>
         </div>
     </div>
@@ -184,7 +192,6 @@ require_once __DIR__ . '/includes/header.php';
             <div class="card-body">
                 <span class="text-muted small text-uppercase fw-semibold d-block">Gesamtlernzeit erfasst</span>
                 <span class="h3 fw-bold text-dark mb-0"><?= TimeTrackingController::formatSecondsHuman($totalSeconds) ?></span>
-                <span class="text-muted small d-block mt-1"><?= number_format(round($totalSeconds / 3600.0, 1), 1, ',', '.') ?> Stunden</span>
             </div>
         </div>
     </div>
@@ -193,7 +200,6 @@ require_once __DIR__ . '/includes/header.php';
             <div class="card-body">
                 <span class="text-muted small text-uppercase fw-semibold d-block">Erfasste Einheiten</span>
                 <span class="h3 fw-bold text-secondary mb-0"><?= count($timeEntries) ?></span>
-                <span class="text-muted small d-block mt-1">Lern-Sessions</span>
             </div>
         </div>
     </div>
@@ -495,7 +501,7 @@ require_once __DIR__ . '/includes/header.php';
 <div class="modal fade" id="stopTimerModal" tabindex="-1" aria-labelledby="stopTimerModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <form action="timer.php" method="POST" id="form-stop-timer">
+            <form action="timer.php" method="POST" id="form-stop-timer" novalidate>
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
                 <input type="hidden" name="action" value="stop">
                 <div class="modal-header">
@@ -503,6 +509,8 @@ require_once __DIR__ . '/includes/header.php';
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
                 </div>
                 <div class="modal-body">
+                    <div id="stop-timer-alert" class="alert alert-danger d-none" role="alert"></div>
+
                     <div class="p-3 bg-light rounded text-center mb-3">
                         <span class="text-muted small d-block">Erfasste Lernzeit:</span>
                         <div id="modal-stop-duration" class="h3 fw-bold text-primary mb-0">
@@ -511,6 +519,34 @@ require_once __DIR__ . '/includes/header.php';
                         <span class="small text-dark fw-semibold d-block mt-1">
                             <?= htmlspecialchars((string) $currentStopwatch['goal_title']) ?>
                         </span>
+                    </div>
+
+                    <!-- Dauerkorrektur bei auffällig langen Sitzungen (vergessene Stoppuhr), per JS eingeblendet -->
+                    <div
+                        id="stop-correction"
+                        class="mb-3 d-none"
+                        data-threshold-seconds="<?= TimeTrackingController::LONG_SESSION_SECONDS ?>"
+                        data-max-seconds="<?= TimeTrackingController::MAX_DURATION_SECONDS ?>"
+                    >
+                        <div class="alert alert-warning small py-2 mb-2" role="alert" id="stop-correction-hint">
+                            Die Stoppuhr lief ungewöhnlich lange. Hast du sie vielleicht vergessen? Trage bei Bedarf die tatsächliche Lerndauer ein.
+                        </div>
+                        <label class="form-label fw-semibold" for="stop_corrected_hours">Tatsächliche Lerndauer</label>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <div class="input-group">
+                                    <input type="number" name="corrected_hours" id="stop_corrected_hours" class="form-control" min="0" max="24" step="1" inputmode="numeric" disabled>
+                                    <span class="input-group-text">Std.</span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="input-group">
+                                    <input type="number" name="corrected_minutes" id="stop_corrected_minutes" class="form-control" min="0" max="59" step="1" inputmode="numeric" aria-label="Minuten" disabled>
+                                    <span class="input-group-text">Min.</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-text">Höchstens die gemessene Zeit, maximal 24 Stunden.</div>
                     </div>
 
                     <div class="mb-3">
