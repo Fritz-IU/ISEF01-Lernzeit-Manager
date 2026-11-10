@@ -50,7 +50,22 @@ Hat sich etwas in `sql/` geändert, einfach erneut ausführen:
 
 ## Test-Login
 
-Alle Nutzer aus `seed.sql` (`testuser@iu-demo.de`, `testuser2@iu-demo.de`, `leer@iu-demo.de`) haben das Passwort `Lernzeit-Test-2026`. Es ist ein reines Testpasswort und darf nirgends sonst verwendet werden. `leer@iu-demo.de` hat absichtlich keine Ziele, Lerneinheiten oder Zeiteinträge, damit sich die leeren Zustände testen lassen.
+Alle Nutzer aus `seed.sql` haben das Passwort `Lernzeit-Test-2026`. Es ist ein reines Testpasswort und darf nirgends sonst verwendet werden. Jeder Account zeigt eine eigene Situation:
+
+| E-Mail | Name | Situation |
+| --- | --- | --- |
+| `testuser@iu-demo.de` | Max Mustermann | Laufendes Semester **im Zeitplan**, alle Funktionen mit Daten. Gestern nur teilweise erfüllte Lerneinheit (gelbes Häkchen in der Wochenansicht), zweites Semester in der Zukunft |
+| `testuser2@iu-demo.de` | Erika Musterfrau | **Leicht im Verzug**, **pausierte Stoppuhr** (40 Min.) zum Fortsetzen oder Speichern |
+| `leer@iu-demo.de` | – | Wie frisch registriert: kein Profil, keine Daten, noch nie angemeldet (leere Zustände) |
+| `verzug@iu-demo.de` | Jonas Weber | **Im Verzug**, letzter Login vor 9 Tagen, 6 verpasste Lerneinheiten → **Inaktivitäts-Hinweis** (ein Tag mit zwei Modulen) |
+| `ueberplant@iu-demo.de` | Lena Schmidt | **Überplanung**: Monatsbudget (32 / 20 h), Semesterziel (148 / 100 h) und ein Zwischenziel (6 / 4 h) überschritten, zwei Lerneinheiten überschneiden sich |
+| `abgeschlossen@iu-demo.de` | Nina Schulz | **Semesterpause**: Dashboard zeigt das nächste Semester („Noch nicht gestartet“), das vergangene ist über die Semesterauswahl als „Abgeschlossen“ sichtbar |
+
+**Relative Datumswerte:** `seed.sql` rechnet alle Datumswerte relativ zum Zeitpunkt des Einspielens (`CURDATE()`/`NOW()`). Semester, aktuelle Woche und Zeitplan-Status passen dadurch immer zu „heute“. Die Werte werden aber nur beim Import berechnet: Etwa eine Woche danach stimmen die Situationen noch, nach zwei Wochen rutschen die Status ab und bei allen erscheinen verpasste Lerneinheiten. Für eine Vorführung oder Abgabe den Seed deshalb kurz vorher neu einspielen.
+
+**Inaktivitäts-Hinweis nur beim ersten Login:** Jeder Login setzt `last_login_at` neu. Für einen weiteren Test die Datenbank zurücksetzen.
+
+**Benutzervariablen in `seed.sql`:** Die Monatsvariablen (`@p0` usw.) nur in `INSERT`-Werten verwenden, nicht in `WHERE`-Vergleichen. Variablen haben die Kollation der Verbindung, die von der Tabellenkollation abweichen kann („Illegal mix of collations“). In Vergleichen stattdessen `DATE_FORMAT(@heute, '%Y-%m')` schreiben.
 
 ---
 
