@@ -40,68 +40,94 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   /**
-   * Liefert die Fehlerbox im Modal eines Formulars.
-   * @param {HTMLFormElement|null} form
-   * @returns {HTMLElement|null}
-   */
-  function getFormAlert(form) {
-    return form ? form.querySelector('.modal-body > .alert-danger') : null;
-  }
-
-  /**
-   * Entfernt die Rotmarkierung (is-invalid) eines einzelnen Eingabefelds.
+   * Entfernt die Rotmarkierung (is-invalid) und die zugehörige Feld-Fehlermeldung eines Eingabefelds.
    * @param {Element} field
    */
   function clearFieldError(field) {
     field.classList.remove('is-invalid');
     field.removeAttribute('aria-invalid');
     field.removeAttribute('aria-describedby');
+
+    const colOrGroup = field.closest('.mb-3, .row');
+    if (colOrGroup) {
+      if (field.classList.contains('slot-hour-select') || field.classList.contains('slot-minute-select')) {
+        const inputGroup = field.closest('.input-group');
+        if (inputGroup) {
+          inputGroup.querySelectorAll('.is-invalid').forEach((el) => {
+            el.classList.remove('is-invalid');
+            el.removeAttribute('aria-invalid');
+          });
+        }
+      }
+      colOrGroup.querySelectorAll('[data-field-error]').forEach((el) => el.remove());
+      if (
+        colOrGroup.nextElementSibling &&
+        colOrGroup.nextElementSibling.hasAttribute('data-field-error')
+      ) {
+        colOrGroup.nextElementSibling.remove();
+      }
+    }
   }
 
   /**
-   * Entfernt Fehlermeldung und rote Markierungen (is-invalid) innerhalb eines Formulars.
+   * Entfernt alle roten Feldmarkierungen (is-invalid) und Feld-Fehlermeldungen innerhalb eines Formulars.
    * @param {HTMLFormElement|null} form
    */
   function clearFormErrors(form) {
     if (!form) return;
 
-    const alertBox = getFormAlert(form);
-    if (alertBox) {
-      alertBox.className = 'alert alert-danger d-none';
-      alertBox.textContent = '';
-    }
-
-    form.querySelectorAll('.is-invalid').forEach(clearFieldError);
+    form.querySelectorAll('.is-invalid').forEach((field) => {
+      field.classList.remove('is-invalid');
+      field.removeAttribute('aria-invalid');
+      field.removeAttribute('aria-describedby');
+    });
+    form.querySelectorAll('[data-field-error]').forEach((el) => el.remove());
   }
 
   /**
-   * Zeigt eine Fehlermeldung im Modal an und markiert optional das betroffene Eingabefeld rot.
+   * Zeigt einen Validierungsfehler direkt am betroffenen Eingabefeld im Modal oder als Toast an.
    * @param {HTMLFormElement} form
    * @param {string} message
    * @param {string|null} [fieldName]
    */
   function showFormError(form, message, fieldName = null) {
-    const alertBox = getFormAlert(form);
-    if (alertBox) {
-      alertBox.className = 'alert alert-danger mb-3';
-      alertBox.textContent = '';
-
-      const strong = document.createElement('strong');
-      strong.textContent = 'Fehler: ';
-      alertBox.appendChild(strong);
-      alertBox.appendChild(document.createTextNode(message));
-    }
-
-    if (fieldName) {
+    if (fieldName && form) {
       const fieldEl = form.querySelector(`[name="${fieldName}"]`);
       if (fieldEl) {
-        fieldEl.classList.add('is-invalid');
-        fieldEl.setAttribute('aria-invalid', 'true');
-        if (alertBox && alertBox.id) {
-          fieldEl.setAttribute('aria-describedby', alertBox.id);
+        clearFormErrors(form);
+
+        let focusTarget = fieldEl;
+        if (fieldEl.type === 'hidden') {
+          const colEl = fieldEl.closest('.col-sm-6, .mb-3');
+          const selects = colEl ? colEl.querySelectorAll('.form-select') : [];
+          selects.forEach((sel) => {
+            sel.classList.add('is-invalid');
+            sel.setAttribute('aria-invalid', 'true');
+          });
+          if (selects.length > 0) {
+            focusTarget = selects[0];
+          }
+        } else {
+          fieldEl.classList.add('is-invalid');
+          fieldEl.setAttribute('aria-invalid', 'true');
         }
-        fieldEl.focus();
+
+        const feedbackEl = document.createElement('div');
+        feedbackEl.className = 'invalid-feedback d-block';
+        feedbackEl.setAttribute('data-field-error', fieldName);
+        feedbackEl.textContent = message;
+
+        const anchor = fieldEl.closest('.row') || fieldEl.closest('.input-group') || fieldEl;
+        anchor.insertAdjacentElement('afterend', feedbackEl);
+        if (typeof focusTarget.focus === 'function') {
+          focusTarget.focus();
+        }
+        return;
       }
+    }
+
+    if (typeof window.showToast === 'function') {
+      window.showToast('danger', message);
     }
   }
 
@@ -190,6 +216,9 @@ document.addEventListener('DOMContentLoaded', () => {
               const parser = new DOMParser();
               const doc = parser.parseFromString(html, 'text/html');
               applyPlanningSectionsFromDocument(doc);
+              if (result.message && typeof window.showToast === 'function') {
+                window.showToast('success', result.message);
+              }
               return;
             }
           }
@@ -979,6 +1008,14 @@ document.addEventListener('DOMContentLoaded', () => {
       typeof bootstrap !== 'undefined' &&
       bootstrap.Modal
     ) {
+      const modalForm = modalEl.querySelector('form');
+      if (modalForm && modalForm.dataset.initialError) {
+        showFormError(
+          modalForm,
+          modalForm.dataset.initialError,
+          modalForm.dataset.initialErrorField || null
+        );
+      }
       bootstrap.Modal.getOrCreateInstance(modalEl).show();
     }
   });

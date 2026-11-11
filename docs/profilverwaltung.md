@@ -68,7 +68,7 @@ In der Tabelle `users` wurden zwei optionale Spalten ergänzt:
 * Fängt das Formular-Submit mit `event.preventDefault()` ab.
 * Schaltet den Submit-Button während des Netzwerk-Requests in einen Ladezustand (`disabled` mit Bootstrap-Spinner).
 * Sendet die Daten asynchron via `fetch('api/profile.php', { method: 'POST', ... })`.
-* Blendet dynamisch Erfolgs- oder Fehlermeldungen in ein Alert-Element ein und aktualisiert den Anzeigenamen in der Navigationsleiste live mit dem vom Server gelieferten `nav_name`.
+* Zeigt Erfolgs- oder Fehlermeldungen schwebend über `window.showToast()` an (ohne Layout-Verschiebung) und aktualisiert den Anzeigenamen in der Navigationsleiste live mit dem vom Server gelieferten `nav_name`.
 
 ---
 
@@ -97,14 +97,14 @@ sequenceDiagram
         alt Validierungsfehler
             UserClass-->>API: throw ValidationException
             API-->>JS: HTTP 422 { success: false, message: "..." }
-            JS-->>Nutzer: Roter Alert mit Fehlermeldung
+            JS-->>Nutzer: Roter Toast mit Fehlermeldung
         else Validierung erfolgreich
             UserClass->>DB: Prepared Statement UPDATE users SET ...
             DB-->>UserClass: OK
             UserClass->>UserClass: $_SESSION aktualisieren
             UserClass-->>API: true
             API-->>JS: HTTP 200 { success: true, message: "..." }
-            JS->>JS: Grünen Alert anzeigen & Navbar-Name live updaten
+            JS->>JS: Grünen Toast anzeigen & Navbar-Name live updaten
             JS-->>Nutzer: Erfolgsmeldung im UI sichtbar
         end
     end

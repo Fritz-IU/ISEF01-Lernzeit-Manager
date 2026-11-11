@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  const alertBox = document.getElementById('manual-time-alert');
   const modalTitle = document.getElementById('manualTimeModalLabel');
   const submitBtn = document.getElementById('manualTimeSubmitBtn');
   const actionInput = document.getElementById('manual_time_action');
@@ -65,55 +64,68 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * Entfernt die Rotmarkierung eines einzelnen Eingabefelds.
+   * Entfernt die Rotmarkierung und das Feld-Feedback eines einzelnen Eingabefelds.
    * @param {Element} field
    */
   function clearFieldError(field) {
     field.classList.remove('is-invalid');
     field.removeAttribute('aria-invalid');
     field.removeAttribute('aria-describedby');
+    const group = field.closest('.mb-3, .mb-2');
+    if (group) {
+      group.querySelectorAll('[data-field-error]').forEach((el) => el.remove());
+    }
   }
 
   /**
-   * Entfernt Fehlermeldung und alle roten Feldmarkierungen im Formular.
+   * Entfernt alle roten Feldmarkierungen und Feld-Fehlermeldungen im Formular.
    */
   function clearFormErrors() {
-    if (alertBox) {
-      alertBox.className = 'alert alert-danger d-none';
-      alertBox.textContent = '';
-    }
-
-    form.querySelectorAll('.is-invalid').forEach(clearFieldError);
+    form.querySelectorAll('.is-invalid').forEach((field) => {
+      field.classList.remove('is-invalid');
+      field.removeAttribute('aria-invalid');
+      field.removeAttribute('aria-describedby');
+    });
+    form.querySelectorAll('[data-field-error]').forEach((el) => el.remove());
   }
 
   /**
-   * Zeigt eine Fehlermeldung im Modal an und markiert optional das betroffene Feld rot.
+   * Zeigt einen Validierungsfehler direkt am betroffenen Feld im Modal oder als Toast an.
    * @param {string} message
    * @param {string|null} [fieldName]
    */
   function showFormError(message, fieldName = null) {
     hasUnsavedErrorState = true;
 
-    if (alertBox) {
-      alertBox.className = 'alert alert-danger mb-3';
-      alertBox.textContent = '';
-
-      const strong = document.createElement('strong');
-      strong.textContent = 'Fehler: ';
-      alertBox.appendChild(strong);
-      alertBox.appendChild(document.createTextNode(message));
-    }
-
     if (fieldName) {
       const fieldEl = form.querySelector(`[name="${fieldName}"]`);
       if (fieldEl) {
+        clearFieldError(fieldEl);
         fieldEl.classList.add('is-invalid');
         fieldEl.setAttribute('aria-invalid', 'true');
-        if (alertBox && alertBox.id) {
-          fieldEl.setAttribute('aria-describedby', alertBox.id);
+
+        if (
+          (fieldName === 'duration_hours' || fieldName === 'duration_minutes') &&
+          durationHint
+        ) {
+          durationHint.className = 'form-text d-none';
+          durationHint.textContent = '';
         }
+
+        const feedbackEl = document.createElement('div');
+        feedbackEl.className = 'invalid-feedback d-block';
+        feedbackEl.setAttribute('data-field-error', fieldName);
+        feedbackEl.textContent = message;
+
+        const anchor = fieldEl.closest('.row') || fieldEl.closest('.input-group') || fieldEl;
+        anchor.insertAdjacentElement('afterend', feedbackEl);
         fieldEl.focus();
+        return;
       }
+    }
+
+    if (typeof window.showToast === 'function') {
+      window.showToast('danger', message);
     }
   }
 
@@ -597,51 +609,6 @@ document.addEventListener('DOMContentLoaded', () => {
         submitBtn.innerHTML = originalBtnHtml;
       }
     }
-  });
-
-  // Optional: Löschen-Buttons für manuell nachgebuchte Einträge
-  document.querySelectorAll('.delete-manual-time-btn').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      const entryId = btn.getAttribute('data-entry-id') || '';
-      const csrfInput = form.querySelector('[name="csrf_token"]');
-      const csrfToken = csrfInput ? csrfInput.value : '';
-
-      if (!entryId || !csrfToken) {
-        return;
-      }
-
-      if (!window.confirm('Möchtest du diesen nachgebuchten Zeiteintrag wirklich löschen?')) {
-        return;
-      }
-
-      btn.disabled = true;
-
-      try {
-        const response = await fetch('api/time-entries.php', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          body: JSON.stringify({
-            action: 'delete_entry',
-            entry_id: entryId,
-            csrf_token: csrfToken,
-          }),
-        });
-
-        const data = await response.json().catch(() => null);
-        if (response.ok && data && data.success) {
-          window.location.reload();
-        } else {
-          window.alert((data && data.message) || 'Der Eintrag konnte nicht gelöscht werden.');
-          btn.disabled = false;
-        }
-      } catch {
-        window.alert('Netzwerkfehler beim Löschen des Eintrags.');
-        btn.disabled = false;
-      }
-    });
   });
 
   filterGoalsBySelectedDate();

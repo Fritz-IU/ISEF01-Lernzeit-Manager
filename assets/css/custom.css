@@ -1246,3 +1246,17 @@ main {
     transition: none;
   }
 }
+
+/*
+ * Schwebende Toast-Benachrichtigungen (Floating Alerts, Issue #22):
+ * Überlagern auch geöffnete Bootstrap-Modals (z-index > 1055) ohne Layout-Verschiebung.
+ */
+.app-toast-container {
+  z-index: 1090;
+  max-width: min(26rem, calc(100vw - 1.5rem));
+}
+
+.app-toast {
+  width: 100%;
+  font-size: 0.9375rem;
+}

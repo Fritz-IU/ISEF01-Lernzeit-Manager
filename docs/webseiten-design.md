@@ -22,15 +22,16 @@ Dieses Dokument beschreibt die Architektur, Komponenten und Styling-Entscheidung
 ```text
 lernzeit-manager/
 ├── assets/
-│   ├── css/custom.css       # Ergänzendes Styling (Flexbox für Sticky Footer)
-│   └── img/favicon.png      # Transparentes Favicon & Logo für die Navigation
+│   ├── css/custom.css       # Ergänzendes Styling (Flexbox für Sticky Footer, Toast-Container)
+│   ├── img/favicon.png      # Transparentes Favicon & Logo für die Navigation
+│   └── js/toast.js          # Zentrale Bootstrap-5-Toast-Benachrichtigungen (window.showToast)
 ├── docs/
 │   └── webseiten-design.md  # Diese Dokumentation
 ├── includes/
 │   ├── header.php           # Globaler Kopfbereich (Head, Meta, Favicon, Bootstrap Navbar)
-│   └── footer.php           # Globaler Fußbereich (Sticky Footer, Bootstrap-Bundle JS)
+│   └── footer.php           # Globaler Fußbereich (Toast-Container, Sticky Footer, Bootstrap-Bundle JS)
 ├── index.php                # Startseite / Dashboard (nutzt Header und Footer)
-└── login.php                # Anmeldeseite (bindet Favicon und Bootstrap ein)
+└── login.php                # Anmeldeseite (bindet Favicon, Bootstrap und Toast-System ein)
 ```
 
 ---
@@ -55,11 +56,13 @@ Nimmt optionale Konfigurationsvariablen der jeweiligen Seite entgegen (`$pageTit
 
 ### 3.2 Footer-Komponente ([includes/footer.php](../includes/footer.php))
 1. **Container-Abschluss:** Schließt `</div></main>`.
-2. **Fußzeile (`<footer>`):** Dezent gestalteter Bereich mit Copyright- und Projekthinweis (`© 2026 Lernzeit-Manager – ISEF01 Software Engineering`).
-3. **Skripteinbindung:**
+2. **Zentraler Toast-Container (`#toast-container`):** Fixierter Container oben rechts (`position-fixed top-0 end-0`) für schwebende Bootstrap-5-Toasts ohne Layout-Verschiebung. Serverseitige Flash-Meldungen (`$_SESSION['flash_success']`, `$_SESSION['flash_error']`, `$_SESSION['flash_info']`) sowie direkte Seitenmeldungen (`$successMessage`, `$errorMessage`) werden automatisch als `data-initial-toasts` übergeben.
+3. **Fußzeile (`<footer>`):** Dezent gestalteter Bereich mit Copyright- und Projekthinweis (`© 2026 Lernzeit-Manager – ISEF01 Software Engineering`).
+4. **Skripteinbindung:**
    * Offizielles Bootstrap 5 JavaScript-Bundle (`bootstrap.bundle.min.js`) via CDN mit SRI-Prüfsumme.
+   * Zentrales Toast-Skript [assets/js/toast.js](../assets/js/toast.js) mit der globalen Hilfsfunktion `window.showToast(type, message, options)`.
    * Ausgabe seitenspezifischer Skripte (über die Variable `$extraScripts`, z. B. `assets/js/profile.js`).
-4. **Dokumentenabschluss:** Schließt `</body></html>`.
+5. **Dokumentenabschluss:** Schließt `</body></html>`.
 
 ---
 

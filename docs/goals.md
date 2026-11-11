@@ -222,7 +222,7 @@ sequenceDiagram
     alt Validierung fehlgeschlagen
         Controller-->>API: throw ValidationException(message, field)
         API-->>JS: HTTP 422 JSON {success: false, message, field}
-        JS-->>Nutzer: Modal bleibt offen, Alert einblenden & Feld rot markieren (is-invalid)
+        JS-->>Nutzer: Modal bleibt offen, Feld rot markieren (is-invalid + invalid-feedback) bzw. Toast bei allgemeinem Fehler
     else Validierung erfolgreich
         Controller->>DAO: create(userId, title, desc, hours, start, end)
         DAO->>DB: Prepared Statement INSERT INTO learning_goals ...
@@ -230,7 +230,7 @@ sequenceDiagram
         DAO-->>Controller: int goalId
         Controller-->>API: int goalId
         API-->>JS: HTTP 200 JSON {success: true, goal_id}
-        JS-->>Nutzer: Reload goals.php -> Erfolgsmeldung & aktualisierte Liste
+        JS-->>Nutzer: Reload goals.php -> Erfolgs-Toast & aktualisierte Liste
     end
 ```
 

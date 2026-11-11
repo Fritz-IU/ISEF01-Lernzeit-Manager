@@ -67,22 +67,6 @@ require_once __DIR__ . '/includes/header.php';
                     </p>
                 </div>
 
-                <!-- Alert-Container für serverseitige Meldungen (Fallback) -->
-                <?php if ($errorMessage !== ''): ?>
-                    <div class="alert alert-danger mb-4" role="alert">
-                        <?= htmlspecialchars($errorMessage) ?>
-                    </div>
-                <?php endif; ?>
-
-                <?php if ($successMessage !== ''): ?>
-                    <div class="alert alert-success mb-4" role="alert">
-                        <?= htmlspecialchars($successMessage) ?>
-                    </div>
-                <?php endif; ?>
-
-                <!-- Dynamischer Alert-Container für JavaScript fetch() -->
-                <div id="profile-alert" class="d-none mb-4" role="alert"></div>
-
                 <form id="profile-form" action="profile.php" method="POST" novalidate>
                     <!-- E-Mail (schreibgeschützt) -->
                     <div class="mb-3">

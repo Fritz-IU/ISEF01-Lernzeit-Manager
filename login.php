@@ -87,6 +87,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errorMessage = 'Es ist ein technischer Fehler aufgetreten. Bitte versuche es später erneut.';
     }
 }
+
+$loginToasts = [];
+if ($errorMessage !== '') {
+    $loginToasts[] = ['type' => 'danger', 'message' => $errorMessage];
+}
+if ($successMessage !== '') {
+    $loginToasts[] = ['type' => 'success', 'message' => $successMessage];
+}
+$loginToastsAttr = $loginToasts !== []
+    ? ' data-initial-toasts="' . htmlspecialchars((string) json_encode($loginToasts, JSON_UNESCAPED_UNICODE), ENT_QUOTES) . '"'
+    : '';
 ?>
 <!DOCTYPE html>
 <html lang="de" class="page-login">
@@ -103,11 +114,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="shortcut icon" href="assets/img/favicon.ico?v=4">
     <!-- Ui mit Bootstrap 5 CSS via CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
-    <link rel="stylesheet" href="assets/css/custom.css">
+    <link rel="stylesheet" href="assets/css/custom.css?v=<?= filemtime(__DIR__ . '/assets/css/custom.css') ?>">
 </head>
 
 <!-- custom.css setzt body auf flex-direction: column, daher zentriert justify-content vertikal -->
 <body class="bg-light d-flex justify-content-center">
+
+    <div
+        id="toast-container"
+        class="toast-container position-fixed top-0 end-0 p-3 app-toast-container"
+        aria-live="polite"
+        aria-atomic="true"<?= $loginToastsAttr ?>></div>
 
     <div class="container">
         <div class="row justify-content-center">
@@ -115,19 +132,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="card shadow-sm border-0">
                     <div class="card-body p-4">
                         <h3 class="card-title text-center mb-4 text-primary">Lernzeit-Manager</h3>
-
-                        <!-- Rückmeldungen / Fehlermeldungen anzeigen -->
-                        <?php if (!empty($errorMessage)): ?>
-                            <div class="alert alert-danger" role="alert">
-                                <?= htmlspecialchars($errorMessage) ?>
-                            </div>
-                        <?php endif; ?>
-
-                        <?php if (!empty($successMessage)): ?>
-                            <div class="alert alert-success" role="alert">
-                                <?= htmlspecialchars($successMessage) ?>
-                            </div>
-                        <?php endif; ?>
 
                         <!-- Tab-Navigation zur Umschaltung zwischen Login & Registrierung -->
                         <ul class="nav nav-pills nav-justified mb-3" id="pills-tab" role="tablist">
@@ -195,8 +199,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 
-    <!-- Bootstrap 5 JS für Tab-Wechsel -->
+    <!-- Bootstrap 5 JS für Tab-Wechsel & Toast-Benachrichtigungen -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    <script src="assets/js/toast.js?v=<?= filemtime(__DIR__ . '/assets/js/toast.js') ?>"></script>
 </body>
 
 </html>

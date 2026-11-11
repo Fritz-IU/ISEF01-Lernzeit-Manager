@@ -4,33 +4,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('profile-form');
   if (!form) return;
 
-  const alertBox = document.getElementById('profile-alert');
   const submitBtn = document.getElementById('submit-btn');
-
-  /**
-   * Zeigt eine Rückmeldung im Alert-Container an.
-   * @param {'success'|'danger'|''} type
-   * @param {string} message
-   */
-  function showAlert(type, message) {
-    if (!alertBox) return;
-
-    if (!message) {
-      alertBox.className = 'd-none';
-      alertBox.textContent = '';
-      return;
-    }
-
-    alertBox.className = `alert alert-${type} mt-3 mb-0`;
-    alertBox.textContent = message;
-    alertBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }
 
   form.addEventListener('submit', async (event) => {
     // Standard-Formularabsendung via Browser verhindern
     event.preventDefault();
-
-    showAlert('', '');
 
     const displayNameInput = document.getElementById('display_name');
     const studyProgramInput = document.getElementById('study_program');
@@ -63,7 +41,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const result = await response.json();
 
       if (response.ok && result.success) {
-        showAlert('success', result.message || 'Profildaten erfolgreich gespeichert.');
+        if (typeof window.showToast === 'function') {
+          window.showToast('success', result.message || 'Profildaten erfolgreich gespeichert.');
+        }
 
         // Live-Update des Anzeigenamens in der Navigationsleiste (Server liefert bei leerem Namen die E-Mail)
         if (result.data && result.data.nav_name) {
@@ -83,11 +63,13 @@ document.addEventListener('DOMContentLoaded', () => {
             dropdownUserEmail.classList.toggle('d-none', !hasCustomDisplayName);
           }
         }
-      } else {
-        showAlert('danger', result.message || 'Fehler beim Speichern der Profildaten.');
+      } else if (typeof window.showToast === 'function') {
+        window.showToast('danger', result.message || 'Fehler beim Speichern der Profildaten.');
       }
-    } catch (error) {
-      showAlert('danger', 'Netzwerkfehler: Profil konnte nicht gespeichert werden.');
+    } catch {
+      if (typeof window.showToast === 'function') {
+        window.showToast('danger', 'Netzwerkfehler: Profil konnte nicht gespeichert werden.');
+      }
     } finally {
       if (submitBtn) {
         submitBtn.disabled = false;

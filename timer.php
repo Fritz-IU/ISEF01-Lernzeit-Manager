@@ -38,9 +38,6 @@ $timeTrackingDAO = new TimeTrackingDAO($db);
 $timeTrackingController = new TimeTrackingController($timeTrackingDAO);
 
 $errorMessage = '';
-// Erfolgsmeldungen der Stoppuhr und der Nachbuchung (api/time-entries.php setzt flash_success vor dem Reload)
-$successMessage = (string) ($_SESSION['timer_success'] ?? ($_SESSION['flash_success'] ?? ''));
-unset($_SESSION['timer_success'], $_SESSION['flash_success']);
 
 // Formularverarbeitung (Post/Redirect/Get)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -79,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         } elseif ($action === 'stop') {
             $timeTrackingController->stopAndSaveStopwatch($userId, $_POST);
-            $_SESSION['timer_success'] = 'Lerneinheit erfolgreich gespeichert!';
+            $_SESSION['flash_success'] = 'Lerneinheit erfolgreich gespeichert!';
             if ($isAjax) {
                 header('Content-Type: application/json');
                 echo json_encode(['success' => true]);
@@ -94,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'delete') {
             $id = isset($_POST['id']) && is_scalar($_POST['id']) ? (int) $_POST['id'] : 0;
             $timeTrackingController->deleteTimeEntry($id, $userId);
-            $_SESSION['timer_success'] = 'Zeiteintrag gelöscht.';
+            $_SESSION['flash_success'] = 'Zeiteintrag gelöscht.';
             header('Location: timer.php');
             exit;
         } else {
@@ -161,21 +158,6 @@ require_once __DIR__ . '/includes/header.php';
         + Lernzeit nachbuchen
     </button>
 </div>
-
-<!-- Statusmeldungen -->
-<?php if ($errorMessage !== ''): ?>
-    <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
-        <strong>Fehler:</strong> <?= htmlspecialchars($errorMessage) ?>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Schließen"></button>
-    </div>
-<?php endif; ?>
-
-<?php if ($successMessage !== ''): ?>
-    <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
-        <?= htmlspecialchars($successMessage) ?>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Schließen"></button>
-    </div>
-<?php endif; ?>
 
 <!-- Kennzahlen-Kacheln -->
 <div class="row g-3 mb-4">
@@ -509,8 +491,6 @@ require_once __DIR__ . '/includes/header.php';
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
                 </div>
                 <div class="modal-body">
-                    <div id="stop-timer-alert" class="alert alert-danger d-none" role="alert"></div>
-
                     <div class="p-3 bg-light rounded text-center mb-3">
                         <span class="text-muted small d-block">Erfasste Lernzeit:</span>
                         <div id="modal-stop-duration" class="h3 fw-bold text-primary mb-0">

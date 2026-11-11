@@ -62,8 +62,6 @@ if (!isset($extraScripts) || !is_string($extraScripts)) {
                 </div>
 
                 <div class="modal-body">
-                    <div id="manual-time-alert" class="alert alert-danger d-none" role="alert"></div>
-
                     <?php if (!$hasSelectableManualGoals): ?>
                         <div class="alert alert-light border mb-0">
                             <strong class="text-dark d-block mb-1">Noch keine Module vorhanden</strong>
