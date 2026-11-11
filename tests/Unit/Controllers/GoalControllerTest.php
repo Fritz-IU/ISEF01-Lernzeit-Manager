@@ -738,40 +738,113 @@ final class GoalControllerTest extends TestCase
     }
 
     /**
-     * @return array<string, array{0: string, 1: list<string>}>
+     * @return array<string, array{0: string}>
      */
     public static function monateAusserhalbDesStandardfensters(): array
     {
         return [
-            'vor dem Fenster'  => ['2026-08', ['2026-08', '2026-09', '2026-10', '2026-11', '2026-12', '2027-01']],
-            'nach dem Fenster' => ['2027-06', ['2027-01', '2027-02', '2027-03', '2027-04', '2027-05', '2027-06']],
+            'vor dem Semester'  => ['2026-08'],
+            'nach dem Semester' => ['2027-06'],
         ];
     }
 
     #[Test]
     #[DataProvider('monateAusserhalbDesStandardfensters')]
-    public function verschiebtFensterWennGewaehlterMonatAusserhalbLiegt(string $requestedMonth, array $expectedKeys): void
+    public function bindetMonatskarussellBeiMonatAusserhalbAnAktivesSemester(string $requestedMonth): void
     {
         $this->daoLiefertPlanungsdaten();
 
-        $data = $this->controller->buildMonthlyPlanningData(self::USER_ID, self::lernziele(), $requestedMonth);
+        $data = $this->controller->buildMonthlyPlanningData(
+            self::USER_ID,
+            self::lernziele(),
+            $requestedMonth,
+            null,
+            '2026-10-15'
+        );
 
-        self::assertSame($expectedKeys, array_keys($data['months_window']));
-        self::assertSame($requestedMonth, $data['selected_month']);
+        self::assertSame(['2026-10', '2026-11', '2026-12', '2027-01', '2027-02', '2027-03'], array_keys($data['months_window']));
+        self::assertSame('2026-10', $data['selected_month']);
+        self::assertNull($data['prev_month']);
+        self::assertSame('2026-11', $data['next_month']);
+        self::assertSame(1, $data['selected_semester']['id']);
         self::assertSame([], $data['monthly_goals']);
     }
 
     #[Test]
-    public function faelltBeiUngueltigemMonatAufAktuellenKalendermonatZurueck(): void
+    public function rendertNurDieMonateDesJeweiligenSemestersUndNavigiertSemesterweise(): void
     {
         $this->daoLiefertPlanungsdaten();
 
-        $data = $this->controller->buildMonthlyPlanningData(self::USER_ID, self::lernziele(), '2026-13');
+        $semesters = [
+            [
+                'id'              => 10,
+                'title'           => '3. Semester (WiSe 2026/27)',
+                'target_hours'    => 150.0,
+                'start_date'      => '2026-09-01',
+                'end_date'        => '2027-02-28',
+                'allocated_hours' => 60.0,
+            ],
+            [
+                'id'              => 20,
+                'title'           => '4. Semester (SoSe 2027)',
+                'target_hours'    => 120.0,
+                'start_date'      => '2027-03-01',
+                'end_date'        => '2027-06-30',
+                'allocated_hours' => 0.0,
+            ],
+        ];
 
-        // Einziger erlaubter date()-Aufruf in den Tests: Der Fallback ist laut Fachlogik der aktuelle Kalendermonat.
-        $currentMonth = date('Y-m');
-        self::assertSame($currentMonth, $data['selected_month']);
-        self::assertTrue($data['months_window'][$currentMonth]['is_current_calendar_month']);
+        // 1. Aufruf im laufenden 3. Semester (Heute: 2026-11-15) -> aktueller Monat 2026-11 aktiv
+        $wise = $this->controller->buildMonthlyPlanningData(self::USER_ID, $semesters, null, null, '2026-11-15');
+
+        self::assertSame(10, $wise['selected_semester']['id']);
+        self::assertSame('2026-11', $wise['selected_month']);
+        self::assertSame(
+            ['2026-09', '2026-10', '2026-11', '2026-12', '2027-01', '2027-02'],
+            array_keys($wise['months_window'])
+        );
+        self::assertNull($wise['prev_semester']);
+        self::assertNotNull($wise['next_semester']);
+        self::assertSame(20, $wise['next_semester']['id']);
+        self::assertSame('2027-03', $wise['next_semester']['default_month']);
+
+        // 2. Wechsel zum nächsten Semester (4. Semester, 4 Monate März–Juni 2027) -> erster Monat 2027-03 aktiv
+        $sose = $this->controller->buildMonthlyPlanningData(self::USER_ID, $semesters, null, 20, '2026-11-15');
+
+        self::assertSame(20, $sose['selected_semester']['id']);
+        self::assertSame('2027-03', $sose['selected_month']);
+        self::assertSame(
+            ['2027-03', '2027-04', '2027-05', '2027-06'],
+            array_keys($sose['months_window'])
+        );
+        self::assertNotNull($sose['prev_semester']);
+        self::assertSame(10, $sose['prev_semester']['id']);
+        self::assertSame('2026-11', $sose['prev_semester']['default_month']);
+        self::assertNull($sose['next_semester']);
+        self::assertSame('2027-02', $sose['prev_month']);
+        self::assertSame('2027-04', $sose['next_month']);
+
+        // 3. Letzter Monat des letzten Semesters (Juni 2027) -> kein weiterer Folgemonat
+        $soseEnd = $this->controller->buildMonthlyPlanningData(self::USER_ID, $semesters, '2027-06', 20, '2026-11-15');
+        self::assertSame('2027-05', $soseEnd['prev_month']);
+        self::assertNull($soseEnd['next_month']);
+    }
+
+    #[Test]
+    public function faelltBeiUngueltigemMonatAufAktuellenKalendermonatImSemesterZurueck(): void
+    {
+        $this->daoLiefertPlanungsdaten();
+
+        $data = $this->controller->buildMonthlyPlanningData(
+            self::USER_ID,
+            self::lernziele(),
+            '2026-13',
+            null,
+            '2026-11-15'
+        );
+
+        self::assertSame('2026-11', $data['selected_month']);
+        self::assertTrue($data['months_window']['2026-11']['is_current_calendar_month']);
     }
 
     #[Test]

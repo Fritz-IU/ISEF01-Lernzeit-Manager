@@ -83,6 +83,6 @@ Vorlage zum Kopieren: [`tests/Unit/Controllers/GoalControllerTest.php`](../tests
 Zwei Sonderfälle, die in den Tests gelöst sind und als Muster dienen:
 
 - **`$_SESSION`:** Methoden wie `currentShortNavName` lesen aus `$_SESSION`. Im Test wird kein `session_start()` aufgerufen, sondern `$_SESSION` in `setUp()` als leeres Array gesetzt und in `tearDown()` wieder entfernt. Jeder Test befüllt nur die Schlüssel, die er braucht.
-- **`date()`:** `buildMonthlyPlanningData` nutzt den aktuellen Kalendermonat nur als Fallback. Die Tests übergeben immer einen gültigen Monat und feste Lernziel-Daten, nur der Fallback-Test vergleicht gegen `date('Y-m')`. Neue Logik, die von „heute“ abhängt, bekommt den Zeitpunkt besser als Parameter.
+- **`date()` / Referenzdatum:** Methoden, die vom aktuellen Tag oder Monat abhängen (z. B. `buildMonthlyPlanningData`, `suggestNewGoalPeriod`, `toggleCompletion`), akzeptieren ein optionales Referenzdatum (`$today` im Format `YYYY-MM-DD`), sodass alle Unit-Tests mit festen Testwerten deterministisch laufen.
 
 Noch ohne Tests: `GoalController::deleteGoal` und die Monatsziel-Varianten (reine Weiterleitung an das DAO) sowie `User::register`, `login`, `updateProfile` (brauchen Datenbank bzw. Session).
