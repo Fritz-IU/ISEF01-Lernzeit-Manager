@@ -764,6 +764,8 @@ final class GoalControllerTest extends TestCase
 
         self::assertSame(['2026-10', '2026-11', '2026-12', '2027-01', '2027-02', '2027-03'], array_keys($data['months_window']));
         self::assertSame('2026-10', $data['selected_month']);
+        self::assertNull($data['prev_month']);
+        self::assertSame('2026-11', $data['next_month']);
         self::assertSame(1, $data['selected_semester']['id']);
         self::assertSame([], $data['monthly_goals']);
     }
@@ -819,6 +821,13 @@ final class GoalControllerTest extends TestCase
         self::assertSame(10, $sose['prev_semester']['id']);
         self::assertSame('2026-11', $sose['prev_semester']['default_month']);
         self::assertNull($sose['next_semester']);
+        self::assertSame('2027-02', $sose['prev_month']);
+        self::assertSame('2027-04', $sose['next_month']);
+
+        // 3. Letzter Monat des letzten Semesters (Juni 2027) -> kein weiterer Folgemonat
+        $soseEnd = $this->controller->buildMonthlyPlanningData(self::USER_ID, $semesters, '2027-06', 20, '2026-11-15');
+        self::assertSame('2027-05', $soseEnd['prev_month']);
+        self::assertNull($soseEnd['next_month']);
     }
 
     #[Test]

@@ -747,12 +747,16 @@ document.addEventListener('DOMContentLoaded', () => {
       const monthSection = document.getElementById('monatsplanung');
       const weekSection = document.getElementById('wochenplanung');
       const currentMonth = monthSection ? monthSection.getAttribute('data-selected-month') : '';
+      const currentSemesterId = monthSection ? monthSection.getAttribute('data-selected-semester-id') : '';
       const currentWeek = weekSection ? weekSection.getAttribute('data-selected-week') : '';
       const currentDay = weekSection ? weekSection.getAttribute('data-default-slot-date') : '';
       const params = new URLSearchParams();
       params.set('tab', viewTab);
       if (currentMonth) {
         params.set('month', currentMonth);
+      }
+      if (viewTab === 'month' && currentSemesterId && currentSemesterId !== '0') {
+        params.set('semester', currentSemesterId);
       }
       if (viewTab === 'week' && currentWeek) {
         params.set('week', currentWeek);

@@ -859,6 +859,23 @@ class GoalController
         $selectedDt = DateTimeImmutable::createFromFormat('!Y-m-d', $selectedMonth . '-01')
             ?: new DateTimeImmutable('first day of this month');
 
+        if ($semesters !== []) {
+            $allSemesterMonths = [];
+            foreach ($semesters as $sem) {
+                foreach ($sem['months'] as $m) {
+                    if (!in_array($m, $allSemesterMonths, true)) {
+                        $allSemesterMonths[] = $m;
+                    }
+                }
+            }
+            $monthPos = array_search($selectedMonth, $allSemesterMonths, true);
+            $prevMonth = ($monthPos !== false && $monthPos > 0) ? $allSemesterMonths[$monthPos - 1] : null;
+            $nextMonth = ($monthPos !== false && $monthPos < count($allSemesterMonths) - 1) ? $allSemesterMonths[$monthPos + 1] : null;
+        } else {
+            $prevMonth = $selectedDt->modify('-1 month')->format('Y-m');
+            $nextMonth = $selectedDt->modify('+1 month')->format('Y-m');
+        }
+
         // 3. Monatsbudgets und geplante Stunden je Monat aus der Datenbank abrufen
         $budgetsByMonth = $this->goalDAO->findAllMonthlyBudgetsByUserId($userId);
         $plannedByMonth = $this->goalDAO->getMonthlyPlannedHoursByUserId($userId);
@@ -967,8 +984,8 @@ class GoalController
         return [
             'selected_month'           => $selectedMonth,
             'selected_month_data'      => $selectedMonthData,
-            'prev_month'               => $selectedDt->modify('-1 month')->format('Y-m'),
-            'next_month'               => $selectedDt->modify('+1 month')->format('Y-m'),
+            'prev_month'               => $prevMonth,
+            'next_month'               => $nextMonth,
             'selected_semester'        => $selectedSemester,
             'prev_semester'            => $prevSemester,
             'next_semester'            => $nextSemester,
@@ -2408,8 +2425,12 @@ class GoalController
             'prev_week_month'          => $prevWeekMonth,
             'next_week'                => $nextIsoWeek,
             'next_week_month'          => $nextWeekMonth,
-            'prev_month'               => (string) $monthlyPlanning['prev_month'],
-            'next_month'               => (string) $monthlyPlanning['next_month'],
+            'prev_month'               => isset($monthlyPlanning['prev_month']) && is_string($monthlyPlanning['prev_month']) && $monthlyPlanning['prev_month'] !== ''
+                ? $monthlyPlanning['prev_month']
+                : null,
+            'next_month'               => isset($monthlyPlanning['next_month']) && is_string($monthlyPlanning['next_month']) && $monthlyPlanning['next_month'] !== ''
+                ? $monthlyPlanning['next_month']
+                : null,
             'selected_month'           => $selectedMonth,
             'selected_month_data'      => $selectedMonthData,
             'weeks_window'             => $weeksWindow,

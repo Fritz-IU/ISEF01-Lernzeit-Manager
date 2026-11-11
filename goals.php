@@ -758,9 +758,10 @@ require_once __DIR__ . '/includes/header.php';
                             </div>
                         </div>
                         <div class="col-md-4 month-share-col small text-muted">
+                            <?php $evenMonthShare = count($monthsWindow) > 0 ? round(100 / count($monthsWindow), 1) : 16.7; ?>
                             <span class="fs-5 fw-bold text-dark"><?= number_format($selWorkloadShare, 1, ',', '.') ?> %</span>
                             deiner gesamten Planung
-                            <div><?= number_format($selPlanned, 1, ',', '.') ?> von <?= number_format($totalPlannedAllMonths, 1, ',', '.') ?> h &middot; gleichmäßig wären ca. 16,7 %</div>
+                            <div><?= number_format($selPlanned, 1, ',', '.') ?> von <?= number_format($totalPlannedAllMonths, 1, ',', '.') ?> h &middot; gleichmäßig wären ca. <?= number_format($evenMonthShare, 1, ',', '.') ?> %</div>
                         </div>
                     </div>
 
@@ -973,25 +974,49 @@ require_once __DIR__ . '/includes/header.php';
             data-default-slot-date="<?= htmlspecialchars($defaultSlotDate, ENT_QUOTES) ?>">
             <!-- Kalenderwochen-Auswahl: Monat mit Pfeilen wechseln, darunter die Wochen des Monats -->
             <div class="d-flex justify-content-center align-items-center gap-2 mb-2">
-                <a
-                    href="goals.php?tab=week&month=<?= urlencode((string) $weeklyPlanning['prev_month']) ?>"
-                    data-month-switch="<?= htmlspecialchars((string) $weeklyPlanning['prev_month'], ENT_QUOTES) ?>"
-                    class="btn btn-sm btn-light border period-nav-btn"
-                    title="Vorheriger Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['prev_month'], false)) ?>"
-                    aria-label="Vorheriger Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['prev_month'], false)) ?>">
-                    &lsaquo;
-                </a>
+                <?php if (!empty($weeklyPlanning['prev_month'])): ?>
+                    <a
+                        href="goals.php?tab=week&month=<?= urlencode((string) $weeklyPlanning['prev_month']) ?>"
+                        data-month-switch="<?= htmlspecialchars((string) $weeklyPlanning['prev_month'], ENT_QUOTES) ?>"
+                        class="btn btn-sm btn-light border period-nav-btn"
+                        title="Vorheriger Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['prev_month'], false)) ?>"
+                        aria-label="Vorheriger Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['prev_month'], false)) ?>">
+                        &lsaquo;
+                    </a>
+                <?php else: ?>
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-light border period-nav-btn disabled"
+                        disabled
+                        aria-disabled="true"
+                        title="Kein vorheriger Monat im Semester vorhanden"
+                        aria-label="Kein vorheriger Monat im Semester vorhanden">
+                        &lsaquo;
+                    </button>
+                <?php endif; ?>
                 <span class="fw-semibold text-dark text-center" style="min-width: 9rem;">
                     <?= htmlspecialchars((string) $selectedMonthData['label_long']) ?>
                 </span>
-                <a
-                    href="goals.php?tab=week&month=<?= urlencode((string) $weeklyPlanning['next_month']) ?>"
-                    data-month-switch="<?= htmlspecialchars((string) $weeklyPlanning['next_month'], ENT_QUOTES) ?>"
-                    class="btn btn-sm btn-light border period-nav-btn"
-                    title="Nächster Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['next_month'], false)) ?>"
-                    aria-label="Nächster Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['next_month'], false)) ?>">
-                    &rsaquo;
-                </a>
+                <?php if (!empty($weeklyPlanning['next_month'])): ?>
+                    <a
+                        href="goals.php?tab=week&month=<?= urlencode((string) $weeklyPlanning['next_month']) ?>"
+                        data-month-switch="<?= htmlspecialchars((string) $weeklyPlanning['next_month'], ENT_QUOTES) ?>"
+                        class="btn btn-sm btn-light border period-nav-btn"
+                        title="Nächster Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['next_month'], false)) ?>"
+                        aria-label="Nächster Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['next_month'], false)) ?>">
+                        &rsaquo;
+                    </a>
+                <?php else: ?>
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-light border period-nav-btn disabled"
+                        disabled
+                        aria-disabled="true"
+                        title="Kein weiterer Monat im Semester vorhanden"
+                        aria-label="Kein weiterer Monat im Semester vorhanden">
+                        &rsaquo;
+                    </button>
+                <?php endif; ?>
             </div>
 
             <div class="row g-2 mb-3" role="tablist" aria-label="Kalenderwochenauswahl">
