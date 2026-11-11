@@ -50,7 +50,7 @@ $initialToastsAttr = $initialToasts !== []
 <!-- Zentraler Toast-Container (Floating Alerts, Issue #22) -->
 <div
     id="toast-container"
-    class="toast-container position-fixed top-0 end-0 p-3 app-toast-container"
+    class="toast-container position-fixed bottom-0 end-0 p-3 app-toast-container"
     aria-live="polite"
     aria-atomic="true"<?= $initialToastsAttr ?>></div>
 

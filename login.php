@@ -122,7 +122,7 @@ $loginToastsAttr = $loginToasts !== []
 
     <div
         id="toast-container"
-        class="toast-container position-fixed top-0 end-0 p-3 app-toast-container"
+        class="toast-container position-fixed bottom-0 end-0 p-3 app-toast-container"
         aria-live="polite"
         aria-atomic="true"<?= $loginToastsAttr ?>></div>
 

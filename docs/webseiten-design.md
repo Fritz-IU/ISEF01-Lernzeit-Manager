@@ -56,7 +56,7 @@ Nimmt optionale Konfigurationsvariablen der jeweiligen Seite entgegen (`$pageTit
 
 ### 3.2 Footer-Komponente ([includes/footer.php](../includes/footer.php))
 1. **Container-Abschluss:** Schließt `</div></main>`.
-2. **Zentraler Toast-Container (`#toast-container`):** Fixierter Container oben rechts (`position-fixed top-0 end-0`) für schwebende Bootstrap-5-Toasts ohne Layout-Verschiebung. Serverseitige Flash-Meldungen (`$_SESSION['flash_success']`, `$_SESSION['flash_error']`, `$_SESSION['flash_info']`) sowie direkte Seitenmeldungen (`$successMessage`, `$errorMessage`) werden automatisch als `data-initial-toasts` übergeben.
+2. **Zentraler Toast-Container (`#toast-container`):** Fixierter Container unten rechts (`position-fixed bottom-0 end-0`) für schwebende Bootstrap-5-Toasts ohne Layout-Verschiebung. Serverseitige Flash-Meldungen (`$_SESSION['flash_success']`, `$_SESSION['flash_error']`, `$_SESSION['flash_info']`) sowie direkte Seitenmeldungen (`$successMessage`, `$errorMessage`) werden automatisch als `data-initial-toasts` übergeben.
 3. **Fußzeile (`<footer>`):** Dezent gestalteter Bereich mit Copyright- und Projekthinweis (`© 2026 Lernzeit-Manager – ISEF01 Software Engineering`).
 4. **Skripteinbindung:**
    * Offizielles Bootstrap 5 JavaScript-Bundle (`bootstrap.bundle.min.js`) via CDN mit SRI-Prüfsumme.

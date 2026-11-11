@@ -46,7 +46,7 @@
     if (!container) {
       container = document.createElement('div');
       container.id = 'toast-container';
-      container.className = 'toast-container position-fixed top-0 end-0 p-3 app-toast-container';
+      container.className = 'toast-container position-fixed bottom-0 end-0 p-3 app-toast-container';
       container.setAttribute('aria-live', 'polite');
       container.setAttribute('aria-atomic', 'true');
       document.body.appendChild(container);
