@@ -141,22 +141,26 @@ $totalHours = $goalController->getTotalHours($userId);
 
 // Monatliche & wöchentliche Detailplanung aufbereiten
 $requestedMonth = isset($_GET['month']) && is_string($_GET['month']) ? $_GET['month'] : null;
+$requestedSemester = isset($_GET['semester']) && is_numeric($_GET['semester']) ? (int) $_GET['semester'] : null;
 $requestedWeek = isset($_GET['week']) && is_string($_GET['week']) ? $_GET['week'] : null;
 $requestedDay = isset($_GET['day']) && is_string($_GET['day']) ? $_GET['day'] : null;
 $requestedTab = isset($_GET['tab']) && is_string($_GET['tab']) ? trim($_GET['tab']) : '';
 
 if ($requestedTab === 'week' || ($requestedTab === '' && $requestedWeek !== null)) {
     $activeViewTab = 'week';
-} elseif ($requestedTab === 'month' || ($requestedTab === '' && $requestedMonth !== null)) {
+} elseif ($requestedTab === 'month' || ($requestedTab === '' && ($requestedMonth !== null || $requestedSemester !== null))) {
     $activeViewTab = 'month';
 } else {
     $activeViewTab = 'semester';
 }
 
 $resolvedMonth = GoalController::resolveMonthForWeek($requestedMonth, $requestedWeek);
-$monthlyPlanning = $goalController->buildMonthlyPlanningData($userId, $goals, $resolvedMonth);
+$monthlyPlanning = $goalController->buildMonthlyPlanningData($userId, $goals, $resolvedMonth, $requestedSemester);
 $selectedMonth = (string) $monthlyPlanning['selected_month'];
 $selectedMonthData = $monthlyPlanning['selected_month_data'];
+$selectedSemester = $monthlyPlanning['selected_semester'] ?? null;
+$prevSemester = $monthlyPlanning['prev_semester'] ?? null;
+$nextSemester = $monthlyPlanning['next_semester'] ?? null;
 $monthsWindow = $monthlyPlanning['months_window'];
 $monthlyGoals = $monthlyPlanning['monthly_goals'];
 $totalPlannedAllMonths = (float) $monthlyPlanning['total_planned_all_months'];
@@ -441,6 +445,18 @@ require_once __DIR__ . '/includes/header.php';
                                         <div class="text-muted small"><?= $durationWeeks ?> Wochen</div>
                                     </td>
                                     <td class="text-end td-mobile-actions" data-label="Aktionen">
+                                        <?php
+                                        $goalStartMonth = substr((string) $goal['start_date'], 0, 7);
+                                        $goalEndMonth = substr((string) $goal['end_date'], 0, 7);
+                                        $currentCalMonth = date('Y-m');
+                                        if ($selectedMonth >= $goalStartMonth && $selectedMonth <= $goalEndMonth) {
+                                            $goalDefaultMonth = $selectedMonth;
+                                        } elseif ($currentCalMonth >= $goalStartMonth && $currentCalMonth <= $goalEndMonth) {
+                                            $goalDefaultMonth = $currentCalMonth;
+                                        } else {
+                                            $goalDefaultMonth = $goalStartMonth;
+                                        }
+                                        ?>
                                         <div class="d-flex justify-content-end align-items-center gap-1">
                                             <button
                                                 type="button"
@@ -449,7 +465,7 @@ require_once __DIR__ . '/includes/header.php';
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#createMonthlyGoalModal"
                                                 data-goal-id="<?= (int) $goal['id'] ?>"
-                                                data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>">
+                                                data-month="<?= htmlspecialchars($goalDefaultMonth, ENT_QUOTES) ?>">
                                                 + Zwischenziel
                                             </button>
                                             <div class="dropdown">
@@ -515,71 +531,132 @@ require_once __DIR__ . '/includes/header.php';
         role="tabpanel"
         aria-labelledby="tab-month-btn"
         tabindex="0">
-        <section id="monatsplanung" class="mb-4" data-selected-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>" data-selected-month-short="<?= htmlspecialchars((string) $selectedMonthData['label_short'], ENT_QUOTES) ?>">
-            <!-- Monatsauswahl: Pfeile links/rechts verschieben den Zeitraum um einen Monat -->
-            <div class="d-flex align-items-stretch gap-2 mb-3">
-                <a
-                    href="goals.php?tab=month&month=<?= urlencode((string) $monthlyPlanning['prev_month']) ?>"
-                    data-month-switch="<?= htmlspecialchars((string) $monthlyPlanning['prev_month'], ENT_QUOTES) ?>"
-                    class="btn btn-light border period-nav-btn"
-                    title="Vorheriger Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['prev_month'], false)) ?>"
-                    aria-label="Vorheriger Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['prev_month'], false)) ?>">
-                    &lsaquo;
-                </a>
-                <div class="row g-2 flex-grow-1" role="tablist" aria-label="Monatsauswahl">
-                    <?php foreach ($monthsWindow as $ym => $mTab): ?>
-                        <?php
-                        $isTabSelected = (bool) $mTab['is_selected'];
-                        $isTabOverBudget = (bool) $mTab['is_over_budget'];
-                        $tabPlanned = (float) $mTab['planned_hours'];
-                        $tabBudget = $mTab['budget_hours'];
-                        $tabWorkloadShare = (float) $mTab['workload_share_percent'];
-                        $tabUtil = ($tabBudget !== null && (float) $tabBudget > 0) ? min(100.0, $tabPlanned / (float) $tabBudget * 100) : 0.0;
+        <section
+            id="monatsplanung"
+            class="mb-4"
+            data-selected-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>"
+            data-selected-month-short="<?= htmlspecialchars((string) $selectedMonthData['label_short'], ENT_QUOTES) ?>"
+            data-selected-semester-id="<?= (int) ($selectedSemester['id'] ?? 0) ?>">
+            <!-- Monatsauswahl: Semester mit Pfeilen wechseln, darunter die Monate des Semesters -->
+            <div class="d-flex justify-content-center align-items-center gap-2 mb-2">
+                <?php if ($selectedSemester !== null): ?>
+                    <?php if ($prevSemester !== null): ?>
+                        <a
+                            href="goals.php?tab=month&month=<?= urlencode((string) $prevSemester['default_month']) ?>&semester=<?= (int) $prevSemester['id'] ?>"
+                            data-month-switch="<?= htmlspecialchars((string) $prevSemester['default_month'], ENT_QUOTES) ?>"
+                            data-semester-switch="<?= (int) $prevSemester['id'] ?>"
+                            class="btn btn-sm btn-light border period-nav-btn"
+                            title="Vorheriges Semester: <?= htmlspecialchars((string) $prevSemester['title'], ENT_QUOTES) ?>"
+                            aria-label="Vorheriges Semester: <?= htmlspecialchars((string) $prevSemester['title'], ENT_QUOTES) ?>">
+                            &lsaquo;
+                        </a>
+                    <?php else: ?>
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-light border period-nav-btn disabled"
+                            disabled
+                            aria-disabled="true"
+                            title="Kein vorheriges Semester vorhanden"
+                            aria-label="Kein vorheriges Semester vorhanden">
+                            &lsaquo;
+                        </button>
+                    <?php endif; ?>
+                    <span class="fw-semibold text-dark text-center" style="min-width: 9rem;">
+                        <?= htmlspecialchars((string) $selectedSemester['title']) ?>
+                    </span>
+                    <?php if ($nextSemester !== null): ?>
+                        <a
+                            href="goals.php?tab=month&month=<?= urlencode((string) $nextSemester['default_month']) ?>&semester=<?= (int) $nextSemester['id'] ?>"
+                            data-month-switch="<?= htmlspecialchars((string) $nextSemester['default_month'], ENT_QUOTES) ?>"
+                            data-semester-switch="<?= (int) $nextSemester['id'] ?>"
+                            class="btn btn-sm btn-light border period-nav-btn"
+                            title="Nächstes Semester: <?= htmlspecialchars((string) $nextSemester['title'], ENT_QUOTES) ?>"
+                            aria-label="Nächstes Semester: <?= htmlspecialchars((string) $nextSemester['title'], ENT_QUOTES) ?>">
+                            &rsaquo;
+                        </a>
+                    <?php else: ?>
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-light border period-nav-btn disabled"
+                            disabled
+                            aria-disabled="true"
+                            title="Kein weiteres Semester vorhanden"
+                            aria-label="Kein weiteres Semester vorhanden">
+                            &rsaquo;
+                        </button>
+                    <?php endif; ?>
+                <?php else: ?>
+                    <a
+                        href="goals.php?tab=month&month=<?= urlencode((string) $monthlyPlanning['prev_month']) ?>"
+                        data-month-switch="<?= htmlspecialchars((string) $monthlyPlanning['prev_month'], ENT_QUOTES) ?>"
+                        class="btn btn-sm btn-light border period-nav-btn"
+                        title="Vorheriger Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['prev_month'], false)) ?>"
+                        aria-label="Vorheriger Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['prev_month'], false)) ?>">
+                        &lsaquo;
+                    </a>
+                    <span class="fw-semibold text-dark text-center" style="min-width: 9rem;">
+                        <?= htmlspecialchars((string) $selectedMonthData['label_long']) ?>
+                    </span>
+                    <a
+                        href="goals.php?tab=month&month=<?= urlencode((string) $monthlyPlanning['next_month']) ?>"
+                        data-month-switch="<?= htmlspecialchars((string) $monthlyPlanning['next_month'], ENT_QUOTES) ?>"
+                        class="btn btn-sm btn-light border period-nav-btn"
+                        title="Nächster Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['next_month'], false)) ?>"
+                        aria-label="Nächster Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['next_month'], false)) ?>">
+                        &rsaquo;
+                    </a>
+                <?php endif; ?>
+            </div>
 
-                        if ($isTabSelected) {
-                            $tabCardClasses = $isTabOverBudget
-                                ? 'border-warning bg-warning-subtle text-dark shadow-sm active'
-                                : 'border-primary bg-primary text-white shadow-sm active';
-                        } else {
-                            $tabCardClasses = $isTabOverBudget
-                                ? 'border-warning bg-warning-subtle text-dark'
-                                : 'border-light-subtle bg-white text-dark';
-                        }
-                        ?>
-                        <div class="col-4 col-lg-2">
-                            <a
-                                href="goals.php?tab=month&month=<?= urlencode((string) $ym) ?>"
-                                data-month-switch="<?= htmlspecialchars((string) $ym, ENT_QUOTES) ?>"
-                                class="card h-100 text-decoration-none border month-tab-link <?= $tabCardClasses ?>"
-                                role="tab"
-                                aria-selected="<?= $isTabSelected ? 'true' : 'false' ?>"
-                                title="<?= number_format($tabWorkloadShare, 0, ',', '.') ?> % deiner gesamten Planung">
-                                <div class="card-body p-2 text-center">
-                                    <div class="d-flex justify-content-center align-items-center gap-1">
-                                        <span class="fw-bold small"><?= htmlspecialchars((string) $mTab['label_short']) ?></span>
-                                        <?php if ($mTab['is_current_calendar_month']): ?>
-                                            <span class="period-today-dot" title="Aktueller Monat"></span>
-                                        <?php endif; ?>
-                                    </div>
-                                    <div class="small <?= $isTabSelected && !$isTabOverBudget ? 'text-white' : ($isTabOverBudget ? 'text-warning-emphasis fw-bold' : 'text-muted') ?>" style="font-size: 0.78rem;">
-                                        <?= number_format($tabPlanned, 1, ',', '.') ?><?= $tabBudget !== null ? ' / ' . number_format((float) $tabBudget, 1, ',', '.') : '' ?> h
-                                    </div>
-                                    <div class="progress period-mini-progress mt-1" role="presentation">
-                                        <div class="progress-bar <?= $isTabOverBudget ? 'bg-warning' : '' ?>" style="width: <?= $isTabOverBudget ? 100 : $tabUtil ?>%"></div>
-                                    </div>
+            <?php $monthColClass = count($monthsWindow) <= 6 ? 'col-4 col-lg' : 'col-4 col-lg-2'; ?>
+            <div class="row g-2 mb-3" role="tablist" aria-label="Monatsauswahl">
+                <?php foreach ($monthsWindow as $ym => $mTab): ?>
+                    <?php
+                    $isTabSelected = (bool) $mTab['is_selected'];
+                    $isTabOverBudget = (bool) $mTab['is_over_budget'];
+                    $tabPlanned = (float) $mTab['planned_hours'];
+                    $tabBudget = $mTab['budget_hours'];
+                    $tabWorkloadShare = (float) $mTab['workload_share_percent'];
+                    $tabUtil = ($tabBudget !== null && (float) $tabBudget > 0) ? min(100.0, $tabPlanned / (float) $tabBudget * 100) : 0.0;
+
+                    if ($isTabSelected) {
+                        $tabCardClasses = $isTabOverBudget
+                            ? 'border-warning bg-warning-subtle text-dark shadow-sm active'
+                            : 'border-primary bg-primary text-white shadow-sm active';
+                    } else {
+                        $tabCardClasses = $isTabOverBudget
+                            ? 'border-warning bg-warning-subtle text-dark'
+                            : 'border-light-subtle bg-white text-dark';
+                    }
+                    ?>
+                    <div class="<?= $monthColClass ?>">
+                        <a
+                            href="goals.php?tab=month&month=<?= urlencode((string) $ym) ?><?= $selectedSemester !== null ? '&semester=' . (int) $selectedSemester['id'] : '' ?>"
+                            data-month-switch="<?= htmlspecialchars((string) $ym, ENT_QUOTES) ?>"
+                            <?php if ($selectedSemester !== null): ?>
+                                data-semester-switch="<?= (int) $selectedSemester['id'] ?>"
+                            <?php endif; ?>
+                            class="card h-100 text-decoration-none border month-tab-link <?= $tabCardClasses ?>"
+                            role="tab"
+                            aria-selected="<?= $isTabSelected ? 'true' : 'false' ?>"
+                            title="<?= number_format($tabWorkloadShare, 0, ',', '.') ?> % deiner gesamten Planung">
+                            <div class="card-body p-2 text-center">
+                                <div class="d-flex justify-content-center align-items-center gap-1">
+                                    <span class="fw-bold small"><?= htmlspecialchars((string) $mTab['label_short']) ?></span>
+                                    <?php if ($mTab['is_current_calendar_month']): ?>
+                                        <span class="period-today-dot" title="Aktueller Monat"></span>
+                                    <?php endif; ?>
                                 </div>
-                            </a>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-                <a
-                    href="goals.php?tab=month&month=<?= urlencode((string) $monthlyPlanning['next_month']) ?>"
-                    data-month-switch="<?= htmlspecialchars((string) $monthlyPlanning['next_month'], ENT_QUOTES) ?>"
-                    class="btn btn-light border period-nav-btn"
-                    title="Nächster Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['next_month'], false)) ?>"
-                    aria-label="Nächster Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $monthlyPlanning['next_month'], false)) ?>">
-                    &rsaquo;
-                </a>
+                                <div class="small <?= $isTabSelected && !$isTabOverBudget ? 'text-white' : ($isTabOverBudget ? 'text-warning-emphasis fw-bold' : 'text-muted') ?>" style="font-size: 0.78rem;">
+                                    <?= number_format($tabPlanned, 1, ',', '.') ?><?= $tabBudget !== null ? ' / ' . number_format((float) $tabBudget, 1, ',', '.') : '' ?> h
+                                </div>
+                                <div class="progress period-mini-progress mt-1" role="presentation">
+                                    <div class="progress-bar <?= $isTabOverBudget ? 'bg-warning' : '' ?>" style="width: <?= $isTabOverBudget ? 100 : $tabUtil ?>%"></div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                <?php endforeach; ?>
             </div>
 
             <!-- Detailansicht des aktiv ausgewählten Monats -->
@@ -608,6 +685,7 @@ require_once __DIR__ . '/includes/header.php';
                                 class="btn btn-primary"
                                 data-bs-toggle="modal"
                                 data-bs-target="#createMonthlyGoalModal"
+                                data-goal-id="<?= (int) ($selectedSemester['id'] ?? 0) ?>"
                                 data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>">
                                 + Zwischenziel
                             </button>
@@ -661,9 +739,10 @@ require_once __DIR__ . '/includes/header.php';
                             </div>
                         </div>
                         <div class="col-md-4 month-share-col small text-muted">
+                            <?php $evenMonthShare = count($monthsWindow) > 0 ? round(100 / count($monthsWindow), 1) : 16.7; ?>
                             <span class="fs-5 fw-bold text-dark"><?= number_format($selWorkloadShare, 1, ',', '.') ?> %</span>
                             deiner gesamten Planung
-                            <div><?= number_format($selPlanned, 1, ',', '.') ?> von <?= number_format($totalPlannedAllMonths, 1, ',', '.') ?> h &middot; gleichmäßig wären ca. 16,7 %</div>
+                            <div><?= number_format($selPlanned, 1, ',', '.') ?> von <?= number_format($totalPlannedAllMonths, 1, ',', '.') ?> h &middot; gleichmäßig wären ca. <?= number_format($evenMonthShare, 1, ',', '.') ?> %</div>
                         </div>
                     </div>
 
@@ -682,6 +761,7 @@ require_once __DIR__ . '/includes/header.php';
                                     class="btn btn-sm btn-primary"
                                     data-bs-toggle="modal"
                                     data-bs-target="#createMonthlyGoalModal"
+                                    data-goal-id="<?= (int) ($selectedSemester['id'] ?? 0) ?>"
                                     data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>">
                                     Erstes Zwischenziel anlegen
                                 </button>
@@ -875,25 +955,49 @@ require_once __DIR__ . '/includes/header.php';
             data-default-slot-date="<?= htmlspecialchars($defaultSlotDate, ENT_QUOTES) ?>">
             <!-- Kalenderwochen-Auswahl: Monat mit Pfeilen wechseln, darunter die Wochen des Monats -->
             <div class="d-flex justify-content-center align-items-center gap-2 mb-2">
-                <a
-                    href="goals.php?tab=week&month=<?= urlencode((string) $weeklyPlanning['prev_month']) ?>"
-                    data-month-switch="<?= htmlspecialchars((string) $weeklyPlanning['prev_month'], ENT_QUOTES) ?>"
-                    class="btn btn-sm btn-light border period-nav-btn"
-                    title="Vorheriger Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['prev_month'], false)) ?>"
-                    aria-label="Vorheriger Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['prev_month'], false)) ?>">
-                    &lsaquo;
-                </a>
+                <?php if (!empty($weeklyPlanning['prev_month'])): ?>
+                    <a
+                        href="goals.php?tab=week&month=<?= urlencode((string) $weeklyPlanning['prev_month']) ?>"
+                        data-month-switch="<?= htmlspecialchars((string) $weeklyPlanning['prev_month'], ENT_QUOTES) ?>"
+                        class="btn btn-sm btn-light border period-nav-btn"
+                        title="Vorheriger Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['prev_month'], false)) ?>"
+                        aria-label="Vorheriger Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['prev_month'], false)) ?>">
+                        &lsaquo;
+                    </a>
+                <?php else: ?>
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-light border period-nav-btn disabled"
+                        disabled
+                        aria-disabled="true"
+                        title="Kein vorheriger Monat im Semester vorhanden"
+                        aria-label="Kein vorheriger Monat im Semester vorhanden">
+                        &lsaquo;
+                    </button>
+                <?php endif; ?>
                 <span class="fw-semibold text-dark text-center" style="min-width: 9rem;">
                     <?= htmlspecialchars((string) $selectedMonthData['label_long']) ?>
                 </span>
-                <a
-                    href="goals.php?tab=week&month=<?= urlencode((string) $weeklyPlanning['next_month']) ?>"
-                    data-month-switch="<?= htmlspecialchars((string) $weeklyPlanning['next_month'], ENT_QUOTES) ?>"
-                    class="btn btn-sm btn-light border period-nav-btn"
-                    title="Nächster Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['next_month'], false)) ?>"
-                    aria-label="Nächster Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['next_month'], false)) ?>">
-                    &rsaquo;
-                </a>
+                <?php if (!empty($weeklyPlanning['next_month'])): ?>
+                    <a
+                        href="goals.php?tab=week&month=<?= urlencode((string) $weeklyPlanning['next_month']) ?>"
+                        data-month-switch="<?= htmlspecialchars((string) $weeklyPlanning['next_month'], ENT_QUOTES) ?>"
+                        class="btn btn-sm btn-light border period-nav-btn"
+                        title="Nächster Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['next_month'], false)) ?>"
+                        aria-label="Nächster Monat: <?= htmlspecialchars(GoalController::formatYearMonth((string) $weeklyPlanning['next_month'], false)) ?>">
+                        &rsaquo;
+                    </a>
+                <?php else: ?>
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-light border period-nav-btn disabled"
+                        disabled
+                        aria-disabled="true"
+                        title="Kein weiterer Monat im Semester vorhanden"
+                        aria-label="Kein weiterer Monat im Semester vorhanden">
+                        &rsaquo;
+                    </button>
+                <?php endif; ?>
             </div>
 
             <div class="row g-2 mb-3" role="tablist" aria-label="Kalenderwochenauswahl">
@@ -1037,6 +1141,7 @@ require_once __DIR__ . '/includes/header.php';
                                     class="btn btn-primary"
                                     data-bs-toggle="modal"
                                     data-bs-target="#createMonthlyGoalModal"
+                                    data-goal-id="<?= (int) ($selectedSemester['id'] ?? 0) ?>"
                                     data-month="<?= htmlspecialchars($selectedMonth, ENT_QUOTES) ?>">
                                     + Zwischenziel für <?= htmlspecialchars((string) $selectedMonthData['label_short']) ?>
                                 </button>

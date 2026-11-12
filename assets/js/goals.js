@@ -475,14 +475,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const target = event.target instanceof Element ? event.target : null;
     if (!target) return;
 
-    // 1a. Monatswechsel ohne Seiten-Reload und ohne Scrollen
+    // 1a. Monats- bzw. Semesterwechsel ohne Seiten-Reload und ohne Scrollen
     const monthSwitchLink = target.closest('[data-month-switch]');
     if (monthSwitchLink) {
       const targetMonth = monthSwitchLink.getAttribute('data-month-switch');
+      const targetSemester = monthSwitchLink.getAttribute('data-semester-switch') || '';
       const inWeekTab = Boolean(monthSwitchLink.closest('#wochenplanung'));
       if (targetMonth) {
         event.preventDefault();
-        await switchMonthWithoutReload(targetMonth, inWeekTab ? 'week' : 'month');
+        await switchMonthWithoutReload(targetMonth, inWeekTab ? 'week' : 'month', targetSemester);
       }
       return;
     }
@@ -687,12 +688,16 @@ document.addEventListener('DOMContentLoaded', () => {
       const monthSection = document.getElementById('monatsplanung');
       const weekSection = document.getElementById('wochenplanung');
       const currentMonth = monthSection ? monthSection.getAttribute('data-selected-month') : '';
+      const currentSemesterId = monthSection ? monthSection.getAttribute('data-selected-semester-id') : '';
       const currentWeek = weekSection ? weekSection.getAttribute('data-selected-week') : '';
       const currentDay = weekSection ? weekSection.getAttribute('data-default-slot-date') : '';
       const params = new URLSearchParams();
       params.set('tab', viewTab);
       if (currentMonth) {
         params.set('month', currentMonth);
+      }
+      if (viewTab === 'month' && currentSemesterId && currentSemesterId !== '0') {
+        params.set('semester', currentSemesterId);
       }
       if (viewTab === 'week' && currentWeek) {
         params.set('week', currentWeek);
@@ -724,6 +729,7 @@ document.addEventListener('DOMContentLoaded', () => {
       monthSection.replaceChildren(...newMonthSection.childNodes);
       const newMonth = newMonthSection.getAttribute('data-selected-month') || '';
       const newMonthShort = newMonthSection.getAttribute('data-selected-month-short') || '';
+      const newSemesterId = newMonthSection.getAttribute('data-selected-semester-id') || '';
       if (newMonth) {
         monthSection.setAttribute('data-selected-month', newMonth);
       }
@@ -733,6 +739,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tabMonthBadge) {
           tabMonthBadge.textContent = newMonthShort;
         }
+      }
+      if (newSemesterId) {
+        monthSection.setAttribute('data-selected-semester-id', newSemesterId);
       }
       monthSection.querySelectorAll('form[data-ajax-form]').forEach(setupAjaxForm);
     }
@@ -781,13 +790,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * Lädt die Monats- und Wochenplanung für den gewählten Zielmonat im Hintergrund nach
+   * Lädt die Monats- und Wochenplanung für den gewählten Zielmonat (bzw. das Zielsemester) im Hintergrund nach
    * und tauscht die Abschnitte ohne Seiten-Reload und ohne Scroll-Sprung aus.
    *
    * @param {string} targetMonth Monat im Format YYYY-MM
    * @param {'month'|'week'} [targetTab='month'] Aktiver Ansichts-Tab
+   * @param {string} [targetSemester=''] Optionale Semester-ID
    */
-  async function switchMonthWithoutReload(targetMonth, targetTab = 'month') {
+  async function switchMonthWithoutReload(targetMonth, targetTab = 'month', targetSemester = '') {
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(targetMonth)) return;
 
     const targetSectionId = targetTab === 'week' ? 'wochenplanung' : 'monatsplanung';
@@ -797,6 +807,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams();
     params.set('tab', targetTab);
     params.set('month', targetMonth);
+    if (targetSemester && /^\d+$/.test(targetSemester)) {
+      params.set('semester', targetSemester);
+    }
     const url = `goals.php?${params.toString()}`;
 
     try {
@@ -823,6 +836,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
       applyPlanningSectionsFromDocument(doc);
 
+      const monthSection = document.getElementById('monatsplanung');
+      const resolvedMonth =
+        (monthSection && monthSection.getAttribute('data-selected-month')) || targetMonth;
+      const resolvedSemesterId =
+        (monthSection && monthSection.getAttribute('data-selected-semester-id')) || '';
+
       // URL in der Adresszeile aktualisieren, ohne zu scrollen
       const weekSection = document.getElementById('wochenplanung');
       const newWeek = weekSection ? weekSection.getAttribute('data-selected-week') : '';
@@ -830,7 +849,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const updatedParams = new URLSearchParams();
       updatedParams.set('tab', targetTab);
-      updatedParams.set('month', targetMonth);
+      updatedParams.set('month', resolvedMonth);
+      if (targetTab === 'month' && resolvedSemesterId && resolvedSemesterId !== '0') {
+        updatedParams.set('semester', resolvedSemesterId);
+      }
       if (targetTab === 'week' && newWeek) {
         updatedParams.set('week', newWeek);
         if (newDay) {
@@ -839,19 +861,16 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       window.history.replaceState(null, '', `goals.php?${updatedParams.toString()}`);
 
-      // Vorausgewählten Monat in den Formularen und Schnell-Buttons synchronisieren
+      // Vorausgewählten Monat in den Formularen synchronisieren
       document.querySelectorAll('input[name="redirect_month"]').forEach((input) => {
-        input.value = targetMonth;
-      });
-      document.querySelectorAll('.quick-add-monthly-goal-btn').forEach((btn) => {
-        btn.setAttribute('data-month', targetMonth);
+        input.value = resolvedMonth;
       });
 
       const budgetMonthInput = document.getElementById('budget_year_month');
-      if (budgetMonthInput) budgetMonthInput.value = targetMonth;
+      if (budgetMonthInput) budgetMonthInput.value = resolvedMonth;
 
       const createMgMonthInput = document.getElementById('create_mg_year_month');
-      if (createMgMonthInput) createMgMonthInput.value = targetMonth;
+      if (createMgMonthInput) createMgMonthInput.value = resolvedMonth;
     } catch (error) {
       window.location.href = url;
     }
