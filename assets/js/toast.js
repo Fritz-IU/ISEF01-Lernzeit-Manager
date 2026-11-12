@@ -1,5 +1,5 @@
 // assets/js/toast.js
-// Zentrale Bootstrap-5-Toast-Benachrichtigungen (Floating Alerts, Issue #22)
+// Zentrale Bootstrap-5-Toast-Benachrichtigungen & Modal-Feldvalidierung (Issue #22)
 
 (() => {
   const TOAST_CONFIG = {
@@ -135,7 +135,110 @@
     return toastEl;
   }
 
+  /**
+   * Entfernt die Rotmarkierung (is-invalid) und das zugehörige Feld-Feedback eines Eingabefelds.
+   * @param {Element|null} field
+   */
+  function clearFieldError(field) {
+    if (!field) return;
+
+    field.classList.remove('is-invalid');
+    field.removeAttribute('aria-invalid');
+    field.removeAttribute('aria-describedby');
+
+    const inputGroup = field.closest('.input-group');
+    if (inputGroup) {
+      inputGroup.querySelectorAll('.is-invalid').forEach((el) => {
+        el.classList.remove('is-invalid');
+        el.removeAttribute('aria-invalid');
+        el.removeAttribute('aria-describedby');
+      });
+    }
+
+    const colOrGroup = field.closest('.mb-3, .mb-2, .row, #stop-correction');
+    if (colOrGroup) {
+      colOrGroup.querySelectorAll('[data-field-error]').forEach((el) => el.remove());
+      if (
+        colOrGroup.nextElementSibling &&
+        colOrGroup.nextElementSibling.hasAttribute('data-field-error')
+      ) {
+        colOrGroup.nextElementSibling.remove();
+      }
+    }
+  }
+
+  /**
+   * Entfernt alle roten Feldmarkierungen (is-invalid) und Feld-Fehlermeldungen innerhalb eines Formulars.
+   * @param {HTMLFormElement|null} form
+   */
+  function clearFormErrors(form) {
+    if (!form) return;
+
+    form.querySelectorAll('.is-invalid').forEach((field) => {
+      field.classList.remove('is-invalid');
+      field.removeAttribute('aria-invalid');
+      field.removeAttribute('aria-describedby');
+    });
+    form.querySelectorAll('[data-field-error]').forEach((el) => el.remove());
+  }
+
+  /**
+   * Zeigt einen Validierungsfehler direkt am betroffenen Eingabefeld im Modal (mit aria-describedby)
+   * oder – falls kein Feld zugeordnet ist – als schwebenden Toast an.
+   *
+   * @param {HTMLFormElement|null} form
+   * @param {string} message
+   * @param {string|null} [fieldName]
+   */
+  function showFormError(form, message, fieldName = null) {
+    if (fieldName && form) {
+      const fieldEl = form.querySelector(`[name="${fieldName}"]`);
+      if (fieldEl) {
+        clearFormErrors(form);
+
+        const formId = form.id || 'modal-form';
+        const feedbackId = `${formId}-${fieldName}-error`;
+
+        let focusTarget = fieldEl;
+        if (fieldEl.type === 'hidden') {
+          const colEl = fieldEl.closest('.col-sm-6, .mb-3, .mb-2');
+          const selects = colEl ? colEl.querySelectorAll('.form-select') : [];
+          selects.forEach((sel) => {
+            sel.classList.add('is-invalid');
+            sel.setAttribute('aria-invalid', 'true');
+            sel.setAttribute('aria-describedby', feedbackId);
+          });
+          if (selects.length > 0) {
+            focusTarget = selects[0];
+          }
+        } else {
+          fieldEl.classList.add('is-invalid');
+          fieldEl.setAttribute('aria-invalid', 'true');
+          fieldEl.setAttribute('aria-describedby', feedbackId);
+        }
+
+        const feedbackEl = document.createElement('div');
+        feedbackEl.id = feedbackId;
+        feedbackEl.className = 'invalid-feedback d-block';
+        feedbackEl.setAttribute('data-field-error', fieldName);
+        feedbackEl.textContent = message;
+
+        const anchor = fieldEl.closest('.row') || fieldEl.closest('.input-group') || fieldEl;
+        anchor.insertAdjacentElement('afterend', feedbackEl);
+        if (typeof focusTarget.focus === 'function') {
+          focusTarget.focus();
+        }
+        return;
+      }
+    }
+
+    showToast('danger', message);
+  }
+
   window.showToast = showToast;
+  window.clearFieldError = clearFieldError;
+  window.clearFormErrors = clearFormErrors;
+  window.showFormError = showFormError;
 
   document.addEventListener('DOMContentLoaded', () => {
     const container = document.getElementById('toast-container');

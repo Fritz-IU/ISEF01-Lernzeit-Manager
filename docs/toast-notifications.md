@@ -16,7 +16,7 @@ Um Layout-Verschiebungen (*Layout Shifts*) beim Einblenden von Erfolgs- und Fehl
 ## 2. Beteiligte Dateien
 
 * **[`includes/footer.php`](../includes/footer.php) & [`login.php`](../login.php):** Rendern den zentralen Container `#toast-container` (`position-fixed bottom-0 end-0 p-3 app-toast-container`) und übergeben serverseitige Meldungen (`$_SESSION['flash_success']`, `$_SESSION['flash_error']`, `$_SESSION['flash_info']`, `$successMessage`, `$errorMessage`) als JSON im Attribut `data-initial-toasts`.
-* **[`assets/js/toast.js`](../assets/js/toast.js):** Stellt die globale Hilfsfunktion `window.showToast(type, message, options)` bereit und zeigt beim Laden der Seite automatisch alle in `data-initial-toasts` hinterlegten Meldungen an.
+* **[`assets/js/toast.js`](../assets/js/toast.js):** Stellt die globale Hilfsfunktion `window.showToast(type, message, options)` sowie die gemeinsamen Modal-Validierungshelfer `window.showFormError(form, message, fieldName)`, `window.clearFormErrors(form)` und `window.clearFieldError(field)` bereit und zeigt beim Laden der Seite automatisch alle in `data-initial-toasts` hinterlegten Meldungen an.
 * **[`assets/css/custom.css`](../assets/css/custom.css):** Definiert `.app-toast-container` (`z-index: 1090`, liegt damit auch über geöffneten Bootstrap-Modals) und `.app-toast`.
 
 ---

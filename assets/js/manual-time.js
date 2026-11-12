@@ -63,30 +63,15 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${MONTH_NAMES[monthIndex]} ${match[1]}`;
   }
 
-  /**
-   * Entfernt die Rotmarkierung und das Feld-Feedback eines einzelnen Eingabefelds.
-   * @param {Element} field
-   */
-  function clearFieldError(field) {
-    field.classList.remove('is-invalid');
-    field.removeAttribute('aria-invalid');
-    field.removeAttribute('aria-describedby');
-    const group = field.closest('.mb-3, .mb-2');
-    if (group) {
-      group.querySelectorAll('[data-field-error]').forEach((el) => el.remove());
-    }
-  }
+  const clearFieldError = window.clearFieldError || (() => {});
 
   /**
    * Entfernt alle roten Feldmarkierungen und Feld-Fehlermeldungen im Formular.
    */
   function clearFormErrors() {
-    form.querySelectorAll('.is-invalid').forEach((field) => {
-      field.classList.remove('is-invalid');
-      field.removeAttribute('aria-invalid');
-      field.removeAttribute('aria-describedby');
-    });
-    form.querySelectorAll('[data-field-error]').forEach((el) => el.remove());
+    if (typeof window.clearFormErrors === 'function') {
+      window.clearFormErrors(form);
+    }
   }
 
   /**
@@ -97,35 +82,16 @@ document.addEventListener('DOMContentLoaded', () => {
   function showFormError(message, fieldName = null) {
     hasUnsavedErrorState = true;
 
-    if (fieldName) {
-      const fieldEl = form.querySelector(`[name="${fieldName}"]`);
-      if (fieldEl) {
-        clearFieldError(fieldEl);
-        fieldEl.classList.add('is-invalid');
-        fieldEl.setAttribute('aria-invalid', 'true');
-
-        if (
-          (fieldName === 'duration_hours' || fieldName === 'duration_minutes') &&
-          durationHint
-        ) {
-          durationHint.className = 'form-text d-none';
-          durationHint.textContent = '';
-        }
-
-        const feedbackEl = document.createElement('div');
-        feedbackEl.className = 'invalid-feedback d-block';
-        feedbackEl.setAttribute('data-field-error', fieldName);
-        feedbackEl.textContent = message;
-
-        const anchor = fieldEl.closest('.row') || fieldEl.closest('.input-group') || fieldEl;
-        anchor.insertAdjacentElement('afterend', feedbackEl);
-        fieldEl.focus();
-        return;
-      }
+    if (
+      (fieldName === 'duration_hours' || fieldName === 'duration_minutes') &&
+      durationHint
+    ) {
+      durationHint.className = 'form-text d-none';
+      durationHint.textContent = '';
     }
 
-    if (typeof window.showToast === 'function') {
-      window.showToast('danger', message);
+    if (typeof window.showFormError === 'function') {
+      window.showFormError(form, message, fieldName);
     }
   }
 

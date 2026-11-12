@@ -9,29 +9,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const resumeBtn = document.getElementById('btn-resume-timer');
   const originalTitle = document.title;
 
-  /**
-   * Entfernt ein einzelnes Feld-Feedback und die Rotmarkierung.
-   * @param {Element} fieldEl
-   */
-  function clearStopFieldError(fieldEl) {
-    fieldEl.classList.remove('is-invalid');
-    fieldEl.removeAttribute('aria-invalid');
-    const group = fieldEl.closest('.mb-3, #stop-correction');
-    if (group) {
-      group.querySelectorAll('[data-field-error]').forEach((el) => el.remove());
-    }
-  }
+  const clearStopFieldError = window.clearFieldError || (() => {});
 
   /**
    * Entfernt alle roten Feldmarkierungen und Feld-Fehlermeldungen im Stopp-Modal.
    */
   function clearStopModalErrors() {
-    if (stopForm) {
-      stopForm.querySelectorAll('.is-invalid').forEach((el) => {
-        el.classList.remove('is-invalid');
-        el.removeAttribute('aria-invalid');
-      });
-      stopForm.querySelectorAll('[data-field-error]').forEach((el) => el.remove());
+    if (typeof window.clearFormErrors === 'function') {
+      window.clearFormErrors(stopForm);
     }
   }
 
@@ -41,27 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
    * @param {string|null} [fieldName]
    */
   function showStopModalError(message, fieldName = null) {
-    if (fieldName && stopForm) {
-      const fieldEl = stopForm.querySelector(`[name="${fieldName}"]`);
-      if (fieldEl) {
-        clearStopFieldError(fieldEl);
-        fieldEl.classList.add('is-invalid');
-        fieldEl.setAttribute('aria-invalid', 'true');
-
-        const feedbackEl = document.createElement('div');
-        feedbackEl.className = 'invalid-feedback d-block';
-        feedbackEl.setAttribute('data-field-error', fieldName);
-        feedbackEl.textContent = message;
-
-        const anchor = fieldEl.closest('.row') || fieldEl.closest('.input-group') || fieldEl;
-        anchor.insertAdjacentElement('afterend', feedbackEl);
-        fieldEl.focus();
-        return;
-      }
-    }
-
-    if (typeof window.showToast === 'function') {
-      window.showToast('danger', message);
+    if (typeof window.showFormError === 'function') {
+      window.showFormError(stopForm, message, fieldName);
     }
   }
 

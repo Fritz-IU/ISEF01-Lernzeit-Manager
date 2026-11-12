@@ -1379,7 +1379,7 @@ require_once __DIR__ . '/includes/header.php';
                 action="goals.php"
                 method="POST"
                 id="createGoalForm"
-                data-ajax-form<?= ($failedAction === 'create' && $errorMessage !== '') ? ' data-initial-error="' . htmlspecialchars($errorMessage, ENT_QUOTES) . '"' : '' ?><?= ($failedAction === 'create' && $errorField !== null) ? ' data-initial-error-field="' . htmlspecialchars($errorField, ENT_QUOTES) . '"' : '' ?>>
+                data-ajax-form<?= ($failedAction === 'create' && $errorField !== null && $errorMessage !== '') ? ' data-initial-error="' . htmlspecialchars($errorMessage, ENT_QUOTES) . '" data-initial-error-field="' . htmlspecialchars($errorField, ENT_QUOTES) . '"' : '' ?>>
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
                 <input type="hidden" name="action" value="create">
                 <input type="hidden" name="redirect_month" value="<?= htmlspecialchars($selectedMonth) ?>">
@@ -1473,7 +1473,7 @@ require_once __DIR__ . '/includes/header.php';
                 action="goals.php"
                 method="POST"
                 id="editGoalForm"
-                data-ajax-form<?= ($failedAction === 'update' && $errorMessage !== '') ? ' data-initial-error="' . htmlspecialchars($errorMessage, ENT_QUOTES) . '"' : '' ?><?= ($failedAction === 'update' && $errorField !== null) ? ' data-initial-error-field="' . htmlspecialchars($errorField, ENT_QUOTES) . '"' : '' ?>>
+                data-ajax-form<?= ($failedAction === 'update' && $errorField !== null && $errorMessage !== '') ? ' data-initial-error="' . htmlspecialchars($errorMessage, ENT_QUOTES) . '" data-initial-error-field="' . htmlspecialchars($errorField, ENT_QUOTES) . '"' : '' ?>>
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
                 <input type="hidden" name="action" value="update">
                 <input type="hidden" name="redirect_month" value="<?= htmlspecialchars($selectedMonth) ?>">

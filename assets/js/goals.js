@@ -39,97 +39,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  /**
-   * Entfernt die Rotmarkierung (is-invalid) und die zugehörige Feld-Fehlermeldung eines Eingabefelds.
-   * @param {Element} field
-   */
-  function clearFieldError(field) {
-    field.classList.remove('is-invalid');
-    field.removeAttribute('aria-invalid');
-    field.removeAttribute('aria-describedby');
-
-    const colOrGroup = field.closest('.mb-3, .row');
-    if (colOrGroup) {
-      if (field.classList.contains('slot-hour-select') || field.classList.contains('slot-minute-select')) {
-        const inputGroup = field.closest('.input-group');
-        if (inputGroup) {
-          inputGroup.querySelectorAll('.is-invalid').forEach((el) => {
-            el.classList.remove('is-invalid');
-            el.removeAttribute('aria-invalid');
-          });
-        }
-      }
-      colOrGroup.querySelectorAll('[data-field-error]').forEach((el) => el.remove());
-      if (
-        colOrGroup.nextElementSibling &&
-        colOrGroup.nextElementSibling.hasAttribute('data-field-error')
-      ) {
-        colOrGroup.nextElementSibling.remove();
-      }
-    }
-  }
-
-  /**
-   * Entfernt alle roten Feldmarkierungen (is-invalid) und Feld-Fehlermeldungen innerhalb eines Formulars.
-   * @param {HTMLFormElement|null} form
-   */
-  function clearFormErrors(form) {
-    if (!form) return;
-
-    form.querySelectorAll('.is-invalid').forEach((field) => {
-      field.classList.remove('is-invalid');
-      field.removeAttribute('aria-invalid');
-      field.removeAttribute('aria-describedby');
-    });
-    form.querySelectorAll('[data-field-error]').forEach((el) => el.remove());
-  }
-
-  /**
-   * Zeigt einen Validierungsfehler direkt am betroffenen Eingabefeld im Modal oder als Toast an.
-   * @param {HTMLFormElement} form
-   * @param {string} message
-   * @param {string|null} [fieldName]
-   */
-  function showFormError(form, message, fieldName = null) {
-    if (fieldName && form) {
-      const fieldEl = form.querySelector(`[name="${fieldName}"]`);
-      if (fieldEl) {
-        clearFormErrors(form);
-
-        let focusTarget = fieldEl;
-        if (fieldEl.type === 'hidden') {
-          const colEl = fieldEl.closest('.col-sm-6, .mb-3');
-          const selects = colEl ? colEl.querySelectorAll('.form-select') : [];
-          selects.forEach((sel) => {
-            sel.classList.add('is-invalid');
-            sel.setAttribute('aria-invalid', 'true');
-          });
-          if (selects.length > 0) {
-            focusTarget = selects[0];
-          }
-        } else {
-          fieldEl.classList.add('is-invalid');
-          fieldEl.setAttribute('aria-invalid', 'true');
-        }
-
-        const feedbackEl = document.createElement('div');
-        feedbackEl.className = 'invalid-feedback d-block';
-        feedbackEl.setAttribute('data-field-error', fieldName);
-        feedbackEl.textContent = message;
-
-        const anchor = fieldEl.closest('.row') || fieldEl.closest('.input-group') || fieldEl;
-        anchor.insertAdjacentElement('afterend', feedbackEl);
-        if (typeof focusTarget.focus === 'function') {
-          focusTarget.focus();
-        }
-        return;
-      }
-    }
-
-    if (typeof window.showToast === 'function') {
-      window.showToast('danger', message);
-    }
-  }
+  const clearFieldError = window.clearFieldError || (() => {});
+  const clearFormErrors = window.clearFormErrors || (() => {});
+  const showFormError = window.showFormError || (() => {});
 
   /**
    * Richtet die asynchrone Übermittlung via Fetch an api/goals.php ein. Bei Fehlern bleibt
@@ -1009,11 +921,15 @@ document.addEventListener('DOMContentLoaded', () => {
       bootstrap.Modal
     ) {
       const modalForm = modalEl.querySelector('form');
-      if (modalForm && modalForm.dataset.initialError) {
+      if (
+        modalForm &&
+        modalForm.dataset.initialError &&
+        modalForm.dataset.initialErrorField
+      ) {
         showFormError(
           modalForm,
           modalForm.dataset.initialError,
-          modalForm.dataset.initialErrorField || null
+          modalForm.dataset.initialErrorField
         );
       }
       bootstrap.Modal.getOrCreateInstance(modalEl).show();
