@@ -6,49 +6,28 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalDuration = document.getElementById('modal-stop-duration');
   const stopModalElement = document.getElementById('stopTimerModal');
   const stopForm = document.getElementById('form-stop-timer');
-  const stopAlert = document.getElementById('stop-timer-alert');
   const resumeBtn = document.getElementById('btn-resume-timer');
   const originalTitle = document.title;
 
+  const clearStopFieldError = window.clearFieldError || (() => {});
+
   /**
-   * Entfernt die Fehlermeldung und alle roten Feldmarkierungen im Stopp-Modal.
+   * Entfernt alle roten Feldmarkierungen und Feld-Fehlermeldungen im Stopp-Modal.
    */
   function clearStopModalErrors() {
-    if (stopAlert) {
-      stopAlert.className = 'alert alert-danger d-none';
-      stopAlert.textContent = '';
-    }
-    if (stopForm) {
-      stopForm.querySelectorAll('.is-invalid').forEach((el) => {
-        el.classList.remove('is-invalid');
-        el.removeAttribute('aria-invalid');
-      });
+    if (typeof window.clearFormErrors === 'function') {
+      window.clearFormErrors(stopForm);
     }
   }
 
   /**
-   * Zeigt eine Fehlermeldung im Stopp-Modal an und markiert optional das betroffene Feld rot.
+   * Zeigt einen Validierungsfehler direkt am betroffenen Feld im Stopp-Modal oder als Toast an.
    * @param {string} message
    * @param {string|null} [fieldName]
    */
   function showStopModalError(message, fieldName = null) {
-    if (stopAlert) {
-      stopAlert.className = 'alert alert-danger small py-2 mb-3';
-      stopAlert.textContent = '';
-
-      const strong = document.createElement('strong');
-      strong.textContent = 'Fehler: ';
-      stopAlert.appendChild(strong);
-      stopAlert.appendChild(document.createTextNode(message));
-    }
-
-    if (fieldName && stopForm) {
-      const fieldEl = stopForm.querySelector(`[name="${fieldName}"]`);
-      if (fieldEl) {
-        fieldEl.classList.add('is-invalid');
-        fieldEl.setAttribute('aria-invalid', 'true');
-        fieldEl.focus();
-      }
+    if (typeof window.showFormError === 'function') {
+      window.showFormError(stopForm, message, fieldName);
     }
   }
 
@@ -265,8 +244,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (stopForm) {
       stopForm.querySelectorAll('input, textarea').forEach((inputEl) => {
         inputEl.addEventListener('input', () => {
-          inputEl.classList.remove('is-invalid');
-          inputEl.removeAttribute('aria-invalid');
+          if (inputEl.classList.contains('is-invalid')) {
+            clearStopFieldError(inputEl);
+          }
         });
       });
 

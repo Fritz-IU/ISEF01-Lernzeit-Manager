@@ -178,7 +178,7 @@ try {
 
     // Erfolgsmeldung für die Seite nach der Weiterleitung hinterlegen (außer bei direktem In-Place-Toggle)
     if (empty($response['skip_flash'])) {
-        $_SESSION['goals_success'] = $response['message'];
+        $_SESSION['flash_success'] = $response['message'];
     }
 
     echo json_encode(['success' => true] + $response);

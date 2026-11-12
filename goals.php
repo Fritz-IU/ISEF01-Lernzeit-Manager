@@ -40,10 +40,6 @@ $errorMessage = '';
 $errorField = null;
 $failedAction = '';
 
-// Erfolgsmeldung aus der Session übernehmen (gesetzt vor dem Redirect nach POST)
-$successMessage = (string) ($_SESSION['goals_success'] ?? '');
-unset($_SESSION['goals_success']);
-
 // Formularverarbeitung für Lernziele sowie monatliche Budgets und Zwischenziele.
 // Lernziele anlegen/bearbeiten läuft per JavaScript über api/goals.php; dieser Block dient dort als Fallback ohne JavaScript.
 // Nach erfolgreicher Aktion wird per Redirect auf GET umgeleitet (Post/Redirect/Get),
@@ -65,64 +61,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($action === 'create') {
             $goalController->createGoal($userId, $_POST);
-            $_SESSION['goals_success'] = 'Das Lernziel wurde erfolgreich angelegt.';
+            $_SESSION['flash_success'] = 'Das Lernziel wurde erfolgreich angelegt.';
             header('Location: ' . $semesterRedirectUrl);
             exit;
         } elseif ($action === 'update') {
             $goalId = isset($_POST['goal_id']) && is_scalar($_POST['goal_id']) ? (int) $_POST['goal_id'] : 0;
             $goalController->updateGoal($goalId, $userId, $_POST);
-            $_SESSION['goals_success'] = 'Das Lernziel wurde erfolgreich aktualisiert.';
+            $_SESSION['flash_success'] = 'Das Lernziel wurde erfolgreich aktualisiert.';
             header('Location: ' . $semesterRedirectUrl);
             exit;
         } elseif ($action === 'delete') {
             $goalId = isset($_POST['goal_id']) && is_scalar($_POST['goal_id']) ? (int) $_POST['goal_id'] : 0;
             $goalController->deleteGoal($goalId, $userId);
-            $_SESSION['goals_success'] = 'Das Lernziel wurde erfolgreich gelöscht.';
+            $_SESSION['flash_success'] = 'Das Lernziel wurde erfolgreich gelöscht.';
             header('Location: ' . $semesterRedirectUrl);
             exit;
         } elseif ($action === 'save_monthly_budget') {
             $targetMonth = $goalController->saveMonthlyBudget($userId, $_POST);
-            $_SESSION['goals_success'] = 'Das Zeitbudget für ' . GoalController::formatYearMonth($targetMonth) . ' wurde gespeichert.';
+            $_SESSION['flash_success'] = 'Das Zeitbudget für ' . GoalController::formatYearMonth($targetMonth) . ' wurde gespeichert.';
             header('Location: goals.php?tab=month&month=' . urlencode($targetMonth));
             exit;
         } elseif ($action === 'create_monthly_goal') {
             $targetMonth = $goalController->createMonthlyGoal($userId, $_POST);
-            $_SESSION['goals_success'] = 'Das Zwischenziel wurde erfolgreich angelegt.';
+            $_SESSION['flash_success'] = 'Das Zwischenziel wurde erfolgreich angelegt.';
             header('Location: goals.php?tab=month&month=' . urlencode($targetMonth));
             exit;
         } elseif ($action === 'update_monthly_goal') {
             $monthlyGoalId = isset($_POST['monthly_goal_id']) && is_scalar($_POST['monthly_goal_id']) ? (int) $_POST['monthly_goal_id'] : 0;
             $targetMonth = $goalController->updateMonthlyGoal($monthlyGoalId, $userId, $_POST);
-            $_SESSION['goals_success'] = 'Das Zwischenziel wurde erfolgreich aktualisiert.';
+            $_SESSION['flash_success'] = 'Das Zwischenziel wurde erfolgreich aktualisiert.';
             header('Location: goals.php?tab=month&month=' . urlencode($targetMonth));
             exit;
         } elseif ($action === 'delete_monthly_goal') {
             $monthlyGoalId = isset($_POST['monthly_goal_id']) && is_scalar($_POST['monthly_goal_id']) ? (int) $_POST['monthly_goal_id'] : 0;
             $targetMonth = $goalController->deleteMonthlyGoal($monthlyGoalId, $userId);
-            $_SESSION['goals_success'] = 'Das Zwischenziel wurde erfolgreich gelöscht.';
+            $_SESSION['flash_success'] = 'Das Zwischenziel wurde erfolgreich gelöscht.';
             header('Location: goals.php?tab=month&month=' . urlencode($targetMonth));
             exit;
         } elseif ($action === 'create_learning_slot') {
             $slotResult = $goalController->createLearningSlot($userId, $_POST);
-            $_SESSION['goals_success'] = 'Die Lerneinheit wurde erfolgreich eingeplant.';
+            $_SESSION['flash_success'] = 'Die Lerneinheit wurde erfolgreich eingeplant.';
             header('Location: goals.php?tab=week&month=' . urlencode($slotResult['year_month']) . '&week=' . urlencode($slotResult['iso_week']) . '&day=' . urlencode($slotResult['slot_date']));
             exit;
         } elseif ($action === 'update_learning_slot') {
             $slotId = isset($_POST['slot_id']) && is_scalar($_POST['slot_id']) ? (int) $_POST['slot_id'] : 0;
             $slotResult = $goalController->updateLearningSlot($slotId, $userId, $_POST);
-            $_SESSION['goals_success'] = 'Die Lerneinheit wurde erfolgreich aktualisiert.';
+            $_SESSION['flash_success'] = 'Die Lerneinheit wurde erfolgreich aktualisiert.';
             header('Location: goals.php?tab=week&month=' . urlencode($slotResult['year_month']) . '&week=' . urlencode($slotResult['iso_week']) . '&day=' . urlencode($slotResult['slot_date']));
             exit;
         } elseif ($action === 'delete_learning_slot') {
             $slotId = isset($_POST['slot_id']) && is_scalar($_POST['slot_id']) ? (int) $_POST['slot_id'] : 0;
             $slotResult = $goalController->deleteLearningSlot($slotId, $userId);
-            $_SESSION['goals_success'] = 'Die Lerneinheit wurde erfolgreich gelöscht.';
+            $_SESSION['flash_success'] = 'Die Lerneinheit wurde erfolgreich gelöscht.';
             header('Location: goals.php?tab=week&month=' . urlencode($slotResult['year_month']) . '&week=' . urlencode($slotResult['iso_week']) . '&day=' . urlencode($slotResult['slot_date']));
             exit;
         } elseif (in_array($action, ['toggle_learning_slot', 'toggle_week', 'toggle_monthly_goal', 'toggle_goal', 'toggle_completion'], true)) {
             $toggleResult = $goalController->toggleCompletion($userId, $_POST);
             $feedback = GoalController::describeToggleResult($toggleResult, $semesterRedirectUrl);
-            $_SESSION['goals_success'] = $feedback['message'];
+            $_SESSION['flash_success'] = $feedback['message'];
             header('Location: ' . $feedback['redirect']);
             exit;
         } else {
@@ -243,21 +239,6 @@ require_once __DIR__ . '/includes/header.php';
         Neues Lernziel
     </button>
 </div>
-
-<!-- Statusmeldungen -->
-<?php if ($errorMessage !== '' && $failedAction !== 'create' && $failedAction !== 'update'): ?>
-    <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
-        <strong>Fehler:</strong> <?= htmlspecialchars($errorMessage) ?>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Schließen"></button>
-    </div>
-<?php endif; ?>
-
-<?php if ($successMessage !== ''): ?>
-    <div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
-        <?= htmlspecialchars($successMessage) ?>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Schließen"></button>
-    </div>
-<?php endif; ?>
 
 <!-- Hauptansicht-Umschalter: Semester vs. Monat vs. Woche -->
 <ul class="nav nav-pills goals-view-switcher mb-4 p-1 bg-white rounded shadow-sm d-inline-flex flex-wrap gap-1" id="goalsMainTabs" role="tablist">
@@ -1499,7 +1480,11 @@ require_once __DIR__ . '/includes/header.php';
 <div class="modal fade" id="createGoalModal" tabindex="-1" aria-labelledby="createGoalModalLabel" aria-hidden="true" <?= $failedAction === 'create' ? ' data-auto-open="true"' : '' ?>>
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <form action="goals.php" method="POST" id="createGoalForm" data-ajax-form>
+            <form
+                action="goals.php"
+                method="POST"
+                id="createGoalForm"
+                data-ajax-form<?= ($failedAction === 'create' && $errorField !== null && $errorMessage !== '') ? ' data-initial-error="' . htmlspecialchars($errorMessage, ENT_QUOTES) . '" data-initial-error-field="' . htmlspecialchars($errorField, ENT_QUOTES) . '"' : '' ?>>
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
                 <input type="hidden" name="action" value="create">
                 <input type="hidden" name="redirect_month" value="<?= htmlspecialchars($selectedMonth) ?>">
@@ -1508,12 +1493,6 @@ require_once __DIR__ . '/includes/header.php';
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
                 </div>
                 <div class="modal-body">
-                    <div id="create-goal-alert" class="alert alert-danger<?= ($failedAction === 'create' && $errorMessage !== '') ? '' : ' d-none' ?>" role="alert">
-                        <?php if ($failedAction === 'create' && $errorMessage !== ''): ?>
-                            <strong>Fehler:</strong> <?= htmlspecialchars($errorMessage) ?>
-                        <?php endif; ?>
-                    </div>
-
                     <div class="mb-3">
                         <label for="create_title" class="form-label fw-semibold">Lernziel <span class="text-danger">*</span></label>
                         <input
@@ -1595,7 +1574,11 @@ require_once __DIR__ . '/includes/header.php';
 <div class="modal fade" id="editGoalModal" tabindex="-1" aria-labelledby="editGoalModalLabel" aria-hidden="true" <?= $failedAction === 'update' ? ' data-auto-open="true"' : '' ?>>
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <form action="goals.php" method="POST" id="editGoalForm" data-ajax-form>
+            <form
+                action="goals.php"
+                method="POST"
+                id="editGoalForm"
+                data-ajax-form<?= ($failedAction === 'update' && $errorField !== null && $errorMessage !== '') ? ' data-initial-error="' . htmlspecialchars($errorMessage, ENT_QUOTES) . '" data-initial-error-field="' . htmlspecialchars($errorField, ENT_QUOTES) . '"' : '' ?>>
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
                 <input type="hidden" name="action" value="update">
                 <input type="hidden" name="redirect_month" value="<?= htmlspecialchars($selectedMonth) ?>">
@@ -1605,12 +1588,6 @@ require_once __DIR__ . '/includes/header.php';
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
                 </div>
                 <div class="modal-body">
-                    <div id="edit-goal-alert" class="alert alert-danger<?= ($failedAction === 'update' && $errorMessage !== '') ? '' : ' d-none' ?>" role="alert">
-                        <?php if ($failedAction === 'update' && $errorMessage !== ''): ?>
-                            <strong>Fehler:</strong> <?= htmlspecialchars($errorMessage) ?>
-                        <?php endif; ?>
-                    </div>
-
                     <div class="mb-3">
                         <label for="edit_title" class="form-label fw-semibold">Lernziel <span class="text-danger">*</span></label>
                         <input
@@ -1686,7 +1663,7 @@ require_once __DIR__ . '/includes/header.php';
 <div class="modal fade" id="deleteGoalModal" tabindex="-1" aria-labelledby="deleteGoalModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <form action="goals.php" method="POST">
+            <form action="goals.php" method="POST" data-ajax-form>
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
                 <input type="hidden" name="action" value="delete">
                 <input type="hidden" name="redirect_month" value="<?= htmlspecialchars($selectedMonth) ?>">
@@ -1722,8 +1699,6 @@ require_once __DIR__ . '/includes/header.php';
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
                 </div>
                 <div class="modal-body">
-                    <div id="monthly-budget-alert" class="alert alert-danger d-none" role="alert"></div>
-
                     <div class="mb-3">
                         <label for="budget_year_month" class="form-label fw-semibold">Monat <span class="text-danger">*</span></label>
                         <input
@@ -1775,8 +1750,6 @@ require_once __DIR__ . '/includes/header.php';
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
                 </div>
                 <div class="modal-body">
-                    <div id="create-mg-alert" class="alert alert-danger d-none" role="alert"></div>
-
                     <div class="mb-3">
                         <label for="create_mg_goal_id" class="form-label fw-semibold">Zugehöriges Lernziel <span class="text-danger">*</span></label>
                         <select class="form-select" id="create_mg_goal_id" name="goal_id" required>
@@ -1867,8 +1840,6 @@ require_once __DIR__ . '/includes/header.php';
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
                 </div>
                 <div class="modal-body">
-                    <div id="edit-mg-alert" class="alert alert-danger d-none" role="alert"></div>
-
                     <div class="mb-3">
                         <label for="edit_mg_goal_id" class="form-label fw-semibold">Zugehöriges Lernziel <span class="text-danger">*</span></label>
                         <select class="form-select" id="edit_mg_goal_id" name="goal_id" required>
@@ -1941,7 +1912,7 @@ require_once __DIR__ . '/includes/header.php';
 <div class="modal fade" id="deleteMonthlyGoalModal" tabindex="-1" aria-labelledby="deleteMonthlyGoalModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <form action="goals.php" method="POST">
+            <form action="goals.php" method="POST" data-ajax-form>
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>">
                 <input type="hidden" name="action" value="delete_monthly_goal">
                 <input type="hidden" name="monthly_goal_id" id="delete_mg_id" value="">
@@ -1976,8 +1947,6 @@ require_once __DIR__ . '/includes/header.php';
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
                 </div>
                 <div class="modal-body">
-                    <div id="create-slot-alert" class="alert alert-danger d-none" role="alert"></div>
-
                     <div class="mb-3">
                         <label for="create_slot_monthly_goal_id" class="form-label fw-semibold">Monatliches Zwischenziel <span class="text-danger">*</span></label>
                         <select class="form-select" id="create_slot_monthly_goal_id" name="monthly_goal_id" required>
@@ -2111,8 +2080,6 @@ require_once __DIR__ . '/includes/header.php';
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
                 </div>
                 <div class="modal-body">
-                    <div id="edit-slot-alert" class="alert alert-danger d-none" role="alert"></div>
-
                     <div class="mb-3">
                         <label for="edit_slot_monthly_goal_id" class="form-label fw-semibold">Monatliches Zwischenziel <span class="text-danger">*</span></label>
                         <select class="form-select" id="edit_slot_monthly_goal_id" name="monthly_goal_id" required>
@@ -2231,7 +2198,6 @@ require_once __DIR__ . '/includes/header.php';
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
                 </div>
                 <div class="modal-body">
-                    <div id="delete-slot-alert" class="alert alert-danger d-none" role="alert"></div>
                     <p class="mb-2">
                         Möchtest du diese geplante Lernzeit wirklich löschen?
                     </p>

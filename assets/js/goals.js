@@ -39,71 +39,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  /**
-   * Liefert die Fehlerbox im Modal eines Formulars.
-   * @param {HTMLFormElement|null} form
-   * @returns {HTMLElement|null}
-   */
-  function getFormAlert(form) {
-    return form ? form.querySelector('.modal-body > .alert-danger') : null;
-  }
-
-  /**
-   * Entfernt die Rotmarkierung (is-invalid) eines einzelnen Eingabefelds.
-   * @param {Element} field
-   */
-  function clearFieldError(field) {
-    field.classList.remove('is-invalid');
-    field.removeAttribute('aria-invalid');
-    field.removeAttribute('aria-describedby');
-  }
-
-  /**
-   * Entfernt Fehlermeldung und rote Markierungen (is-invalid) innerhalb eines Formulars.
-   * @param {HTMLFormElement|null} form
-   */
-  function clearFormErrors(form) {
-    if (!form) return;
-
-    const alertBox = getFormAlert(form);
-    if (alertBox) {
-      alertBox.className = 'alert alert-danger d-none';
-      alertBox.textContent = '';
-    }
-
-    form.querySelectorAll('.is-invalid').forEach(clearFieldError);
-  }
-
-  /**
-   * Zeigt eine Fehlermeldung im Modal an und markiert optional das betroffene Eingabefeld rot.
-   * @param {HTMLFormElement} form
-   * @param {string} message
-   * @param {string|null} [fieldName]
-   */
-  function showFormError(form, message, fieldName = null) {
-    const alertBox = getFormAlert(form);
-    if (alertBox) {
-      alertBox.className = 'alert alert-danger mb-3';
-      alertBox.textContent = '';
-
-      const strong = document.createElement('strong');
-      strong.textContent = 'Fehler: ';
-      alertBox.appendChild(strong);
-      alertBox.appendChild(document.createTextNode(message));
-    }
-
-    if (fieldName) {
-      const fieldEl = form.querySelector(`[name="${fieldName}"]`);
-      if (fieldEl) {
-        fieldEl.classList.add('is-invalid');
-        fieldEl.setAttribute('aria-invalid', 'true');
-        if (alertBox && alertBox.id) {
-          fieldEl.setAttribute('aria-describedby', alertBox.id);
-        }
-        fieldEl.focus();
-      }
-    }
-  }
+  const clearFieldError = window.clearFieldError || (() => {});
+  const clearFormErrors = window.clearFormErrors || (() => {});
+  const showFormError = window.showFormError || (() => {});
 
   /**
    * Richtet die asynchrone Übermittlung via Fetch an api/goals.php ein. Bei Fehlern bleibt
@@ -190,6 +128,9 @@ document.addEventListener('DOMContentLoaded', () => {
               const parser = new DOMParser();
               const doc = parser.parseFromString(html, 'text/html');
               applyPlanningSectionsFromDocument(doc);
+              if (result.message && typeof window.showToast === 'function') {
+                window.showToast('success', result.message);
+              }
               return;
             }
           }
@@ -998,6 +939,18 @@ document.addEventListener('DOMContentLoaded', () => {
       typeof bootstrap !== 'undefined' &&
       bootstrap.Modal
     ) {
+      const modalForm = modalEl.querySelector('form');
+      if (
+        modalForm &&
+        modalForm.dataset.initialError &&
+        modalForm.dataset.initialErrorField
+      ) {
+        showFormError(
+          modalForm,
+          modalForm.dataset.initialError,
+          modalForm.dataset.initialErrorField
+        );
+      }
       bootstrap.Modal.getOrCreateInstance(modalEl).show();
     }
   });

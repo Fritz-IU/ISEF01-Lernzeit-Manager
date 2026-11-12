@@ -36,11 +36,6 @@ if ($displayName === '') {
     $displayName = $user['email'] ?? ($_SESSION['user_email'] ?? '');
 }
 
-$flashSuccess = isset($_SESSION['flash_success']) && is_string($_SESSION['flash_success'])
-    ? $_SESSION['flash_success']
-    : '';
-unset($_SESSION['flash_success']);
-
 // Gewähltes Semesterziel (nur lesende Auswahl per GET)
 $requestedGoalId = filter_input(INPUT_GET, 'goal', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
 $requestedGoalId = is_int($requestedGoalId) ? $requestedGoalId : null;
@@ -108,13 +103,6 @@ $extraScripts = '<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/c
 
 require_once __DIR__ . '/includes/header.php';
 ?>
-
-<?php if ($flashSuccess !== ''): ?>
-    <div class="alert alert-success alert-dismissible fade show shadow-sm mb-4" role="alert">
-        <?= htmlspecialchars($flashSuccess) ?>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Schließen"></button>
-    </div>
-<?php endif; ?>
 
 <!-- Kopfbereich: Begrüßung, Semesterauswahl und Schnellzugriffe -->
 <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-4">
