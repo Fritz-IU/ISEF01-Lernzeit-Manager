@@ -196,49 +196,6 @@ class TimeEntryDAO
     }
 
     /**
-     * Liefert die zuletzt erfassten Zeiteinträge eines Nutzers inklusive Modul- und Semesterangaben.
-     *
-     * @param int $userId ID des Nutzers
-     * @param int $limit Maximale Anzahl der zurückgegebenen Einträge
-     * @return list<array<string, mixed>>
-     */
-    public function findRecentByUserId(int $userId, int $limit = 10): array
-    {
-        $safeLimit = max(1, min(100, $limit));
-
-        $sql = "SELECT te.id,
-                       te.user_id,
-                       te.monthly_goal_id,
-                       te.learning_slot_id,
-                       te.source,
-                       te.entry_date,
-                       te.started_at,
-                       te.ended_at,
-                       te.resumed_at,
-                       te.tracked_seconds,
-                       te.note,
-                       te.created_at,
-                       mg.title AS monthly_goal_title,
-                       mg.plan_month,
-                       mg.goal_id,
-                       lg.title AS parent_goal_title
-                FROM time_entries te
-                INNER JOIN monthly_goals mg
-                    ON mg.id = te.monthly_goal_id AND mg.user_id = te.user_id
-                INNER JOIN learning_goals lg
-                    ON lg.id = mg.goal_id AND lg.user_id = te.user_id
-                WHERE te.user_id = :user_id
-                  AND (te.source = 'manual' OR te.ended_at IS NOT NULL)
-                ORDER BY te.entry_date DESC, te.created_at DESC, te.id DESC
-                LIMIT " . $safeLimit;
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([':user_id' => $userId]);
-
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    /**
      * Lädt ein einzelnes Modul / Zwischenziel anhand seiner ID und der Benutzer-ID (Mandantenisolation).
      *
      * @param int $monthlyGoalId ID des Zwischenziels

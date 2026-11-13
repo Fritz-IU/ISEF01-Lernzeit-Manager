@@ -105,7 +105,7 @@ Wiederverwendbare Layout-Komponenten nach dem **DRY-Prinzip** (_Don't Repeat You
 Verzeichnis für das Datenbankschema und Testdatensätze.
 
 - `schema.sql`: Definiert Tabellen, Primär-/Fremdschlüssel und Constraints.
-- `seed.sql`: Beinhaltet synthetische Testdaten gemäß DSGVO-Vorgaben (`testuser@iu-demo.de`).
+- `seed.sql`: Beinhaltet synthetische Testdaten gemäß DSGVO-Vorgaben: sechs Test-Accounts für unterschiedliche Situationen, Datumswerte relativ zum Import (siehe [`docs/datenbank.md`](docs/datenbank.md#test-login)).
 
 #### `src/`
 

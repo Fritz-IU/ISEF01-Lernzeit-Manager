@@ -115,18 +115,6 @@ class GoalController
     }
 
     /**
-     * Lädt ein einzelnes Lernziel des Nutzers.
-     *
-     * @param int $goalId
-     * @param int $userId
-     * @return array<string, mixed>|null
-     */
-    public function getGoal(int $goalId, int $userId): ?array
-    {
-        return $this->goalDAO->findByIdAndUserId($goalId, $userId);
-    }
-
-    /**
      * Erstellt ein neues Lernziel nach erfolgreicher Validierung.
      *
      * @param int $userId ID des Nutzers

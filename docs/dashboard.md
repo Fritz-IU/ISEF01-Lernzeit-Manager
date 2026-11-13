@@ -95,4 +95,4 @@ Ohne verpasste Einheit liefert der Controller `null`, dann erscheint kein Hinwei
 
 **Schließen:** Der Hinweis bleibt während der Sitzung sichtbar, bis er geschlossen wird. `dashboard.js` merkt sich das in `sessionStorage` unter `inactivityNoticeClosed:{vorheriger Login}`. Nach dem nächsten Login gilt ein neuer Schlüssel, neue Versäumnisse werden also wieder angezeigt.
 
-**Zum Testen:** Nach `sql/reset.php` haben Testnutzer 1 (letzter Login 28.10.2026) und Testnutzer 2 (27.10.2026) verpasste Einheiten. Bei beiden gibt es einen Tag mit zwei verpassten Modulen: Testnutzer 1 am Do 5.11. (Datenbanken und Betriebssysteme), Testnutzer 2 am Do 29.10. (BWL und Mathematik). Jeder Login setzt `last_login_at` neu, für einen weiteren Test also die Datenbank zurücksetzen.
+**Zum Testen:** Nach `sql/reset.php` hat `verzug@iu-demo.de` (letzter Login vor 9 Tagen) sechs verpasste Einheiten, vor vier Tagen zwei Module an einem Tag (Algorithmen und Projektmanagement). Die Datumswerte im Seed sind relativ zum Einspielen (siehe [`datenbank.md`](datenbank.md#test-login)). Jeder Login setzt `last_login_at` neu, für einen weiteren Test also die Datenbank zurücksetzen.

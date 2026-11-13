@@ -2038,4 +2038,547 @@ final class GoalControllerTest extends TestCase
         self::assertSame($message, $feedback['message']);
         self::assertSame($redirect, $feedback['redirect']);
     }
+
+    // ------------------------------------------------------------------
+    // validateAndParseSlotInput (Lerneinheit)
+    // ------------------------------------------------------------------
+
+    /**
+     * Gültige Eingabe für eine Lerneinheit am Donnerstag der KW 45, einzelne Felder lassen sich überschreiben.
+     *
+     * @param array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
+    private static function lerneinheitEingabe(array $overrides = []): array
+    {
+        return array_merge([
+            'monthly_goal_id' => '3',
+            'slot_date'       => '2026-11-05',
+            'start_time'      => '10:00',
+            'end_time'        => '12:00',
+            'notes'           => '',
+        ], $overrides);
+    }
+
+    /**
+     * Mock liefert Zwischenziel 3 (November 2026, Lernziel 7) für Nutzer 42, für alles andere null.
+     * Das Lernziel 7 läuft vom 01.10.2026 bis 31.03.2027.
+     */
+    private function daoLiefertZwischenzielFuerLerneinheit(): void
+    {
+        $this->dao->method('findMonthlyGoalByIdAndUserId')->willReturnCallback(
+            static fn (int $monthlyGoalId, int $userId): ?array => ($monthlyGoalId === 3 && $userId === self::USER_ID)
+                ? ['id' => 3, 'goal_id' => 7, 'user_id' => self::USER_ID, 'plan_month' => '2026-11', 'completed_at' => null]
+                : null
+        );
+        $this->daoLiefertLernziel();
+    }
+
+    #[Test]
+    public function bereinigtGueltigeLerneinheitEingabe(): void
+    {
+        $this->daoLiefertZwischenzielFuerLerneinheit();
+
+        $result = $this->controller->validateAndParseSlotInput(self::USER_ID, self::lerneinheitEingabe([
+            'monthly_goal_id' => ' 3 ',
+            'slot_date'       => ' 2026-11-05 ',
+            'start_time'      => ' 10:00 ',
+            'end_time'        => '12:00:00',
+            'notes'           => '  Kapitel 2 wiederholen  ',
+        ]));
+
+        self::assertSame([
+            'monthly_goal_id' => 3,
+            'goal_id'         => 7,
+            'year_month'      => '2026-11',
+            'slot_date'       => '2026-11-05',
+            'iso_week'        => '2026-W45',
+            'start_time'      => '10:00:00',
+            'end_time'        => '12:00:00',
+            'notes'           => 'Kapitel 2 wiederholen',
+        ], $result);
+    }
+
+    /**
+     * @return array<string, array{0: array<string, mixed>, 1: array<string, mixed>}>
+     */
+    public static function gueltigeLerneinheitRandwerte(): array
+    {
+        return [
+            'Zwischenziel-ID als Ganzzahl'     => [['monthly_goal_id' => 3], ['monthly_goal_id' => 3]],
+            'Notiz nur aus Leerzeichen'        => [['notes' => '   '], ['notes' => null]],
+            'Notiz mit 255 Zeichen'            => [['notes' => str_repeat('a', 255)], ['notes' => str_repeat('a', 255)]],
+            'Notiz mit 255 Umlauten'           => [['notes' => str_repeat('ä', 255)], ['notes' => str_repeat('ä', 255)]],
+            'Mindestdauer von 10 Minuten'      => [['start_time' => '23:40', 'end_time' => '23:50'], ['start_time' => '23:40:00', 'end_time' => '23:50:00']],
+            'Fast ganzer Tag'                  => [['start_time' => '00:00', 'end_time' => '23:50'], ['start_time' => '00:00:00', 'end_time' => '23:50:00']],
+            'Montag vor Monatsbeginn (KW 44)'  => [['slot_date' => '2026-10-26'], ['iso_week' => '2026-W44', 'year_month' => '2026-10']],
+            'Sonntag nach Monatsende (KW 49)'  => [['slot_date' => '2026-12-06'], ['iso_week' => '2026-W49', 'year_month' => '2026-12']],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $overrides
+     * @param array<string, mixed> $expected
+     */
+    #[Test]
+    #[DataProvider('gueltigeLerneinheitRandwerte')]
+    public function akzeptiertLerneinheitRandwerte(array $overrides, array $expected): void
+    {
+        $this->daoLiefertZwischenzielFuerLerneinheit();
+
+        $result = $this->controller->validateAndParseSlotInput(self::USER_ID, self::lerneinheitEingabe($overrides));
+
+        foreach ($expected as $key => $value) {
+            self::assertSame($value, $result[$key], "Falscher Wert für '{$key}'");
+        }
+    }
+
+    /**
+     * @return array<string, array{0: array<string, mixed>, 1: string}>
+     */
+    public static function ungueltigeLerneinheitEingaben(): array
+    {
+        return [
+            'Zwischenziel fehlt'                       => [['monthly_goal_id' => null], 'monthly_goal_id'],
+            'Zwischenziel leer'                        => [['monthly_goal_id' => ''], 'monthly_goal_id'],
+            'Zwischenziel keine Zahl'                  => [['monthly_goal_id' => 'abc'], 'monthly_goal_id'],
+            'Zwischenziel als Kommazahl'               => [['monthly_goal_id' => '3.5'], 'monthly_goal_id'],
+            'Zwischenziel 0'                           => [['monthly_goal_id' => '0'], 'monthly_goal_id'],
+            'Zwischenziel negativ'                     => [['monthly_goal_id' => '-3'], 'monthly_goal_id'],
+            'Fremdes Zwischenziel'                     => [['monthly_goal_id' => '99'], 'monthly_goal_id'],
+            'Datum fehlt'                              => [['slot_date' => null], 'slot_date'],
+            'Datum nur Leerzeichen'                    => [['slot_date' => '   '], 'slot_date'],
+            'Datum im deutschen Format'                => [['slot_date' => '05.11.2026'], 'slot_date'],
+            'Datum existiert nicht'                    => [['slot_date' => '2026-02-30'], 'slot_date'],
+            'Datum vor Beginn des Lernziels'           => [['slot_date' => '2026-09-30'], 'slot_date'],
+            'Datum nach Ende des Lernziels'            => [['slot_date' => '2027-04-01'], 'slot_date'],
+            'Datum vor der ersten Monatswoche'         => [['slot_date' => '2026-10-25'], 'slot_date'],
+            'Datum nach der letzten Monatswoche'       => [['slot_date' => '2026-12-07'], 'slot_date'],
+            'Startzeit fehlt'                          => [['start_time' => null], 'start_time'],
+            'Startzeit leer'                           => [['start_time' => ''], 'start_time'],
+            'Startzeit 24 Uhr'                         => [['start_time' => '24:00'], 'start_time'],
+            'Startzeit ohne Doppelpunkt'               => [['start_time' => '1000'], 'start_time'],
+            'Startzeit mit einstelliger Stunde'        => [['start_time' => '9:00'], 'start_time'],
+            'Startzeit mit Text'                       => [['start_time' => '10 Uhr'], 'start_time'],
+            'Startzeit nicht in 10-Minuten-Schritten'  => [['start_time' => '10:05'], 'start_time'],
+            'Endzeit fehlt'                            => [['end_time' => null], 'end_time'],
+            'Endzeit 24 Uhr'                           => [['end_time' => '24:00'], 'end_time'],
+            'Endzeit nicht in 10-Minuten-Schritten'    => [['end_time' => '12:15'], 'end_time'],
+            'Endzeit vor Startzeit'                    => [['end_time' => '09:00'], 'end_time'],
+            'Endzeit gleich Startzeit'                 => [['end_time' => '10:00'], 'end_time'],
+            'Notiz mit 256 Zeichen'                    => [['notes' => str_repeat('a', 256)], 'notes'],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $overrides
+     */
+    #[Test]
+    #[DataProvider('ungueltigeLerneinheitEingaben')]
+    public function lehntUngueltigeLerneinheitEingabeMitFeldhinweisAb(array $overrides, string $expectedField): void
+    {
+        $this->daoLiefertZwischenzielFuerLerneinheit();
+
+        $this->erwartetValidierungsfehler(
+            fn () => $this->controller->validateAndParseSlotInput(self::USER_ID, self::lerneinheitEingabe($overrides)),
+            $expectedField
+        );
+    }
+
+    #[Test]
+    public function nenntZeitraumDesLernzielsWennLerneinheitAusserhalbLiegt(): void
+    {
+        $this->daoLiefertZwischenzielFuerLerneinheit();
+
+        $e = $this->erwartetValidierungsfehler(
+            fn () => $this->controller->validateAndParseSlotInput(self::USER_ID, self::lerneinheitEingabe(['slot_date' => '2026-09-30'])),
+            'slot_date'
+        );
+
+        self::assertSame('Das Datum muss im Zeitraum des Lernziels liegen (01.10.2026 bis 31.03.2027).', $e->getMessage());
+    }
+
+    #[Test]
+    public function nenntMonatDesZwischenzielsWennLerneinheitAusserhalbDerMonatswochenLiegt(): void
+    {
+        $this->daoLiefertZwischenzielFuerLerneinheit();
+
+        $e = $this->erwartetValidierungsfehler(
+            fn () => $this->controller->validateAndParseSlotInput(self::USER_ID, self::lerneinheitEingabe(['slot_date' => '2026-12-07'])),
+            'slot_date'
+        );
+
+        self::assertStringContainsString('November 2026', $e->getMessage());
+    }
+
+    #[Test]
+    public function fragtDatenbankNichtAbWennZwischenzielIdDerLerneinheitUngueltigIst(): void
+    {
+        $this->dao->expects($this->never())->method('findMonthlyGoalByIdAndUserId');
+
+        $this->erwartetValidierungsfehler(
+            fn () => $this->controller->validateAndParseSlotInput(self::USER_ID, self::lerneinheitEingabe(['monthly_goal_id' => '0'])),
+            'monthly_goal_id'
+        );
+    }
+
+    #[Test]
+    public function speichertKeineLerneinheitBeiUngueltigerEingabe(): void
+    {
+        $this->daoLiefertZwischenzielFuerLerneinheit();
+
+        $this->dao->expects($this->never())->method('createLearningSlot');
+        $this->dao->expects($this->never())->method('setMonthlyGoalCompleted');
+        $this->dao->expects($this->never())->method('setGoalCompleted');
+
+        $this->erwartetValidierungsfehler(
+            fn () => $this->controller->createLearningSlot(self::USER_ID, self::lerneinheitEingabe(['end_time' => '09:00'])),
+            'end_time'
+        );
+    }
+
+    // ------------------------------------------------------------------
+    // updateLearningSlot: Bearbeiten und Kaskade
+    // ------------------------------------------------------------------
+
+    /**
+     * Mock liefert Lerneinheit 101 (offen oder erledigt) für Nutzer 42, für alles andere null.
+     */
+    private function daoLiefertBestehendeLerneinheit(int $isCompleted): void
+    {
+        $this->dao->method('findLearningSlotByIdAndUserId')->willReturnCallback(
+            static fn (int $slotId, int $userId): ?array => ($slotId === 101 && $userId === self::USER_ID)
+                ? ['id' => 101, 'monthly_goal_id' => 3, 'goal_id' => 7, 'slot_date' => '2026-11-04', 'plan_month' => '2026-11', 'is_completed' => $isCompleted]
+                : null
+        );
+    }
+
+    #[Test]
+    public function lehntBearbeitenFremderOderFehlenderLerneinheitAb(): void
+    {
+        $this->daoLiefertBestehendeLerneinheit(0);
+        $this->daoLiefertZwischenzielFuerLerneinheit();
+
+        $this->dao->expects($this->never())->method('updateLearningSlot');
+
+        try {
+            $this->controller->updateLearningSlot(999, self::USER_ID, self::lerneinheitEingabe());
+            self::fail('Es wurde keine ValidationException geworfen.');
+        } catch (ValidationException $e) {
+            self::assertNull($e->getField());
+            self::assertStringContainsString('gehört einem anderen Benutzer', $e->getMessage());
+        }
+    }
+
+    #[Test]
+    public function speichertGeaenderteLerneinheitNichtBeiUngueltigerEingabe(): void
+    {
+        $this->daoLiefertBestehendeLerneinheit(0);
+        $this->daoLiefertZwischenzielFuerLerneinheit();
+
+        $this->dao->expects($this->never())->method('updateLearningSlot');
+        $this->dao->expects($this->never())->method('setMonthlyGoalCompleted');
+
+        $this->erwartetValidierungsfehler(
+            fn () => $this->controller->updateLearningSlot(101, self::USER_ID, self::lerneinheitEingabe(['start_time' => '10:05'])),
+            'start_time'
+        );
+    }
+
+    #[Test]
+    public function oeffnetUebergeordneteEbenenBeimBearbeitenEinerOffenenLerneinheit(): void
+    {
+        $_SESSION['completed_weeks'][self::USER_ID]['2026-W45'] = '2026-11-04';
+        $this->daoLiefertBestehendeLerneinheit(0);
+        $this->daoLiefertZwischenzielFuerLerneinheit();
+
+        $this->dao->expects($this->once())
+            ->method('updateLearningSlot')
+            ->with(101, self::USER_ID, 3, '2026-11-05', '14:00:00', '15:30:00', 'Übungsblatt 3');
+        $this->dao->expects($this->once())->method('setMonthlyGoalCompleted')->with(3, self::USER_ID, null);
+        $this->dao->expects($this->once())->method('setGoalCompleted')->with(7, self::USER_ID, null);
+
+        $result = $this->controller->updateLearningSlot(101, self::USER_ID, self::lerneinheitEingabe([
+            'start_time' => '14:00',
+            'end_time'   => '15:30',
+            'notes'      => 'Übungsblatt 3',
+        ]));
+
+        self::assertSame(['slot_id' => 101, 'slot_date' => '2026-11-05', 'iso_week' => '2026-W45', 'year_month' => '2026-11'], $result);
+        self::assertArrayNotHasKey('2026-W45', $_SESSION['completed_weeks'][self::USER_ID]);
+    }
+
+    #[Test]
+    public function laesstErledigtStatusBeimBearbeitenEinerErledigtenLerneinheitUnveraendert(): void
+    {
+        $_SESSION['completed_weeks'][self::USER_ID]['2026-W45'] = '2026-11-04';
+        $this->daoLiefertBestehendeLerneinheit(1);
+        $this->daoLiefertZwischenzielFuerLerneinheit();
+
+        $this->dao->expects($this->once())->method('updateLearningSlot');
+        $this->dao->expects($this->never())->method('setMonthlyGoalCompleted');
+        $this->dao->expects($this->never())->method('setGoalCompleted');
+
+        $this->controller->updateLearningSlot(101, self::USER_ID, self::lerneinheitEingabe());
+
+        self::assertSame('2026-11-04', $_SESSION['completed_weeks'][self::USER_ID]['2026-W45']);
+    }
+
+    // ------------------------------------------------------------------
+    // toggleWeekCompleted: Wochenabschluss
+    // ------------------------------------------------------------------
+
+    /**
+     * @return array<string, array{0: string}>
+     */
+    public static function ungueltigeKalenderwochen(): array
+    {
+        return [
+            'Leer'                       => [''],
+            'Ohne W'                     => ['2026-45'],
+            'Kleines w'                  => ['2026-w45'],
+            'Deutsche Schreibweise'      => ['KW 45'],
+            'Woche 0'                    => ['2026-W00'],
+            'Woche 54'                   => ['2026-W54'],
+            'KW 53 in Jahr mit 52 KW'    => ['2025-W53'],
+        ];
+    }
+
+    #[Test]
+    #[DataProvider('ungueltigeKalenderwochen')]
+    public function lehntWochenabschlussMitUngueltigerKalenderwocheAb(string $isoWeek): void
+    {
+        $this->dao->expects($this->never())->method('findLearningSlotsByDateRange');
+        $this->dao->expects($this->never())->method('setLearningSlotsCompletedByDateRange');
+
+        $this->erwartetValidierungsfehler(
+            fn () => $this->controller->toggleWeekCompleted(self::USER_ID, $isoWeek, '2026-11', '2026-11-05'),
+            'iso_week'
+        );
+    }
+
+    #[Test]
+    public function lehntWochenabschlussOhneLerneinheitenAb(): void
+    {
+        $this->dao->method('findLearningSlotsByDateRange')->willReturn([]);
+        $this->dao->expects($this->never())->method('setLearningSlotsCompletedByDateRange');
+
+        $this->erwartetValidierungsfehler(
+            fn () => $this->controller->toggleWeekCompleted(self::USER_ID, '2026-W45', '2026-11', '2026-11-05'),
+            'iso_week'
+        );
+    }
+
+    /**
+     * @return array<string, array{0: string, 1: ?string, 2: string, 3: string, 4: string, 5: string}>
+     */
+    public static function wochenUeberMonatsUndJahresgrenzen(): array
+    {
+        return [
+            'Woche mitten im Monat'    => ['2026-W45', '2026-11', '2026-11-02', '2026-11-08', '2026-W45', '2026-11'],
+            'Woche über Monatswechsel' => ['2026-W44', '2026-11', '2026-10-26', '2026-11-01', '2026-W44', '2026-10'],
+            'KW 53 über Jahreswechsel' => ['2026-W53', '2027-01', '2026-12-28', '2027-01-03', '2026-W53', '2026-12'],
+            'Erste Woche ohne Monat'   => ['2027-W01', null, '2027-01-04', '2027-01-10', '2027-W01', '2027-01'],
+            'Mit Leerzeichen'          => [' 2026-W45 ', '2026-11', '2026-11-02', '2026-11-08', '2026-W45', '2026-11'],
+        ];
+    }
+
+    #[Test]
+    #[DataProvider('wochenUeberMonatsUndJahresgrenzen')]
+    public function haktWocheVonMontagBisSonntagAbUndOrdnetSieDemMonatZu(
+        string $isoWeek,
+        ?string $requestedMonth,
+        string $expectedStart,
+        string $expectedEnd,
+        string $expectedWeek,
+        string $expectedMonth
+    ): void {
+        $this->dao->expects($this->once())
+            ->method('findLearningSlotsByDateRange')
+            ->with(self::USER_ID, $expectedStart, $expectedEnd)
+            ->willReturn([['id' => 101, 'monthly_goal_id' => 0, 'is_completed' => 0]]);
+        $this->dao->expects($this->once())
+            ->method('setLearningSlotsCompletedByDateRange')
+            ->with(self::USER_ID, $expectedStart, $expectedEnd, true);
+
+        $result = $this->controller->toggleWeekCompleted(self::USER_ID, $isoWeek, $requestedMonth, '2026-11-05');
+
+        self::assertSame($expectedWeek, $result['iso_week']);
+        self::assertSame($expectedMonth, $result['year_month']);
+    }
+
+    #[Test]
+    public function merktAbgeschlosseneWocheInDerSitzungMitDatum(): void
+    {
+        $this->dao->method('findLearningSlotsByDateRange')->willReturn([
+            ['id' => 101, 'monthly_goal_id' => 0, 'is_completed' => 1],
+            ['id' => 102, 'monthly_goal_id' => 0, 'is_completed' => 0],
+        ]);
+
+        $result = $this->controller->toggleWeekCompleted(self::USER_ID, '2026-W45', '2026-11', '2026-11-05');
+
+        self::assertTrue($result['is_completed']);
+        self::assertSame('2026-11-05', $result['completed_at']);
+        self::assertSame('05.11.2026', $result['completed_at_formatted']);
+        self::assertSame(2, $result['updated_slot_count']);
+        self::assertSame('2026-11-05', $_SESSION['completed_weeks'][self::USER_ID]['2026-W45']);
+    }
+
+    #[Test]
+    public function oeffnetAbgeschlosseneWocheWiederUndKaskadiertNachOben(): void
+    {
+        $_SESSION['completed_weeks'][self::USER_ID]['2026-W45'] = '2026-11-04';
+
+        // Alle Lerneinheiten der KW 45 sind erledigt, ebenso Monatsziel 3 und Semesterziel 7
+        $this->dao->method('findLearningSlotsByDateRange')
+            ->with(self::USER_ID, '2026-11-02', '2026-11-08')
+            ->willReturn([
+                ['id' => 101, 'monthly_goal_id' => 3, 'goal_id' => 7, 'is_completed' => 1],
+                ['id' => 102, 'monthly_goal_id' => 3, 'goal_id' => 7, 'is_completed' => 1],
+            ]);
+        $this->dao->method('findMonthlyGoalByIdAndUserId')
+            ->with(3, self::USER_ID)
+            ->willReturn(['id' => 3, 'goal_id' => 7, 'plan_month' => '2026-11', 'completed_at' => '2026-11-04']);
+        $this->dao->method('findLearningSlotsByMonthlyGoalId')
+            ->with(3, self::USER_ID)
+            ->willReturn([
+                ['id' => 101, 'is_completed' => 1],
+                ['id' => 102, 'is_completed' => 1],
+            ]);
+        $this->dao->method('findByIdAndUserId')
+            ->with(7, self::USER_ID)
+            ->willReturn(array_merge(self::PARENT_GOAL, ['completed_at' => '2026-11-04']));
+        $this->dao->method('findMonthlyGoalsByGoalId')
+            ->with(7, self::USER_ID)
+            ->willReturn([['id' => 3, 'completed_at' => '2026-11-04']]);
+
+        $this->dao->expects($this->once())
+            ->method('setLearningSlotsCompletedByDateRange')
+            ->with(self::USER_ID, '2026-11-02', '2026-11-08', false);
+        $this->dao->expects($this->once())->method('setMonthlyGoalCompleted')->with(3, self::USER_ID, null);
+        $this->dao->expects($this->once())->method('setGoalCompleted')->with(7, self::USER_ID, null);
+
+        $result = $this->controller->toggleWeekCompleted(self::USER_ID, '2026-W45', '2026-11', '2026-11-05');
+
+        self::assertFalse($result['is_completed']);
+        self::assertNull($result['completed_at']);
+        self::assertNull($result['completed_at_formatted']);
+        self::assertSame([], $result['completed_goal_ids']);
+        self::assertArrayNotHasKey('2026-W45', $_SESSION['completed_weeks'][self::USER_ID]);
+    }
+
+    // ------------------------------------------------------------------
+    // parseIsoWeek, doesWeekBelongToMonth, resolveMonthForWeek
+    // ------------------------------------------------------------------
+
+    /**
+     * @return array<string, array{0: string, 1: string}>
+     */
+    public static function gueltigeKalenderwochenMitMontag(): array
+    {
+        return [
+            'KW 45'                        => ['2026-W45', '2026-11-02'],
+            'KW 1 beginnt im Vorjahr'      => ['2026-W01', '2025-12-29'],
+            'KW 53 in Jahr mit 53 KW'      => ['2026-W53', '2026-12-28'],
+            'KW 53 im Schaltjahr 2020'     => ['2020-W53', '2020-12-28'],
+            'Mit Leerzeichen'              => [' 2026-W45 ', '2026-11-02'],
+        ];
+    }
+
+    #[Test]
+    #[DataProvider('gueltigeKalenderwochenMitMontag')]
+    public function liefertMontagDerKalenderwoche(string $isoWeek, string $expectedMonday): void
+    {
+        $monday = GoalController::parseIsoWeek($isoWeek);
+
+        self::assertNotNull($monday);
+        self::assertSame($expectedMonday, $monday->format('Y-m-d'));
+    }
+
+    #[Test]
+    #[DataProvider('ungueltigeKalenderwochen')]
+    public function liefertNullFuerUngueltigeKalenderwoche(string $isoWeek): void
+    {
+        self::assertNull(GoalController::parseIsoWeek($isoWeek));
+    }
+
+    #[Test]
+    public function liefertNullOhneKalenderwoche(): void
+    {
+        self::assertNull(GoalController::parseIsoWeek(null));
+    }
+
+    /**
+     * @return array<string, array{0: string, 1: string, 2: bool}>
+     */
+    public static function wochenUndMonate(): array
+    {
+        return [
+            'Woche ganz im Monat'                   => ['2026-11-02', '2026-11', true],
+            'Woche ganz in anderem Monat'           => ['2026-11-02', '2026-10', false],
+            'Sechs Tage im Vormonat'                => ['2026-10-26', '2026-10', true],
+            'Ein Tag im Folgemonat'                 => ['2026-10-26', '2026-11', false],
+            'Vier Tage reichen'                     => ['2026-04-27', '2026-04', true],
+            'Drei Tage reichen nicht'               => ['2026-04-27', '2026-05', false],
+            'Jahreswechsel, vier Tage im Dezember'  => ['2026-12-28', '2026-12', true],
+            'Jahreswechsel, drei Tage im Januar'    => ['2026-12-28', '2027-01', false],
+        ];
+    }
+
+    #[Test]
+    #[DataProvider('wochenUndMonate')]
+    public function ordnetWocheDemMonatMitMindestensVierTagenZu(string $monday, string $yearMonth, bool $expected): void
+    {
+        self::assertSame(
+            $expected,
+            GoalController::doesWeekBelongToMonth(new \DateTimeImmutable($monday), $yearMonth)
+        );
+    }
+
+    /**
+     * @return array<string, array{0: ?string, 1: ?string, 2: ?string}>
+     */
+    public static function monateUndWochenFuerZuordnung(): array
+    {
+        return [
+            'Nur Monat'                          => ['2026-11', null, '2026-11'],
+            'Monat mit Leerzeichen'              => [' 2026-11 ', null, '2026-11'],
+            'Ungültiger Monat'                   => ['2026-13', null, null],
+            'Nichts angegeben'                   => [null, null, null],
+            'Woche hat Vorrang vor Monat'        => ['2026-11', '2026-W44', '2026-10'],
+            'Woche ohne Monat'                   => [null, '2026-W53', '2026-12'],
+            'KW 53 bei gewähltem Januar'         => ['2027-01', '2026-W53', '2026-12'],
+            'Ungültige Woche, Monat bleibt'      => ['2026-11', '2026-W54', '2026-11'],
+            'Woche und Monat ungültig'           => ['abc', '2026-W54', null],
+        ];
+    }
+
+    #[Test]
+    #[DataProvider('monateUndWochenFuerZuordnung')]
+    public function bestimmtMonatFuerKalenderwoche(?string $requestedMonth, ?string $requestedWeek, ?string $expected): void
+    {
+        self::assertSame($expected, GoalController::resolveMonthForWeek($requestedMonth, $requestedWeek));
+    }
+
+    #[Test]
+    public function ordnetJedeWocheDesJahresGenauEinemMonatZu(): void
+    {
+        // Für alle 53 Kalenderwochen 2026: Der Monat aus resolveMonthForWeek ist der einzige,
+        // dem doesWeekBelongToMonth die Woche zuordnet. Beide Methoden dürfen sich nie widersprechen.
+        for ($week = 1; $week <= 53; $week++) {
+            $isoWeek = sprintf('2026-W%02d', $week);
+            $monday = GoalController::parseIsoWeek($isoWeek);
+            self::assertNotNull($monday, $isoWeek);
+
+            $month = GoalController::resolveMonthForWeek(null, $isoWeek);
+            self::assertNotNull($month, $isoWeek);
+            self::assertTrue(GoalController::doesWeekBelongToMonth($monday, $month), "{$isoWeek} gehört nicht zu {$month}");
+
+            foreach ([$monday->format('Y-m'), $monday->modify('+6 days')->format('Y-m')] as $otherMonth) {
+                if ($otherMonth !== $month) {
+                    self::assertFalse(GoalController::doesWeekBelongToMonth($monday, $otherMonth), "{$isoWeek} gehört auch zu {$otherMonth}");
+                }
+            }
+        }
+    }
 }

@@ -358,52 +358,6 @@ class TimeTrackingDAO
     }
 
     /**
-     * Aktualisiert einen bestehenden Zeiteintrag.
-     *
-     * @param int $id ID des Eintrags
-     * @param int $userId ID des Nutzers
-     * @param int $monthlyGoalId Neues Modul
-     * @param string $entryDate Datum (YYYY-MM-DD)
-     * @param string|null $startedAt Startzeit
-     * @param string|null $endedAt Endzeit
-     * @param int $trackedSeconds Lernzeit in Sekunden
-     * @param string|null $note Notiz
-     * @return bool True bei Erfolg
-     */
-    public function update(
-        int $id,
-        int $userId,
-        int $monthlyGoalId,
-        string $entryDate,
-        ?string $startedAt,
-        ?string $endedAt,
-        int $trackedSeconds,
-        ?string $note = null
-    ): bool {
-        $sql = "UPDATE time_entries
-                SET monthly_goal_id = :monthly_goal_id,
-                    entry_date = :entry_date,
-                    started_at = :started_at,
-                    ended_at = :ended_at,
-                    tracked_seconds = :tracked_seconds,
-                    note = :note
-                WHERE id = :id AND user_id = :user_id";
-
-        $stmt = $this->db->prepare($sql);
-
-        return $stmt->execute([
-            ':monthly_goal_id' => $monthlyGoalId,
-            ':entry_date'      => $entryDate,
-            ':started_at'      => $startedAt,
-            ':ended_at'        => $endedAt,
-            ':tracked_seconds' => $trackedSeconds,
-            ':note'            => $note,
-            ':id'              => $id,
-            ':user_id'         => $userId,
-        ]);
-    }
-
-    /**
      * Löscht einen Zeiteintrag des Nutzers.
      *
      * @param int $id ID des Eintrags

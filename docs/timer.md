@@ -8,7 +8,7 @@ Dieses Dokument beschreibt die Architektur, Datenhaltung und Funktionsweise des 
 
 ### Wofür wurde es implementiert?
 * **Live-Zeiterfassung per Stoppuhr:** Studierende können ihre Lernzeit zu einzelnen Modulen / Lernzielen in Echtzeit messen, pausieren, fortsetzen und mit Notizen abspeichern.
-* **Neulade- und Ausfallsicherheit (TC-12-03):** Die Stoppuhr wird serverseitig in der Datenbank geführt. Beim Neuladen der Seite oder Schließen des Browsers läuft die Stoppuhr nahtlos weiter und synchronisiert sich präzise mit dem Server.
+* **Neulade- und Ausfallsicherheit (TC-4-02):** Die Stoppuhr wird serverseitig in der Datenbank geführt. Beim Neuladen der Seite oder Schließen des Browsers läuft die Stoppuhr nahtlos weiter und synchronisiert sich präzise mit dem Server.
 * **Lernhistorie & Übersicht:** Alle Einheiten werden tabellarisch aufgeführt und liefern aggregierte Kennzahlen (heute gelernt, Gesamtlernzeit, Anzahl Einheiten). (Die manuelle Nachbuchung ist in [`zeitnachbuchung.md`](zeitnachbuchung.md) beschrieben.)
 * **Verknüpfung mit Tages-/Wochenzielen & Auto-Completion:** Gespeicherte Stoppuhr-Zeiten fließen automatisch als Ist-Zeit in die Tages-, Wochen- und Monatsplanung ([`goals.php`](../goals.php)) ein. Sobald die aufsummierte gestoppte Zeit eines Tagesziels (`learning_slots`) oder Monatsziels (`monthly_goals`) die geplante Soll-Zeit erreicht oder überschreitet, wird das Ziel automatisch als erledigt (`is_completed = 1` bzw. `completed_at`) abgehakt. Das geschieht beim Stoppen, nicht beim Anzeigen der Planung, damit eine bewusst zurückgenommene Einheit offen bleibt. Mit einer Lerneinheit verknüpfte Buchungen (`learning_slot_id`, manuelle Nachbuchung) bleiben bei dieser Einheit, nur nicht verknüpfte Zeit wird chronologisch auf die Einheiten des Tages verteilt.
 
@@ -92,10 +92,7 @@ CREATE TABLE time_entries (
 
 * **Lernziel / Modul (`goal_id`):** Pflichtfeld (`goal_id > 0`). Muss existieren und dem angemeldeten Benutzer gehören (`goalExistsForUser`). Fehlerfeld: `goal_id`.
   Die Auswahl zeigt nur die Zwischenziele des aktuellen Monats, gruppiert nach Semesterziel (`TimeTrackingController::groupGoalsForPicker()`). Gibt es im Monat keine, erscheinen alle. Für andere Monate ist „Lernzeit nachbuchen“ gedacht.
-* **Startzeit (`started_at`):** Pflichtfeld bei Zeitintervallen. Gültiges DateTime-Format. Fehlerfeld: `started_at`.
-* **Endzeit (`ended_at`):** Muss ein gültiges DateTime-Format sein und zeitlich **am oder nach** der Startzeit liegen (`ended_at >= started_at`). Fehlerfeld: `ended_at`.
-* **Dauerberechnung (`calculateDuration`):** Berechnet die Differenz in Sekunden (`endDt - startDt`). Wirft bei unplausibler Zeitfolge eine `ValidationException` für `ended_at`.
-* **Lernzeit (`tracked_seconds`):** Darf nicht negativ sein und höchstens 24 Stunden (86.400 Sekunden) pro Einzeleintrag umfassen. Fehlerfeld: `tracked_seconds`.
+* **Lernzeit (`tracked_seconds`):** Höchstens 24 Stunden (86.400 Sekunden, `TimeTrackingController::MAX_DURATION_SECONDS`) pro Einzeleintrag.
 * **Vergessene Stoppuhr (Issue #50):** Beim Stoppen wird nie abgelehnt, sondern die gemessene Zeit auf 24 Stunden gekappt. Ab 6 Stunden (`LONG_SESSION_SECONDS`) blendet der Stopp-Dialog die Felder „Tatsächliche Lerndauer“ (`corrected_hours`, `corrected_minutes`) ein, vorbelegt mit der gemessenen Zeit. Erlaubt ist eine Minute bis zur gemessenen Zeit (höchstens 24 Stunden); ein unveränderter Vorschlag übernimmt die gemessene Zeit sekundengenau.
 * **Notiz (`note`):** Optional, maximal 255 Zeichen (`TimeTrackingController::MAX_NOTE_LENGTH`). Fehlerfeld: `note`.
 
@@ -112,10 +109,8 @@ CREATE TABLE time_entries (
 
 ## 6. Unit-Tests ([TimeTrackingControllerTest.php](../tests/Unit/Controllers/TimeTrackingControllerTest.php))
 
-Die Testsuite umfasst 92 isolierte Tests (234 Assertions) ohne Datenbankzugriff:
-* **Pflichtfeldprüfungen & Grenzwerte:** `#[DataProvider]` für fehlende/ungültige `goal_id`, ungültige Start-/Endzeiten, Notizlängen und negative Zeiten.
-* **Plausibilitätsprüfung:** `lehntEndzeitVorStartzeitAb` verifiziert, dass verkehrte Zeitfolgen abgewiesen werden.
-* **Dauerberechnung:** Verifiziert `calculateDuration` über mehrere Szenarien (exakte Minuten, über Mitternacht, HTML-Datetimes).
+Die Testsuite umfasst 83 isolierte Tests (238 Assertions) ohne Datenbankzugriff:
+* **Pflichtfeldprüfungen beim Starten:** `#[DataProvider]` für fehlende/ungültige `goal_id`, fremde Lernziele und zu lange Notizen.
 * **Zustandsübergänge der Stoppuhr:** Testet Starten, Pausieren, Fortsetzen, Stoppen, Verwerfen und das Verhindern von Mehrfachstarts sowie Randfälle (keine offene Stoppuhr, 24-Stunden-Grenze, zu lange Notiz beim Stoppen).
 * **Auto-Completion & Soll-Ist-Abgleich:** `markiertZielAlsErledigtWennSollzeitErreicht`, `markiertZielNichtAlsErledigtWennSollzeitNochNichtErreicht`, `markiertMonatszielAlsErledigtWennAufsummierteZeitSollzeitUeberschreitet` sowie `bewertetErreichenDerSollzeitKorrekt` prüfen, ob Ziele bei Erreichen oder Überschreiten der geplanten Soll-Zeit automatisch als erledigt markiert werden. Weitere Tests decken mehrere Tagesziele an einem Tag, bereits erledigte Ziele und die Ermittlung der Soll-Zeit (`resolvePlannedSeconds`) ab.
 * **Ist-Zeit in der Planung:** [`GoalControllerTest.php`](../tests/Unit/Controllers/GoalControllerTest.php) prüft die Verteilung der gestoppten Zeit auf Lerneinheiten, die Summen je Tag und Woche, den Erledigt-Status der Zwischenziele und `formatTrackedDuration`.

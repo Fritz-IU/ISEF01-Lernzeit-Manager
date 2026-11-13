@@ -41,7 +41,7 @@ lernzeit-manager/
 │   └── DAO/
 │       └── TimeEntryDAO.php     # PDO Prepared Statements mit Mandantenisolation über user_id
 └── tests/Unit/Controllers/
-    └── TimeEntryControllerTest.php # 110 PHPUnit-Tests für Validierung und Berechnungen
+    └── TimeEntryControllerTest.php # 108 PHPUnit-Tests für Validierung und Berechnungen
 ```
 
 ---

@@ -30,7 +30,7 @@ Diese Anleitung dokumentiert das Hosting und die Aktualisierung des **Lernzeit-M
 3. Über den Button oben rechts im Alwaysdata-Menü **phpMyAdmin** öffnen und sich mit den MySQL-Zugangsdaten anmelden:
    - Links die Datenbank `lernzeit-manager_lernzeit` auswählen.
    - Über den Reiter **Importieren** zuerst [`sql/schema.sql`](../sql/schema.sql) hochladen und ausführen (legt alle Tabellen, Keys und Constraints an).
-   - Danach über **Importieren** die Datei [`sql/seed.sql`](../sql/seed.sql) einspielen (legt die DSGVO-konformen Testnutzer und Beispieldaten an).
+   - Danach über **Importieren** die Datei [`sql/seed.sql`](../sql/seed.sql) einspielen (legt die DSGVO-konformen Testnutzer und Beispieldaten an). Die Datumswerte werden beim Import relativ zu „heute“ berechnet, vor einer Vorführung oder Abgabe also neu einspielen (Tabellen vorher mit `schema.sql` leeren).
 
 > **Hinweis zu `sql/reset.php`:** Das Skript [`sql/reset.php`](../sql/reset.php) ist ausschließlich für die lokale XAMPP-Umgebung gedacht. Auf Alwaysdata ist es durch `APP_ENV=production` gesperrt und kann dort auch technisch kein `DROP DATABASE` / `CREATE DATABASE` ausführen, da die Datenbankverwaltung über das Alwaysdata-Panel erfolgt.
 
@@ -115,7 +115,7 @@ Nach dem Deployment können folgende Punkte geprüft werden:
 1. **Erreichbarkeit & Test-Login:**
    - Aufruf von [https://lernzeit-manager.alwaysdata.net/](https://lernzeit-manager.alwaysdata.net/)
    - Anmeldung mit einem Testaccount aus [`sql/seed.sql`](../sql/seed.sql):
-     - **E-Mail:** `testuser@iu-demo.de` *(oder `testuser2@iu-demo.de`)*
+     - **E-Mail:** `testuser@iu-demo.de` *(weitere Accounts und ihre Situationen: [`datenbank.md`](datenbank.md#test-login))*
      - **Passwort:** `Lernzeit-Test-2026`
 2. **Schutz versteckter Dateien (`.htaccess`):**
    - Aufruf von `https://lernzeit-manager.alwaysdata.net/.env` im Browser.
