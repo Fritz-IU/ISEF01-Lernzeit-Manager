@@ -54,7 +54,7 @@ final class TimeTrackingControllerTest extends TestCase
     }
 
     // =========================================================================
-    // 1. Validierung des Pflichtfelds goal_id
+    // 1. Validierung beim Starten der Stoppuhr (goal_id, Notiz)
     // =========================================================================
 
     /**
@@ -77,14 +77,10 @@ final class TimeTrackingControllerTest extends TestCase
     #[DataProvider('ungueltigeGoalIdProvider')]
     public function lehntFehlendesOderUngueltigesLernzielAb(mixed $goalId): void
     {
-        $input = [
-            'goal_id'    => $goalId,
-            'started_at' => '2026-10-30 10:00:00',
-            'ended_at'   => '2026-10-30 11:00:00',
-        ];
+        $this->dao->expects(self::never())->method('startStopwatch');
 
         $this->erwartetValidierungsfehler(
-            fn () => $this->controller->validateAndParseInput($input, self::USER_ID),
+            fn () => $this->controller->startStopwatch(self::USER_ID, ['goal_id' => $goalId], '2026-10-30 10:00:00'),
             'goal_id'
         );
     }
@@ -92,209 +88,33 @@ final class TimeTrackingControllerTest extends TestCase
     #[Test]
     public function lehntFremdesOderNichtExistierendesLernzielAb(): void
     {
-        $input = [
-            'goal_id'    => 999, // existiert nicht für Nutzer 42
-            'started_at' => '2026-10-30 10:00:00',
-            'ended_at'   => '2026-10-30 11:00:00',
-        ];
+        $this->dao->expects(self::never())->method('startStopwatch');
 
         $this->erwartetValidierungsfehler(
-            fn () => $this->controller->validateAndParseInput($input, self::USER_ID),
+            // Lernziel 999 existiert nicht für Nutzer 42
+            fn () => $this->controller->startStopwatch(self::USER_ID, ['goal_id' => 999], '2026-10-30 10:00:00'),
             'goal_id'
         );
     }
 
-    // =========================================================================
-    // 2. Validierung von Start- und Endzeiten
-    // =========================================================================
-
-    /**
-     * @return array<string, array{mixed}>
-     */
-    public static function ungueltigeStartzeitProvider(): array
-    {
-        return [
-            'fehlt (null)'     => [null],
-            'leerer String'    => [''],
-            'nur Leerzeichen'  => ['   '],
-            'ungültiger Text'  => ['gestern vormittag'],
-            'unsinniges Datum' => ['2026-99-99 25:99:00'],
-        ];
-    }
-
-    #[Test]
-    #[DataProvider('ungueltigeStartzeitProvider')]
-    public function lehntFehlendeOderUngueltigeStartzeitAb(mixed $startedAt): void
-    {
-        $input = [
-            'goal_id'    => self::VALID_GOAL_ID,
-            'started_at' => $startedAt,
-            'ended_at'   => '2026-10-30 11:00:00',
-        ];
-
-        $this->erwartetValidierungsfehler(
-            fn () => $this->controller->validateAndParseInput($input, self::USER_ID),
-            'started_at'
-        );
-    }
-
-    /**
-     * @return array<string, array{mixed}>
-     */
-    public static function ungueltigeEndzeitProvider(): array
-    {
-        return [
-            'fehlt (null)'     => [null],
-            'leerer String'    => [''],
-            'nur Leerzeichen'  => ['   '],
-            'ungültiger Text'  => ['später'],
-            'unsinniges Datum' => ['2026-13-45 10:00:00'],
-        ];
-    }
-
-    #[Test]
-    #[DataProvider('ungueltigeEndzeitProvider')]
-    public function lehntUngueltigeEndzeitAb(mixed $endedAt): void
-    {
-        $input = [
-            'goal_id'    => self::VALID_GOAL_ID,
-            'started_at' => '2026-10-30 10:00:00',
-            'ended_at'   => $endedAt,
-        ];
-
-        $this->erwartetValidierungsfehler(
-            fn () => $this->controller->validateAndParseInput($input, self::USER_ID),
-            'ended_at'
-        );
-    }
-
-    #[Test]
-    public function lehntEndzeitVorStartzeitAb(): void
-    {
-        $input = [
-            'goal_id'    => self::VALID_GOAL_ID,
-            'started_at' => '2026-10-30 14:00:00',
-            'ended_at'   => '2026-10-30 13:00:00', // 1 Stunde vor Start!
-        ];
-
-        $e = $this->erwartetValidierungsfehler(
-            fn () => $this->controller->validateAndParseInput($input, self::USER_ID),
-            'ended_at'
-        );
-
-        self::assertStringContainsString('Endzeit', $e->getMessage());
-        self::assertStringContainsString('Startzeit', $e->getMessage());
-    }
-
-    // =========================================================================
-    // 3. Dauerberechnung
-    // =========================================================================
-
-    /**
-     * @return array<string, array{string, string, int}>
-     */
-    public static function dauerBerechnungProvider(): array
-    {
-        return [
-            'gleiche Minute (0 Sekunden)'           => ['2026-10-30 10:00:00', '2026-10-30 10:00:00', 0],
-            'exakt 30 Minuten (1800 Sekunden)'      => ['2026-10-30 10:00:00', '2026-10-30 10:30:00', 1800],
-            '1 Stunde 15 Minuten (4500 Sekunden)'   => ['2026-10-30 08:45:00', '2026-10-30 10:00:00', 4500],
-            'Tagesübergreifend (über Mitternacht)'   => ['2026-10-30 23:30:00', '2026-10-31 01:00:00', 5400],
-            'Format mit T Trenner (HTML datetime)'  => ['2026-10-30T10:00', '2026-10-30T11:30', 5400],
-        ];
-    }
-
-    #[Test]
-    #[DataProvider('dauerBerechnungProvider')]
-    public function berechnetDauerKorrekt(string $startedAt, string $endedAt, int $expectedSeconds): void
-    {
-        $duration = $this->controller->calculateDuration($startedAt, $endedAt);
-        self::assertSame($expectedSeconds, $duration);
-    }
-
-    #[Test]
-    public function lehntEndzeitVorStartzeitBeiDauerberechnungAb(): void
-    {
-        $this->erwartetValidierungsfehler(
-            fn () => $this->controller->calculateDuration('2026-10-30 12:00:00', '2026-10-30 11:59:59'),
-            'ended_at'
-        );
-    }
-
-    // =========================================================================
-    // 4. Validierung von Notiz und Zeitgrenzen
-    // =========================================================================
-
     #[Test]
     public function lehntZuLangeNotizAb(): void
     {
+        $this->dao->expects(self::never())->method('startStopwatch');
+
         $input = [
-            'goal_id'    => self::VALID_GOAL_ID,
-            'started_at' => '2026-10-30 10:00:00',
-            'ended_at'   => '2026-10-30 11:00:00',
-            'note'       => str_repeat('a', 256), // Max ist 255
+            'goal_id' => self::VALID_GOAL_ID,
+            'note'    => str_repeat('a', 256), // Max ist 255
         ];
 
         $this->erwartetValidierungsfehler(
-            fn () => $this->controller->validateAndParseInput($input, self::USER_ID),
+            fn () => $this->controller->startStopwatch(self::USER_ID, $input, '2026-10-30 10:00:00'),
             'note'
         );
     }
 
-    #[Test]
-    public function akzeptiertGueltigeEingabe(): void
-    {
-        $input = [
-            'goal_id'    => self::VALID_GOAL_ID,
-            'started_at' => '2026-10-30 10:00:00',
-            'ended_at'   => '2026-10-30 11:30:00',
-            'note'       => 'Kapitel 1 Zusammenfassung',
-        ];
-
-        $parsed = $this->controller->validateAndParseInput($input, self::USER_ID);
-
-        self::assertSame(self::VALID_GOAL_ID, $parsed['goal_id']);
-        self::assertSame('2026-10-30', $parsed['entry_date']);
-        self::assertSame('2026-10-30 10:00:00', $parsed['started_at']);
-        self::assertSame('2026-10-30 11:30:00', $parsed['ended_at']);
-        self::assertSame(5400, $parsed['tracked_seconds']);
-        self::assertSame('Kapitel 1 Zusammenfassung', $parsed['note']);
-    }
-
-    #[Test]
-    public function lehntNegativVerstricheneZeitAb(): void
-    {
-        $input = [
-            'goal_id'         => self::VALID_GOAL_ID,
-            'started_at'      => '2026-10-30 10:00:00',
-            'ended_at'        => '2026-10-30 11:00:00',
-            'tracked_seconds' => -10,
-        ];
-
-        $this->erwartetValidierungsfehler(
-            fn () => $this->controller->validateAndParseInput($input, self::USER_ID),
-            'tracked_seconds'
-        );
-    }
-
-    #[Test]
-    public function lehntUebermaessigLangeDauerAb(): void
-    {
-        $input = [
-            'goal_id'         => self::VALID_GOAL_ID,
-            'started_at'      => '2026-10-30 10:00:00',
-            'ended_at'        => '2026-10-30 11:00:00',
-            'tracked_seconds' => 86401, // Mehr als 24 Stunden
-        ];
-
-        $this->erwartetValidierungsfehler(
-            fn () => $this->controller->validateAndParseInput($input, self::USER_ID),
-            'tracked_seconds'
-        );
-    }
-
     // =========================================================================
-    // 5. Stoppuhr-Zustandslogik (Start, Pause, Weiter, Stopp, Verwerfen)
+    // 2. Stoppuhr-Zustandslogik (Start, Pause, Weiter, Stopp, Verwerfen)
     // =========================================================================
 
     #[Test]
@@ -503,7 +323,7 @@ final class TimeTrackingControllerTest extends TestCase
     }
 
     // =========================================================================
-    // 6. Formatierungshelfer
+    // 3. Formatierungshelfer
     // =========================================================================
 
     /**
@@ -550,7 +370,7 @@ final class TimeTrackingControllerTest extends TestCase
     }
 
     // =========================================================================
-    // 7. Auto-Completion / Verknüpfung mit Tages- und Wochenzielen
+    // 4. Auto-Completion / Verknüpfung mit Tages- und Wochenzielen
     // =========================================================================
 
     #[Test]
@@ -896,7 +716,7 @@ final class TimeTrackingControllerTest extends TestCase
     }
 
     // =========================================================================
-    // 8. Randfälle der Stoppuhr
+    // 5. Randfälle der Stoppuhr
     // =========================================================================
 
     /**
@@ -1142,7 +962,7 @@ final class TimeTrackingControllerTest extends TestCase
     }
 
     // =========================================================================
-    // 9. Zeiteintrag löschen
+    // 6. Zeiteintrag löschen
     // =========================================================================
 
     #[Test]

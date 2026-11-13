@@ -452,29 +452,6 @@ class TimeEntryController
     }
 
     /**
-     * Liefert die zuletzt erfassten Zeiteinträge eines Nutzers mit formatierter Dauer.
-     *
-     * @param int $userId ID des Nutzers
-     * @param int $limit Maximale Anzahl
-     * @return list<array<string, mixed>>
-     */
-    public function listRecentEntries(int $userId, int $limit = 10): array
-    {
-        $entries = $this->timeEntryDAO->findRecentByUserId($userId, $limit);
-
-        foreach ($entries as &$entry) {
-            $seconds = (int) ($entry['tracked_seconds'] ?? 0);
-            $entry['formatted_duration'] = self::formatDurationSeconds($seconds);
-            $entry['formatted_month'] = isset($entry['plan_month']) && is_string($entry['plan_month'])
-                ? GoalController::formatYearMonth($entry['plan_month'], true)
-                : '';
-        }
-        unset($entry);
-
-        return $entries;
-    }
-
-    /**
      * Gruppiert eine flache Liste von Modulen / Zwischenzielen nach ihrem übergeordneten Semester
      * und ergänzt Anzeige-Labels für das Auswahlfeld im Modal.
      *

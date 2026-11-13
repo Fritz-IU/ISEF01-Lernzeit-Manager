@@ -1167,42 +1167,6 @@ final class TimeEntryControllerTest extends TestCase
     }
 
     // ------------------------------------------------------------------
-    // listRecentEntries
-    // ------------------------------------------------------------------
-
-    #[Test]
-    public function ergaenztLetzteEintraegeUmFormatierteAngaben(): void
-    {
-        $this->dao->expects(self::once())
-            ->method('findRecentByUserId')
-            ->with(self::USER_ID, 5)
-            ->willReturn([
-                ['id' => 9, 'tracked_seconds' => 5400, 'plan_month' => '2026-10'],
-                ['id' => 10, 'tracked_seconds' => 2700],
-            ]);
-
-        $entries = $this->controller->listRecentEntries(self::USER_ID, 5);
-
-        self::assertCount(2, $entries);
-        self::assertSame(9, $entries[0]['id']);
-        self::assertSame('1 Std. 30 Min.', $entries[0]['formatted_duration']);
-        self::assertSame('Okt 2026', $entries[0]['formatted_month']);
-        self::assertSame('45 Min.', $entries[1]['formatted_duration']);
-        self::assertSame('', $entries[1]['formatted_month']);
-    }
-
-    #[Test]
-    public function liefertStandardmaessigZehnLetzteEintraege(): void
-    {
-        $this->dao->expects(self::once())
-            ->method('findRecentByUserId')
-            ->with(self::USER_ID, 10)
-            ->willReturn([]);
-
-        self::assertSame([], $this->controller->listRecentEntries(self::USER_ID));
-    }
-
-    // ------------------------------------------------------------------
     // getSelectableLearningSlots & getSelectableGoalsGroupedBySemester
     // ------------------------------------------------------------------
 
